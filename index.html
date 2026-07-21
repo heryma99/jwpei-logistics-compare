@@ -363,12 +363,15 @@ function rFreight(){
   const items=combSkus();   // S.items ∪ 谷仓字典（直接引用谷仓 SKU）
   // 默认选第一个 SKU（演示自动带出）
   let sel=items[0]||{sku:"",name:"",l:10,w:10,h:10,weight:1,decl:80,attr:"普货"};
+  const destCountries=sortDestinations(uniq(M.carriers.flatMap(c=>c.countries)));
+  const defaultDest=destCountries.find(x=>["美国","英国","德国"].includes(x))||destCountries[0]||"";
   let h=`<div class="card"><h2>${M.name}　<span class="pill">货运引擎 · 4 支柱归一</span></h2>
     <div class="note">录入方式（你要的「越简单越好」）：<span class="kbd">① 选 SKU 自动带出</span> <span class="kbd">② 批量 ToB 自动算体积（接主数据）</span> <span class="kbd">③ 模板导入/手动</span>。三者都产出同一「发货规格」喂给引擎。</div>
     <h3>发货规格（SKU 自动带出）</h3>
     <label>选择 SKU</label><input id="skuSel" list="gcList" style="min-width:220px" value="${(items[0]||{}).sku||''}"><datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
-    件数 <input type="number" id="units" value="200">
-    目的国 <select id="dest">${uniq(M.carriers.flatMap(c=>c.countries)).map(c=>`<option>${c}</option>`).join("")}</select>
+    件数 <input type="number" id="units" value="1">
+    目的国 <input list="destList" id="dest" value="${defaultDest}" placeholder="输入或选择" style="min-width:120px">
+    <datalist id="destList">${destCountries.map(c=>`<option value="${c}">${c}</option>`).join("")}</datalist>
     派送对象 <select id="aud"><option value="2C">2C 个人</option><option value="2B" selected>2B 商业/FBA</option></select>
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
     <h3>比对模式</h3>
@@ -564,10 +567,10 @@ function rAll(){
     if(c.cat==='small'){ Object.keys(c.countries||{}).forEach(x=>destSet.add(x)); }
     else { (c.dest||[]).forEach(x=>destSet.add(x)); }
   });
-  ['美国','加拿大','德国','英国','法国','意大利','西班牙','日本','澳大利亚','墨西哥','巴西'].forEach(x=>destSet.add(x));
+  ['美国','加拿大','德国','英国','法国','意大利','西班牙','日本','澳大利亚','墨西哥','巴西','沙特阿拉伯','阿联酋','巴林','卡塔尔','科威特','阿曼','以色列'].forEach(x=>destSet.add(x));
 
   const skuOpts = skus.slice(0,3000).map(s=>`<option value="${s.sku} · ${s.name||''}"></option>`).join('');
-  const destOpts = Array.from(destSet).sort((a,b)=>a.localeCompare(b,'zh')).map(d=>`<option value="${d}">${d}</option>`).join('');
+  const destOpts = sortDestinations(Array.from(destSet)).map(d=>`<option value="${d}">${d}</option>`).join('');
 
   function buildFilterHTML(){
     const cats=[['small','小包渠道（B2C 直发）'],['b2b-air','B2B / 海外仓（批量）'],['express','商业快递（DHL / FedEx / UPS）']];
@@ -597,7 +600,7 @@ function rAll(){
       <div><label>高 cm</label><input id="acH" type="number" step="0.1" value="10"></div>
     </div>
     <div class="row" style="margin-top:8px">
-      <div><label>目的国家 / 地区</label><select id="acDest">${destOpts}</select></div>
+      <div><label>目的国家 / 地区</label><input id="acDest" list="acDestList" placeholder="输入或选择" style="min-width:130px"><datalist id="acDestList">${destOpts}</datalist></div>
       <div><label>每箱装几个</label><input id="acQty" type="number" step="1" value="10"></div>
       <div><label>箱数</label><input id="acBoxes" type="number" step="1" value="1"></div>
       <div><label>箱长 cm（默认单件）</label><input id="acBl" type="number" step="0.1" placeholder="默认"></div>
@@ -777,6 +780,12 @@ function rAll(){
 
 /* ===================== 工具 ===================== */
 function uniq(a){ return [...new Set(a)]; }
+function sortDestinations(arr){
+  const priority = ["美国","英国","德国","法国","意大利","西班牙","荷兰","比利时","波兰","瑞典","加拿大","澳大利亚","沙特阿拉伯","阿联酋","巴林","卡塔尔","科威特","阿曼","以色列","墨西哥","日本","韩国"];
+  const p = priority.filter(x=>arr.includes(x));
+  const rest = arr.filter(x=>!priority.includes(x)).sort((a,b)=>a.localeCompare(b,"zh"));
+  return p.concat(rest);
+}
 
 /* ===================== 启动 ===================== */
 renderNav(); render();
