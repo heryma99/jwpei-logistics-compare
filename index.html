@@ -190,8 +190,37 @@ function syncParcelFromRates(){
   }).filter(Boolean);
   if(carriers.length) S.modules.parcel.carriers = carriers;
 }
+/* ④ toB 头程：直接复用 RATES b2b-air 真实渠道（中运通达/亚丰/美森等），与 ⑨ 全渠道比价同源 */
+function syncTobFromRates(){
+  if(!window.RATES||!window.RATES.channels) return;
+  const carriers = window.RATES.channels.filter(c=>c.cat==='b2b-air').map(c=>{
+    const countries = (c.dest||[]).map(cn=>{ return (typeof CN2ISO==='object'&&(CN2ISO[cn]||CN2ISO[cn.trim()]||CN2ISO[cn.replace(/\s*\(.*\)$/,'').trim()])) || cn; }).filter(Boolean);
+    const first=Object.values(c.countries||{})[0]; if(!first||!first.tiers) return null;
+    const weight_tiers=(first.tiers||[]).map(t=>({kg:t.min,rate:t.rate}));
+    const inc=(c.incoterm==='DDU')?'DDU':'DDP';
+    const declareFee = (c.sur && c.sur.declare) || 0;
+    const minpc = (c.sur && c.sur.minpc) || 12;
+    return {
+      carrier: c.carrier || '中运通达',
+      channel: c.name,
+      audience: '2B',
+      countries,
+      max_weight: null,
+      accepted: ['普货'],
+      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:c.currency||'CNY', divisor:c.volumetric_divisor||6000, charge_rule:'max', rounding:1, min_charge_weight:minpc, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
+      fees: declareFee>0 ? [{name:'清关费', type:'fixed', value:declareFee}] : [],
+      decision:{transit: 10},
+      history:[{date:'2026-07-01', tiers:weight_tiers, op:declareFee}],
+      // 透传 sur 用于品类/非FBA/磁检
+      sur: c.sur || {},
+      surcharges: c.surcharges || {}
+    };
+  }).filter(Boolean);
+  if(carriers.length) S.modules.tob.carriers = carriers;
+}
 applyCountryOverrides();     // ★ per-country 覆盖先注入 RATES
 syncParcelFromRates();
+syncTobFromRates();          // ★ 头程也从 RATES 同步（亚丰/中运通达/海运/卡航/海派/卡派 全进来）
 applyDivisorOverrides();
 saveState();
 /* 渠道体积重除数维护：覆盖存于浏览器本地(localStorage)，免改 rates.json / 免重部署 */
@@ -561,13 +590,22 @@ function rFreight(){
       return computeFreight(ch, sku, units, destCn, eurFx);
     };
     if(mode==="estimate"){
-      // 预估：选 1 个渠道 → 完整费用明细
-      const ch=eligible[0]; const r=freight(ch);
-      out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3><table><thead><tr><th>科目</th><th>金额¥</th></tr></thead><tbody>`;
+      // 预估：可选渠道（用户挑哪个估哪个，默认第一个入围的）
+      const pickHtml=`<label>选渠道</label><select id="estCh">${eligible.map((c,i)=>`<option value="${i}">${c.carrier}·${c.channel}</option>`).join('')}</select>`;
+      const chIdx=Math.min(eligible.length-1, +($("#estCh")?.value||0));
+      const ch=eligible[chIdx]; const r=freight(ch);
+      out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3>${pickHtml}<table><thead><tr><th>科目</th><th>金额¥</th></tr></thead><tbody>`;
       r.items.forEach(it=> out+=`<tr><td>${it.name}</td><td>${it.amt.toFixed(2)}</td></tr>`);
       out+=`<tr class="best"><td>到手总成本（Landed Cost）</td><td>¥${r.total.toFixed(2)}</td></tr></tbody></table>
-        <div class="mut">缴费重 ${r.cw}kg（实重${sku.weight*units} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor)*units).toFixed(3)} ÷${ch.pricing.divisor}）· 时效约 ${r.transit} 天</div>`;
-      $("#fOut").innerHTML=out; return;
+        <div class="mut">缴费重 ${r.cw}kg（实重${sku.weight*units} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor)*units).toFixed(3)} ÷${ch.pricing.divisor}）· 时效约 ${r.transit} 天</div>
+        <div class="mut" style="margin-top:8px;line-height:1.6">
+          <b>✓ 已计入：</b>基本运费 + 挂号费 + 燃油（如渠道收） + 欧盟 VAT/服务费/3EUR关税（欧盟路向） + 关税/VAT（DDP/中东） + <b>完整预算模式：</b>偏远/磁检/超尺寸/超重/商业清关等可能费用<br>
+          <b>⚠️ 未计入（实报实销）：</b>旺季附加（黑五/圣诞） · 改派/重派（50元/票） · 退件（按国外账单重量） · 仓租/查验滞港 · 签名服务 · FDA限制品类（美国） · 锂电池/带磁附加 · 商业清关（加拿大 1000-5000 CAD/次，触发条件复杂）
+        </div>`;
+      $("#fOut").innerHTML=out;
+      // 绑定重新选择
+      const ec=document.getElementById('estCh'); if(ec) ec.onchange=()=>{ const i=+ec.value; const nch=eligible[i]; const nr=freight(nch); let o2=`<h3>预估明细 · ${nch.carrier}·${nch.channel}</h3>${pickHtml}<table><thead><tr><th>科目</th><th>金额¥</th></tr></thead><tbody>`; nr.items.forEach(it=> o2+=`<tr><td>${it.name}</td><td>${it.amt.toFixed(2)}</td></tr>`); o2+=`<tr class="best"><td>到手总成本（Landed Cost）</td><td>¥${nr.total.toFixed(2)}</td></tr></tbody></table><div class="mut">缴费重 ${nr.cw}kg · 时效约 ${nr.transit} 天</div>`; $("#fOut").innerHTML=o2; $("#fOut").querySelector('#estCh').value=i; $("#fOut").querySelector('#estCh').onchange=arguments.callee; };
+      return;
     }
     // 比价：全候选排序
     const res=eligible.map(ch=>({ch, r:freight(ch)})).sort((a,b)=>a.r.total-b.r.total);
@@ -756,6 +794,7 @@ function rConfig(){
           </div></div>`;
       }).join('');
     })()}
+
     <div style="margin-top:8px">
       <button class="act" id="saveCO">✓ 应用并确认</button>
       <button class="ghost" id="expCO">导出 JSON</button>
