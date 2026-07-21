@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784638502";</script>
+<script>window.__BUILD__="1784639097";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -56,6 +56,28 @@
   .up{color:var(--red)} .down{color:var(--green)}
   .reg-h{margin:12px 0 5px;font-size:13px;font-weight:600;color:var(--acc);border-left:3px solid var(--acc);padding:2px 0 2px 9px;background:linear-gradient(90deg,rgba(59,130,246,.10),transparent)}
   .reg-h:first-child{margin-top:4px}
+  /* 资格校验 + 结果展示优化 */
+  .p2bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}
+  .p2bar .count{font-size:13px}
+  .p2bar .count b{font-size:15px}
+  .rejected-details{margin:0;min-width:160px;border:1px solid var(--line);border-radius:7px;overflow:hidden;font-size:12px}
+  .rejected-details summary{padding:7px 11px;background:rgba(239,68,68,.08);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .rejected-details summary::-webkit-details-marker{display:none}
+  .rejected-details summary::after{content:'▶';font-size:10px;color:var(--err);transition:transform .2s}
+  .rejected-details[open] summary::after{transform:rotate(90deg)}
+  .rejected-details > div{padding:8px 11px;max-height:220px;overflow:auto;background:var(--panel)}
+  .rejected-item{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed var(--line);line-height:1.4}
+  .rejected-item:last-child{border-bottom:none}
+  .rejected-item .x{color:var(--err);font-weight:700;min-width:14px}
+  .result-table{table-layout:auto;white-space:nowrap;font-size:12px}
+  .result-table th{background:var(--panel2);position:sticky;top:0;z-index:1}
+  .result-table td{vertical-align:middle}
+  .result-table .c-name{white-space:normal;min-width:130px;max-width:220px}
+  .result-table .c-country{white-space:normal;min-width:80px;max-width:140px}
+  .price-cell{font-weight:700;font-size:13px}
+  .diff-badge{display:inline-block;padding:2px 7px;border-radius:12px;font-size:11px;background:var(--panel2);border:1px solid var(--line)}
+  .diff-badge.best{background:rgba(34,197,94,.18);color:var(--green);border-color:rgba(34,197,94,.35)}
+  .scroll-x{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
   .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:2px 10px;font-size:11px;color:var(--mut);margin:2px}
   .row{display:flex;gap:18px;flex-wrap:wrap}
   .row>div{flex:1;min-width:260px}
@@ -712,10 +734,12 @@ function rFreight(){
       const reasons=qualify(ch, sku, units, aud, b2bType).concat( ch.countries.includes(destIso)?[]:[`目的国不符(${destCn})`] );
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
-    let out=`<div class="note warn">资格校验（P2 硬约束）：入围 ${eligible.length} 个渠道；淘汰 ${rejected.length} 个。</div>`;
-    rejected.forEach(r=> out+=`<div class="err">✗ ${r.ch.carrier}·${r.ch.channel}：淘汰(${r.reasons.join("、")})</div>`);
-    if(rejected.length) out+=`<div class="mut">*「目的国不符」指该渠道服务范围不含当前目的国。入围渠道行会显示其可发国家。</div>`;
-    if(!eligible.length){ $("#fOut").innerHTML=out; return; }
+    const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
+    let out=`<div class="p2bar">
+      <span class="count ok">✓ 入围 <b>${eligible.length}</b> 个渠道</span>
+      ${rejected.length?`<details class="rejected-details"><summary><span>淘汰 <b>${rejected.length}</b> 个渠道</span></summary><div>${rejectedHtml}</div></details>`:''}
+    </div>`;
+    if(!eligible.length){ $("#fOut").innerHTML=out+`<div class="err">当前规格/目的国无可用渠道，请调整 SKU、件数、目的国或收货类型。</div>`; return; }
     const eurFx=parseFloat($("#euFx")?.value)||7.8;
     const conservative=$("#conservativeMode")?.checked;
     // ② ③ ④ 通用:小包/快递/头程 预估+比价 共用
@@ -830,19 +854,29 @@ function rFreight(){
       return {ch, r, rt};
     }).sort((a,b)=>a.r.mustTotal-b.r.mustTotal);
     const best=res[0].r.mustTotal;
-      out+=`<h3>横向比价结果（${eligible.length} 渠道 · 同口径到手总成本，绿色=最优）</h3>
-      <table><thead><tr><th>物流商·渠道</th><th>可发国家</th><th>除数</th><th>计费重(kg)</th><th>到手总成本¥</th><th>时效</th><th>差额 vs 最优</th>${destIso==='US'?'<th>美西/美中/美东（¥）</th>':''}</tr></thead><tbody>`;
+    const usHeader = destIso==='US'?'<th>美西</th><th>美中</th><th>美东</th>':'';
+    out+=`<h3>横向比价结果 · ${eligible.length} 个入围渠道（按到手总成本升序，绿色=最优）</h3>
+      <div class="scroll-x"><table class="result-table"><thead><tr><th>#</th><th>物流商·渠道</th><th>可发国家</th><th>计费重</th><th class="price-cell">到手总成本</th><th>时效</th><th>vs 最优</th>${usHeader}</tr></thead><tbody>`;
     res.forEach((x,idx)=>{
       const cnList=x.ch.countries.map(isoToChinese);
-      const cnShort=cnList.slice(0,4).join('、')+(cnList.length>4?` 等${cnList.length}国`:'');
+      const cnShort=cnList.length>3?cnList.slice(0,3).join('、')+` 等${cnList.length}国`:cnList.join('、');
       const sw=(sku.weight*units).toFixed(2);
-      const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(3);
+      const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(2);
       const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${x.r.cw}kg`;
-      const diff = idx===0? "★ 最优" : "+¥"+(x.r.mustTotal-best).toFixed(2);
-      const usChip = x.rt ? `<td class="mut">${x.rt.map(z=>z.reg+' '+z.t.toFixed(0)).join('<br>')}</td>` : '';
-      out+=`<tr class="${idx===0?"best":""}"><td>${x.ch.carrier}·${x.ch.channel}</td><td class="mut" title="${cnList.join('、')}">${cnShort}</td><td class="mut">${x.ch.pricing.divisor}</td><td title="${cwTip}">${x.r.cw}kg<br><span class="mut" style="font-size:11px">实${sw}/体${vw}</span></td><td>${x.r.mustTotal.toFixed(2)}</td><td>${x.r.transit}天</td><td>${diff}</td>${usChip}</tr>`;
+      const diff = idx===0? `<span class="diff-badge best">★ 最优</span>` : `<span class="diff-badge">+¥${(x.r.mustTotal-best).toFixed(2)}</span>`;
+      const usCells = x.rt ? x.rt.map(z=>`<td class="mut">¥${z.t.toFixed(0)}</td>`).join('') : (destIso==='US'?'<td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>':'');
+      out+=`<tr class="${idx===0?"best":""}">
+        <td class="mut">${idx+1}</td>
+        <td class="c-name"><b>${x.ch.carrier}</b><br><span class="mut">${x.ch.channel}</span></td>
+        <td class="c-country mut" title="${cnList.join('、')}">${cnShort}</td>
+        <td title="${cwTip}"><b>${x.r.cw.toFixed(2)}</b>kg<br><span class="mut">÷${x.ch.pricing.divisor}</span></td>
+        <td class="price-cell">¥${x.r.mustTotal.toFixed(2)}</td>
+        <td>${x.r.transit||'-'}天</td>
+        <td>${diff}</td>
+        ${usCells}
+      </tr>`;
     });
-    out+=`</tbody></table><div class="mut">↑ 成本升序，绿色=最优。美国渠道按邮编自动识别美西/美中/美东并三区并列展示（基准价取当前区域或美西）。DDP vs DDU、divisor 不同者口径仅供参考。</div>`;
+    out+=`</tbody></table></div><div class="mut">* 计费重=MAX(实重,体积重)后进位；美国渠道按邮编自动识别美西/美中/美东。DDP vs DDU、divisor 不同者口径仅供参考。</div>`;
     $("#fOut").innerHTML=out;
   };
   $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#b2bType").onchange=draw; $("#acZip").oninput=draw; $("#cargoType").onchange=draw; $("#euFx").onchange=draw;
