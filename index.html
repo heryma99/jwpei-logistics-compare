@@ -186,7 +186,20 @@ function syncParcelFromRates(){
   if(carriers.length) S.modules.parcel.carriers = carriers;
 }
 syncParcelFromRates();
+applyDivisorOverrides();
 saveState();
+/* 渠道体积重除数维护：覆盖存于浏览器本地(localStorage)，免改 rates.json / 免重部署 */
+function applyDivisorOverrides(ov){
+  ov = ov || JSON.parse(localStorage.getItem('jwpei_divisor_overrides')||'{}');
+  if(!ov || !Object.keys(ov).length) return;
+  const set=(id,v)=>{
+    (window.RATES&&window.RATES.channels||[]).forEach(c=>{ if(c.id===id) c.volumetric_divisor=+v; });
+    ['express','tob'].forEach(cat=>{ (S.modules[cat]&&S.modules[cat].carriers||[]).forEach(c=>{ if(c.id===id) c.pricing.divisor=+v; }); });
+  };
+  Object.keys(ov).forEach(id=> set(id, ov[id]));
+  syncParcelFromRates();
+  saveState();
+}
 /* 物料主数据表：搜索 + 分页状态（2317 条不能一次性渲染，否则卡死） */
 let ITEM_PAGE=1, ITEM_Q="";
 
@@ -574,6 +587,11 @@ function rMom(){
 
 /* ===================== ⑧ 配置中心 ===================== */
 function rConfig(){
+  // 渠道除数维护：合并 RATES + S 骨架的唯一渠道清单
+  const divMap={};
+  (window.RATES&&window.RATES.channels||[]).forEach(c=>{ if(!divMap[c.id]) divMap[c.id]={id:c.id,carrier:c.carrier||'',name:c.name||'',div:(c.volumetric_divisor!=null?c.volumetric_divisor:10000),src:'rates'}; });
+  ['express','tob'].forEach(cat=>{ (S.modules[cat]&&S.modules[cat].carriers||[]).forEach(c=>{ if(!divMap[c.id]) divMap[c.id]={id:c.id,carrier:c.carrier||'',name:c.channel||'',div:(c.pricing?c.pricing.divisor:10000),src:'S'}; }); });
+  const divRows=Object.values(divMap).sort((a,b)=>(a.carrier+a.name).localeCompare(b.carrier+b.name,'zh')).map(c=>`<tr><td class="mut">${c.carrier}</td><td>${c.name}</td><td class="mut" style="text-align:center">${c.div}</td><td><input class="divInput" data-id="${c.id}" type="number" step="500" min="1000" value="${c.div}" style="width:90px"></td></tr>`).join('');
   let h=`<div class="card"><h2>⑧ 配置中心　<span class="pill">扩展=加档案，骨架零改动</span></h2>
     <div class="note">新增物流商/渠道 = 在对应模块 JSON 数组加一份对象。字段分组：<b>pricing</b>(→P3 归一基准，必填：incoterm/tax_included/divisor/charge_rule/rounding/min_charge_weight/weight_tiers/fuel_pct/fx) · <b>fees</b>(→费用展开) · <b>qualify</b>(countries/max_weight/accepted→P2) · <b>decision</b>(transit) · <b>history</b>(多期环比→P0-3)。保存后自动持久化（localStorage），可导出 .json 给同事。</div>
     <div style="margin-bottom:8px">
@@ -583,8 +601,19 @@ function rConfig(){
       <span id="cStat" class="mut"></span>
     </div>
     <textarea id="cfg">${JSON.stringify(S,null,2)}</textarea>
-    <div style="margin-top:8px"><button class="act" id="saveCfg">保存配置</button> <button class="ghost" id="resetCfg">恢复默认</button></div>`;
+    <div style="margin-top:8px"><button class="act" id="saveCfg">保存配置</button> <button class="ghost" id="resetCfg">恢复默认</button></div>
+    <h3 style="margin-top:16px">渠道体积重除数维护（per-channel）</h3>
+    <div class="note">各渠道计费重除数不同（云途10000 / 飞特7000 / 中运通达B2B 6000 / 亚丰美线6000·欧线5000 / 商业快递5000 …）。在此<b>按渠道维护除数</b>：保存后即时生效并记到浏览器本地，刷新不丢、<b>无需改 rates.json 或重新部署</b>。结果表「除数」列即读此值（②小包专线 / ⑨全渠道比价 / ③商业快递 / ④头程 全部同步）。</div>
+    <div style="max-height:320px;overflow:auto;margin-top:6px"><table><thead><tr><th>物流商</th><th>渠道</th><th>当前除数</th><th>改为</th></tr></thead><tbody>${divRows}</tbody></table></div>
+    <div style="margin-top:8px"><button class="act" id="saveDiv">保存除数</button> <span id="divStat" class="mut"></span></div>`;
   $("#app").innerHTML=h;
+  $("#saveDiv").onclick=()=>{
+    const ov={};
+    document.querySelectorAll('.divInput').forEach(inp=>{ const v=parseFloat(inp.value); if(!isNaN(v)&&v>0) ov[inp.dataset.id]=v; });
+    localStorage.setItem('jwpei_divisor_overrides', JSON.stringify(ov));
+    applyDivisorOverrides(ov);
+    $("#divStat").innerHTML='<span class="ok">✓ 已保存 '+Object.keys(ov).length+' 条并生效（存于浏览器本地）</span>';
+  };
   $("#saveCfg").onclick=()=>{ try{ S=JSON.parse($("#cfg").value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
   $("#resetCfg").onclick=()=>{ if(confirm("恢复默认配置？当前改动将丢失")){ S=JSON.parse(JSON.stringify(DEF)); saveState(); rConfig(); } };
   $("#exp").onclick=()=>{ const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="logi_config.json"; a.click(); };
