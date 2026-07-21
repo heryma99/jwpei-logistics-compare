@@ -4,6 +4,10 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<script>
+// ★ 版本缓存终结者: 每次部署改 BUILD 号, CDN 视为新URL
+(function(){ var B='v21.07.2',cur=location.search; if(!cur.includes('_b='+B)){ var q=(cur?'&':'?')+'_b='+B; location.replace(location.pathname+location.hash?location.hash:''+q); } })();
+</script>
 <title>物流比价 + 预算 · 可扩展骨架 v2（吸收旧方法论 + 补 ERP 三处 P0）</title>
 <style>
   :root{ --bg:#0e1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3340; --fg:#e6edf3; --mut:#9aa7b4; --acc:#3b82f6; --acc2:#22c55e; --warn:#f59e0b; --err:#ef4444; --red:#ef4444; --green:#22c55e; }
@@ -119,7 +123,17 @@ const DEF = {
         pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.385,weight_tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:1.5,rate:300},{kg:2,rate:359},{kg:3,rate:424},{kg:5,rate:639},{kg:10,rate:1118},{kg:20,rate:1600},{kg:30,rate:2200}],duty_rate:0,vat_rate:0,fx:1},
         fees:[{name:"住宅派送",type:"fixed",value:22},{name:"报关费",type:"fixed",value:35}],
         decision:{transit:5},
-        history:[ {date:"2026-07-01",tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:5,rate:639}],fuel:0.385,op:35} ] }
+        history:[ {date:"2026-07-01",tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:5,rate:639}],fuel:0.385,op:35} ] },
+      {carrier:"中运通达·UPS",channel:"红单大货(大陆UPS,含油)",audience:["2B","2C"],countries:["US","CA","MX","PR","DE","FR","UK","IT","ES","NL","FI","DK","NO","BE","CH","SE","PT","PL","CZ","AT","GR","HU","IE","JP","KR","TH","TW"],max_weight:99,accepted:["普货"],
+        pricing:{incoterm:"DDU",tax_included:false,currency:"CNY",divisor:0,charge_rule:"max",rounding:0.5,min_charge_weight:22,fuel_pct:0,weight_tiers:[{kg:46,rate:65},{kg:70,rate:65},{kg:99,rate:65}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[],
+        decision:{transit:4},
+        history:[{date:"2026-07-01",tiers:[{kg:46,rate:65},{kg:70,rate:65},{kg:99,rate:65}],fuel:0,op:0}] },
+      {carrier:"中运通达·UPS",channel:"红单包税(大陆UPS包税美国,含油)",audience:["2B","2C"],countries:["US","CA"],max_weight:null,accepted:["普货"],
+        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:6000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0,weight_tiers:[{kg:0.5,rate:297},{kg:1,rate:317},{kg:5,rate:589},{kg:10,rate:1031},{kg:15,rate:1505},{kg:21,rate:1735}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"免偏远/免私人地址/免操作费",type:"fixed",value:0}],
+        decision:{transit:4},
+        history:[{date:"2026-07-01",tiers:[{kg:21,rate:58}],fuel:0,op:0}] }
     ]},
     tob:{ name:"toB 头程", engine:"freight", carriers:[
       {carrier:"云途",channel:"德国空派",audience:"2B",countries:["DE"],max_weight:null,accepted:["普货","带电"],
