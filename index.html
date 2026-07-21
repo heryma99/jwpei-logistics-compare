@@ -525,8 +525,8 @@ function rAll(){
   const skuOpts = skus.slice(0,3000).map(s=>`<option value="${s.sku} · ${s.name||''}"></option>`).join('');
   const destOpts = Array.from(destSet).sort((a,b)=>a.localeCompare(b,'zh')).map(d=>`<option value="${d}">${d}</option>`).join('');
 
-  let h = `<div class="card"><h2>⑨ 全渠道比价　<span class="pill">W102 真实费率 · 15 渠道</span></h2>
-    <div class="note">输入一个 SKU（自动带出谷仓 2317 条重量/尺寸）或手填货物 + 目的国 → 自动列出该国<b>所有在约渠道</b>价格，按<b>小包 / B2B / 商业快递</b>三块横向对比，最便宜整行标绿。<br>来源：云途 / 中运通达 / 飞特 报价表（W102 邮箱，2026-07 生效）。</div>
+  let h = `<div class="card"><h2>⑨ 全渠道比价　<span class="pill">W102 真实费率 · ${RATES.channels.length} 渠道</span></h2>
+    <div class="note">输入一个 SKU（自动带出谷仓 2317 条重量/尺寸）或手填货物 + 目的国 → 自动列出该国<b>所有在约渠道</b>价格，按<b>小包 / B2B / 商业快递</b>三块横向对比，最便宜整行标绿。<br>来源：云途 / 中运通达 / 亚丰(璞景/德翼) / 飞特 报价表（W102 邮箱，2026-07 生效）。</div>
     <div class="row">
       <div style="flex:2;min-width:260px"><label>SKU（谷仓自动带出）</label><input id="acSku" list="acSkuList" placeholder="输入 SKU 或名称，如 104-1" autocomplete="off"><datalist id="acSkuList">${skuOpts}</datalist><div class="mut" id="acSkuInfo" style="min-height:16px"></div></div>
       <div><label>单件重量 kg</label><input id="acW" type="number" step="0.001" value="0.5"></div>
@@ -543,11 +543,21 @@ function rAll(){
       <div><label>箱高 cm</label><input id="acBh" type="number" step="0.1" placeholder="默认"></div>
       <div><label>申报值/件 CNY</label><input id="acDecl" type="number" step="1" value="200"></div>
     </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>货物类型（B2B产品附加费）</label><select id="acCargo">
+        <option value="箱包皮革" selected>箱包/皮革（JW PEI 默认）</option>
+        <option value="普货">普货</option>
+        <option value="鞋类">鞋类</option>
+        <option value="服装">服装/纺织</option>
+      </select></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
+    </div>
     <div class="row" style="margin-top:10px;align-items:center">
-      <div style="flex:0 0 auto"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
       <div style="flex:0 0 auto"><button class="act" id="acCalc">计算全渠道比价</button></div>
     </div>
-    <div class="mut" style="margin-top:6px">计费重统一 = MAX(实重, 长×宽×高÷除数)；各渠道除数不同（云途10000 / A01 8000 / 区域10000 / 飞特7000 / 中运通达B2B 6000 / 商业快递5000）。</div>
+    <div class="mut" style="margin-top:6px">计费重统一 = MAX(实重, 长×宽×高÷除数)；各渠道除数不同（云途10000 / A01 8000 / 区域10000 / 飞特7000 / 中运通达B2B 6000 / 亚丰美线6000·欧线5000 / 商业快递5000）。B2B 已计入<b>产品附加费</b>（按货物类型），非FBA/单独报关勾选后计入。</div>
   </div>
   <div id="acResults"></div>
   <div class="note" id="acFn"></div>`;
@@ -589,9 +599,7 @@ function rAll(){
     if(ch.cat==='b2b-air'){
       if(!(ch.dest||[]).includes(country)) return null;
       const cobj=ch.countries[country]; if(!cobj||!cobj.tiers||!cobj.tiers.length) return null;
-      const t=findTier(cobj.tiers,bw);
-      if(!t) return {below:true,min:cobj.tiers[0].min,bw};
-      return {cost:t.rate*bw,bw,detail:`费率 ${t.rate}/kg × ${bw.toFixed(2)}kg`};
+      return {b2b:true,bw};  // 计费/附加费在 calc() 用总重统一计算
     }
     if(ch.cat==='express'){
       const zi=countryToZone(ch,country); if(zi===null) return null;
@@ -612,24 +620,36 @@ function rAll(){
     const boxes=Math.max(1,parseInt($("#acBoxes").value)||1);
     const decl=parseFloat($("#acDecl").value)||0;
     const opt={insurance:$("#acIns").checked};
+    const cargoCat=$("#acCargo")?$("#acCargo").value:'箱包皮革';
+    const nonFba=$("#acNonfba")?$("#acNonfba").checked:false;
+    const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
     const bl=parseFloat($("#acBl").value)||l, bw_=parseFloat($("#acBw").value)||wd, bh=parseFloat($("#acBh").value)||h;
     const results=[];
     RATES.channels.forEach(ch=>{
       const div=ch.volumetric_divisor||10000;
       const actualPerBox=w*qty;
       const volPerBox=(bl*bw_*bh)/div;
-      const bwBox=Math.max(actualPerBox,volPerBox);
+      let bwBox=Math.max(actualPerBox,volPerBox);
       const r=compute(ch,country,actualPerBox,volPerBox,decl,opt);
       if(!r){ results.push({ch,status:'na'}); return; }
       if(r.below){ results.push({ch,status:'below',min:r.min}); return; }
       let total,perUnitNote;
       if(ch.cat==='small'||ch.cat==='express'){ total=r.cost*boxes; perUnitNote=`每箱 ${r.cost.toFixed(2)} × ${boxes}箱`; }
       else {
+        const s=ch.sur||null;
+        if(s&&s.minpc) bwBox=Math.max(bwBox,s.minpc);          // 单件最低计费重
         const totalBw=bwBox*boxes; const t=findTier(ch.countries[country].tiers,totalBw);
         if(!t){ results.push({ch,status:'below',min:ch.countries[country].tiers[0].min}); return; }
-        total=t.rate*totalBw; perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`;
+        let base=t.rate*totalBw; let surTxt='';
+        if(s){
+          const catRate=(s.cat&&s.cat[cargoCat])||0;
+          if(catRate){ base+=catRate*totalBw; surTxt+=` + 品类附加 ${catRate}/kg×${totalBw.toFixed(1)}=${(catRate*totalBw).toFixed(2)}`; }
+          if(nonFba&&s.nonfba){ const nf=Math.max((s.nonfba.kg||0)*totalBw,s.nonfba.min||0); if(nf){ base+=nf; surTxt+=` + 非FBA ${nf.toFixed(2)}`; } }
+          if(wantDecl&&s.declare){ base+=s.declare; surTxt+=` + 单独报关 ${s.declare}/票`; }
+        }
+        total=base; perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`+surTxt;
       }
-      results.push({ch,status:'ok',cost:total,bw:bwBox,detail:r.detail,perUnitNote});
+      results.push({ch,status:'ok',cost:total,bw:bwBox,detail:r.detail||('计费重 '+bwBox.toFixed(2)+'kg'),perUnitNote});
     });
     const refW=Math.max(w*qty,(bl*bw_*bh)/10000);
     render(results,country,w,qty,boxes,refW);
@@ -664,7 +684,7 @@ function rAll(){
     if(below.length) html+=`<div class="mut" style="margin-top:8px">⚠️ 低于起收重量（未计入）：${below.map(b=>`${b.ch.name}（${b.min}kg起）`).join('、')}</div>`;
     if(na.length) html+=`<div class="mut" style="margin-top:4px">该目的国无报价（不在渠道服务范围）：${na.map(n=>n.ch.name).join('、')}</div>`;
     $("#acResults").innerHTML=html;
-    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率（线性估算，实际以承运商进位为准）；④ <b>未计入的附加费</b>：中运通达 B2B 产品附加费(+1~+4/kg)、非FBA(+1/kg)、磁检费、单独报关费、偏远费、保险(0.3%)；云途/飞特保价仅勾选时计入。最终以承运商账单为准。';
+    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，B2B 单件不足最低计费重按最低计（中运通达/亚丰美线12kg、亚丰欧线10kg）；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + <b>产品附加费</b>（按货物类型：中运通达欧洲皮革+4·鞋/服装+7，美/加+2；亚丰美线+1，欧线包+7/衣+8）；勾选后再计非FBA(+1/kg)、单独报关(/票)；④ <b>仍未计入</b>：磁检费、偏远费、超品名费、旺季附加费（按账单实结）。最终以承运商账单为准。';
   }
   $("#acCalc").addEventListener('click',calc);
   calc();
