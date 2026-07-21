@@ -868,8 +868,8 @@ function rConfig(){
     <div class="note">每个渠道可为特定国家设置<b>例外除数</b>和<b>例外计费规则</b>（如云途加拿大 2 倍泡比 /8000）。例外优先于渠道默认值。在此配置后点「保存」即生效，<b>无需改 rates.json 或重部署</b>。</div>
     ${(function(){
       const stored=JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
-      const small=(window.RATES&&window.RATES.channels||[]).filter(c=>c.cat==='small'&&c.dest);
-      return small.map(ch=>{
+      const channels=(window.RATES&&window.RATES.channels||[]).filter(c=>(c.cat==='small'||c.cat==='express'||c.cat==='b2b-air')&&c.dest);
+      return channels.map(ch=>{
         const chOv=stored[ch.id]||{};
         const defDiv=ch.volumetric_divisor||10000;
         const defRule=ch.charge_rule||'max';
