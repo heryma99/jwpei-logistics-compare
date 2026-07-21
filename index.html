@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784636248";</script>
+<script>window.__BUILD__="1784638502";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -735,8 +735,15 @@ function rFreight(){
     const usRegions=['美西','美中','美东'];
     const isUS3=(ch)=> ch.regions && usRegions.every(r=>ch.regions[r] && ch.regions[r].tiers);
     const computeAll=(ch, regionOverride)=>{
-      // ②③(非b2b):用统一引擎
-      if(ch.cat!=='b2b-air') return computeFreight(ch, sku, units, destCn, eurFx, {cargoType, conservative, destIso});
+      // ②③(非b2b):用统一引擎，但返回结构与 b2b 对齐（must/maybe），避免渲染侧歧义
+      if(ch.cat!=='b2b-air'){
+        const r = computeFreight(ch, sku, units, destCn, eurFx, {cargoType, conservative, destIso});
+        return {
+          cw:r.cw, items:r.items||[], total:r.total||0, transit:r.transit,
+          mustItems:r.items||[], mustTotal:r.total||0,
+          maybeItems:[], maybeTotal:0, totalWithMaybe:r.total||0
+        };
+      }
       // ④ 头程(B2B):独立计算,完整费用展开
       const pickRegion=(reg)=> (reg && ch.regions?.[reg]?.tiers) ? reg : (ch.regions?.[destCn]?.tiers ? destCn : Object.keys(ch.regions||{})[0] || destCn);
       const finalRegion = regionOverride || pickRegion(detectedRegion);
