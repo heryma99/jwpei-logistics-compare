@@ -185,6 +185,7 @@ function syncParcelFromRates(){
   }).filter(Boolean);
   if(carriers.length) S.modules.parcel.carriers = carriers;
 }
+applyCountryOverrides();     // ★ per-country 覆盖先注入 RATES
 syncParcelFromRates();
 applyDivisorOverrides();
 saveState();
@@ -199,6 +200,59 @@ function applyDivisorOverrides(ov){
   Object.keys(ov).forEach(id=> set(id, ov[id]));
   syncParcelFromRates();
   saveState();
+}
+/* per-country 计费例外覆盖：存于浏览器本地，覆盖 rates.json 中各国除数和计费规则 */
+function applyCountryOverrides(ov){
+  ov = ov || JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
+  if(!ov || !Object.keys(ov).length) return;
+  (window.RATES&&window.RATES.channels||[]).forEach(ch=>{
+    const chOv = ov[ch.id]; if(!chOv) return;
+    Object.keys(chOv).forEach(cn=>{
+      const data = chOv[cn];
+      if(!ch.countries[cn]) ch.countries[cn] = {brackets:[]};
+      if(data.volumetric_divisor) ch.countries[cn].volumetric_divisor = data.volumetric_divisor;
+      if(data.charge_rule) ch.countries[cn].charge_rule = data.charge_rule;
+    });
+  });
+}
+/* 添加/删除/保存 per-country 覆盖（全局，供 UI 按钮调用） */
+function addCountryOverride(chId){
+  const ov = JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
+  const tr = document.querySelector('#coForm'+chId);
+  if(!tr) return;
+  const cn = (tr.querySelector('.coCn')||{}).value; if(!cn) return alert('输入国家名称');
+  const ch = (window.RATES.channels||[]).find(c=>c.id===chId); if(!ch) return;
+  const defDiv = ch.volumetric_divisor||10000;
+  const div = parseFloat((tr.querySelector('.coDiv')||{}).value);
+  const rule = (tr.querySelector('.coRule')||{}).value;
+  if(!ov[chId]) ov[chId]={};
+  ov[chId][cn] = {};
+  if(div && !isNaN(div) && div>0 && div!==defDiv) ov[chId][cn].volumetric_divisor = div;
+  if(rule) ov[chId][cn].charge_rule = rule;
+  // 如果没填任何有效 override 则跳过
+  if(!Object.keys(ov[chId][cn]).length) delete ov[chId][cn];
+  localStorage.setItem('jwpei_country_overrides', JSON.stringify(ov));
+  // 立即生效
+  applyCountryOverrides(ov);
+  rConfig(); // 刷新面板
+}
+function delCountryOverride(chId, cn){
+  const ov = JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
+  if(!ov[chId]||!ov[chId][cn]) return;
+  delete ov[chId][cn];
+  if(!Object.keys(ov[chId]).length) delete ov[chId];
+  localStorage.setItem('jwpei_country_overrides', JSON.stringify(ov));
+  applyCountryOverrides(ov);
+  rConfig();
+}
+function saveCountryOverrides(){
+  // 重新从 localStorage 读取 & 应用（保证一致性）
+  applyCountryOverrides();
+  syncParcelFromRates();
+  saveState();
+  const n = Object.keys(JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}')).length;
+  const el = document.getElementById('coStat');
+  if(el) el.innerHTML = '<span class="ok">✓ 已保存并生效（'+(n||0)+' 条覆盖待持久化）</span>';
 }
 /* 物料主数据表：搜索 + 分页状态（2317 条不能一次性渲染，否则卡死） */
 let ITEM_PAGE=1, ITEM_Q="";
@@ -621,7 +675,39 @@ function rConfig(){
     <h3 style="margin-top:16px">渠道体积重除数维护（per-channel）</h3>
     <div class="note">各渠道计费重除数不同（云途10000 / 飞特7000 / 中运通达B2B 6000 / 亚丰美线6000·欧线5000 / 商业快递5000 …）。在此<b>按渠道维护除数</b>：保存后即时生效并记到浏览器本地，刷新不丢、<b>无需改 rates.json 或重新部署</b>。结果表「除数」列即读此值（②小包专线 / ⑨全渠道比价 / ③商业快递 / ④头程 全部同步）。</div>
     <div style="max-height:320px;overflow:auto;margin-top:6px"><table><thead><tr><th>物流商</th><th>渠道</th><th>当前除数</th><th>改为</th></tr></thead><tbody>${divRows}</tbody></table></div>
-    <div style="margin-top:8px"><button class="act" id="saveDiv">保存除数</button> <span id="divStat" class="mut"></span></div>`;
+    <div style="margin-top:8px"><button class="act" id="saveDiv">保存除数</button> <span id="divStat" class="mut"></span></div>
+    <h3 style="margin-top:20px">Per-Country 计费例外维护</h3>
+    <div class="note">每个渠道可为特定国家设置<b>例外除数</b>和<b>例外计费规则</b>（如云途加拿大 2 倍泡比 /8000）。例外优先于渠道默认值。在此配置后点「保存」即生效，<b>无需改 rates.json 或重部署</b>。</div>
+    ${(function(){
+      const stored=JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
+      const small=(window.RATES&&window.RATES.channels||[]).filter(c=>c.cat==='small'&&c.dest);
+      return small.map(ch=>{
+        const chOv=stored[ch.id]||{};
+        const defDiv=ch.volumetric_divisor||10000;
+        const defRule=ch.charge_rule||'max';
+        const coRows=Object.keys(chOv).map(cn=>{
+          const d=chOv[cn];
+          return `<tr><td>${cn}</td><td>${d.volumetric_divisor||'—'}</td><td>${d.charge_rule||'—'}</td>
+            <td><button class="ghost" onclick="delCountryOverride('${ch.id}','${cn}')">×删除</button></td></tr>`;
+        }).join('');
+        return `<div style="margin:8px 0;padding:8px;background:#1a2330;border-radius:4px">
+          <b>${ch.name}</b> <span class="mut">渠道默认 div=${defDiv} · 规则=${defRule}</span>
+          <table style="margin-top:4px;width:100%"><thead><tr><th>国家</th><th>例外除数</th><th>例外计费规则</th><th></th></tr></thead>
+          <tbody>${coRows||'<tr><td colspan="4" class="mut">暂无例外</td></tr>'}</tbody></table>
+          <div id="coForm${ch.id}" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <input class="coCn" data-id="${ch.id}" list="coList${ch.id}" placeholder="输入国家名" style="width:120px">
+            <datalist id="coList${ch.id}">${(ch.dest||[]).map(d=>`<option>${d}</option>`).join('')}</datalist>
+            <input class="coDiv" data-id="${ch.id}" type="number" step="500" min="1" placeholder="例外除数" style="width:90px">
+            <select class="coRule" data-id="${ch.id}" style="width:140px">
+              <option value="">默认</option>
+              <option value="actual">actual(仅实重)</option>
+              <option value="vol_if_2x_actual">vol_if_2x_actual(2倍泡比)</option>
+            </select>
+            <button class="ghost" onclick="addCountryOverride('${ch.id}')">+添加</button>
+          </div></div>`;
+      }).join('');
+    })()}
+    <div style="margin-top:8px"><button class="act" id="saveCO">保存计费例外</button> <span id="coStat" class="mut"></span></div>`;
   $("#app").innerHTML=h;
   $("#saveDiv").onclick=()=>{
     const ov={};
@@ -635,6 +721,7 @@ function rConfig(){
   $("#exp").onclick=()=>{ const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="logi_config.json"; a.click(); };
   $("#imp").onclick=()=> $("#impFile").click();
   $("#impFile").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ try{ S=JSON.parse(rd.result); saveState(); $("#cfg").value=JSON.stringify(S,null,2); $("#cStat").innerHTML='<span class="ok">✓ 已导入</span>'; }catch(err){ $("#cStat").innerHTML='<span class="err">导入失败：'+err.message+'</span>'; } }; rd.readAsText(f); };
+  $("#saveCO").onclick=saveCountryOverrides;
 }
 
 /* ===================== ⑨ 全渠道比价（W102 真实费率 · 15 渠道） ===================== */
