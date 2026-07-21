@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784646649";</script>
+<script>window.__BUILD__="1784647641";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -103,9 +103,9 @@
   .combo-item{padding:6px 10px;cursor:pointer;font-size:13px;color:var(--fg)}
   .combo-item:hover,.combo-item.active{background:var(--acc);color:#fff}
 </style>
-  <script src="sku_master.js?v=1784646649"></script>
-  <script src="rates.js?v=1784646649"></script>
-  <script src="cn2iso.js?v=1784646649"></script>
+  <script src="sku_master.js?v=1784647641"></script>
+  <script src="rates.js?v=1784647641"></script>
+  <script src="cn2iso.js?v=1784647641"></script>
 </head>
 <body>
 <header>
@@ -1443,6 +1443,14 @@ function bindCombo(input, listEl, items, onChange){
 /* ===================== 启动 ===================== */
 renderNav(); render();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:var(--mut2);opacity:0.6;cursor:pointer" title="强刷：Ctrl+Shift+R (Win) / Cmd+Shift+R (Mac)">v21.07.Beta</div>
-<script>if(document.getElementById('ver')) document.getElementById('ver').textContent='Build v21.07.2 · '+new Date().toLocaleString('zh-CN',{hour12:false});</script></body>
+<div id="ver" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:var(--mut2);opacity:0.8;cursor:pointer" title="强刷：Ctrl+Shift+R (Win) / Cmd+Shift+R (Mac)">build …</div>
+<script>
+(function(){
+  var el=document.getElementById('ver');
+  if(!el) return;
+  fetch('version.json?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;})
+    .then(function(j){ if(j&&j.build) el.textContent='build '+j.build; else el.textContent='build ?'; })
+    .catch(function(){ el.textContent='build ??'; });
+})();
+</script></body>
 </html>
