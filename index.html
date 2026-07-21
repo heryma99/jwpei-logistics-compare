@@ -178,7 +178,7 @@ function syncParcelFromRates(){
       channel:c.name, audience:'2C', countries,
       max_weight:Math.max(...(first.brackets||[]).map(b=>b.up), 2),
       accepted: live?['普货','带电']:['普货'],
-      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:'max', rounding:0.5, min_charge_weight:0.03, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
+      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:c.charge_rule||'max', rounding:0.5, min_charge_weight:0.03, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
       decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap, countryMap: c.countries
     };
@@ -212,9 +212,9 @@ function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }cat
 
 /* ===================== 4 支柱归一内核（吸收自 logistics-compare-normalize） ===================== */
 function volumeWeight(l,w,h,divisor){ return (l*w*h)/divisor; }
-// P1-1 计费重规则：max / actual(飞特加拿大计实重) / vol
+// P1-1 计费重规则：max / actual / vol / vol_if_2x_actual(体积重≥实重×2才计体积重，云途加拿大新西兰)
 function chargeWeight(sw, vw, rule, rounding, minW){
-  let cw = rule==="actual" ? sw : rule==="vol" ? vw : Math.max(sw, vw);
+  let cw = rule==="actual" ? sw : rule==="vol" ? vw : rule==="vol_if_2x_actual" ? (vw >= sw*2 ? vw : sw) : Math.max(sw, vw);
   cw = Math.ceil(cw/rounding + 1e-9) * rounding;          // 向上进位到 rounding
   if(cw < (minW||0)) cw = minW||0;
   return Math.max(cw, 0);
@@ -235,7 +235,8 @@ function computeFreight(ch, sku, units, destCn, eurFx){
   const divisor = co.volumetric_divisor || p.divisor;   // ★ per-country 除数优先，回退渠道级
   const sw = sku.weight * units;
   const vw = volumeWeight(sku.l, sku.w, sku.h, divisor) * units;
-  const cw = chargeWeight(sw, vw, p.charge_rule, p.rounding, p.min_charge_weight);
+  const effectiveRule = co.charge_rule || p.charge_rule;  // 国家级覆盖优先
+  const cw = chargeWeight(sw, vw, effectiveRule, p.rounding, p.min_charge_weight);
   let rate = tierRate(p.weight_tiers, cw).rate;
   let freight = rate * cw;
   let items = [{name:"基本运费("+rate+"/kg×"+cw+"kg)", amt:freight}];
@@ -605,7 +606,7 @@ function rConfig(){
     <div class="note">新增物流商/渠道 = 在对应模块 JSON 数组加一份对象。字段分组：<b>pricing</b>(→P3 归一基准) · <b>fees</b>(→费用展开) · <b>qualify</b>(countries/max_weight/accepted→P2) · <b>decision</b>(transit) · <b>history</b>(多期环比→P0-3)。保存后自动持久化（localStorage），可导出 .json 给同事。
 <div style="margin-top:6px;padding:6px 8px;background:#1c2530;border-radius:4px">你关心的三项核心配置（算式写死、数据可配）：</div>
 <ul style="margin:4px 0 0 18px;line-height:1.7">
-  <li><b>① 计费重规则</b> <code>pricing.charge_rule</code>：<code>"max"</code>=MAX(实重,体积重)（绝大多数渠道）· <code>"actual"</code>=只按实重（如飞特加拿大）· <code>"vol"</code>=只按体积重。</li>
+  <li><b>① 计费重规则</b> <code>pricing.charge_rule</code>：<code>"max"</code>=MAX(实重,体积重)（绝大多数渠道）· <code>"actual"</code>=只按实重（如飞特加拿大）· <code>"vol"</code>=只按体积重· <code>"vol_if_2x_actual"</code>=体积重≥实重×2才计体积重否则计实重（如云途加拿大/新西兰）。</li>
   <li><b>② 体积重除数（双层，按国家覆盖）</b> 渠道级 <code>pricing.divisor</code>（默认，如云途10000/飞特7000/捷邮6000）；<b>国家级覆盖</b> 写在 <code>countries["国家名"].volumetric_divisor</code>，引擎优先用国家级、否则回退渠道级。例：<code>countries["巴西"].volumetric_divisor:8000</code> → 云途特惠普货巴西按 /8000、其余国家按 /10000。</li>
   <li><b>③ 运费是否已含全部税费</b> <code>pricing.tax_included</code>：<code>true</code>（或 incoterm=DDP/双清包税）= 报价已含所有税费，引擎<b>不再叠加</b> VAT/DUTY；<code>false</code>（incoterm=DDU）= 不含，按各国税率补（如中东捷邮的战争附加费/海关资料处理费/VAT-DUTY 全部计入到手总成本）。</li>
 </ul></div>
@@ -742,10 +743,15 @@ function rAll(){
   }
   function matOf(ch){ const m={}; for(const k in ch.matrix) m[parseFloat(k)]=ch.matrix[k]; return m; }
   function compute(ch,country,actualW,volW,decl,opt){
-    const bw=Math.max(actualW,volW);
+    let bw;
     if(ch.cat==='small'){
       if(!ch.countries[country]) return null;
       const co=ch.countries[country];
+      const cr=co.charge_rule||ch.charge_rule||'max';
+      if(cr==='actual') bw=actualW;
+      else if(cr==='vol_if_2x_actual') bw=(volW>=actualW*2)?volW:actualW;
+      else if(cr==='vol') bw=volW;
+      else bw=Math.max(actualW,volW);
       const br=co.brackets; if(!br||!br.length) return null;
       const b=findBracket(br,bw);
       let base=b.rate*bw+b.reg; const parts=[`运费 ${b.rate}/kg × ${bw.toFixed(2)}kg`, `挂号 ${b.reg}`];
@@ -771,11 +777,13 @@ function rAll(){
       return {cost:base+ins,bw,detail};
     }
     if(ch.cat==='b2b-air'){
+      bw=Math.max(actualW,volW);
       if(!(ch.dest||[]).includes(country)) return null;
       const cobj=ch.countries[country]; if(!cobj||!cobj.tiers||!cobj.tiers.length) return null;
       return {b2b:true,bw};  // 计费/附加费在 calc() 用总重统一计算
     }
     if(ch.cat==='express'){
+      bw=Math.max(actualW,volW);
       const zi=countryToZone(ch,country); if(zi===null) return null;
       const m=matOf(ch); const rows=Object.keys(m).map(Number).sort((a,b)=>a-b);
       let wr=rows.filter(r=>r<=bw); wr=wr.length?Math.max.apply(null,wr):rows[0];
@@ -809,7 +817,12 @@ function rAll(){
       const div=co.volumetric_divisor||ch.volumetric_divisor||10000;   // ★ per-country 除数优先，回退渠道级
       const actualPerBox=w*qty;
       const volPerBox=(bl*bw_*bh)/div;
-      let bwBox=Math.max(actualPerBox,volPerBox);
+      const cr=co.charge_rule||ch.charge_rule||'max';  // 计费重规则（国家级覆盖优先）
+      let bwBox;
+      if(cr==='actual') bwBox=actualPerBox;
+      else if(cr==='vol_if_2x_actual') bwBox=(volPerBox>=actualPerBox*2)?volPerBox:actualPerBox;
+      else if(cr==='vol') bwBox=volPerBox;
+      else bwBox=Math.max(actualPerBox,volPerBox);
       const r=compute(ch,country,actualPerBox,volPerBox,decl,opt);
       if(!r){ results.push({ch,status:'na'}); return; }
       if(r.below){ results.push({ch,status:'below',min:r.min}); return; }
