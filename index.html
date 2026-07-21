@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <title>物流比价 + 预算 · 可扩展骨架 v2（吸收旧方法论 + 补 ERP 三处 P0）</title>
 <style>
   :root{ --bg:#0e1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3340; --fg:#e6edf3; --mut:#9aa7b4; --acc:#3b82f6; --acc2:#22c55e; --warn:#f59e0b; --err:#ef4444; --red:#ef4444; --green:#22c55e; }
@@ -1194,5 +1195,6 @@ function bindCombo(input, listEl, items, onChange){
 /* ===================== 启动 ===================== */
 renderNav(); render();
 </script>
-</body>
+<div id="ver" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:var(--mut2);opacity:0.6;cursor:pointer" title="强刷：Ctrl+Shift+R (Win) / Cmd+Shift+R (Mac)">v21.07.Beta</div>
+<script>if(document.getElementById('ver')) document.getElementById('ver').textContent='Build v21.07.1'+' · '+(new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));</script></body>
 </html>
