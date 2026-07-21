@@ -512,7 +512,7 @@ function rFreight(){
   // 模块化默认：按当前模块渠道真实的 audience 推导（小包=2C、商业快递/toB=2B），避免默认 audience 与渠道不符导致资格校验全淘汰
   const audSet = uniq(M.carriers.map(c=>c.audience).filter(Boolean));
   const defaultAud = audSet.length===1 ? audSet[0] : (audSet.includes('2C') ? '2C' : '2B');
-  const defaultUnits = (defaultAud==='2C') ? 1 : 200;
+  const defaultUnits = 1;
   // 目的国：内部用 ISO，界面显示中文；对 parcel（已从 RATES 同步为 ISO）做反向映射，其余模块保持原语言
   const isoCountries = uniq(M.carriers.flatMap(c=>c.countries));
   const displayCountries = sortDestinations(isoCountries.map(isoToChinese));
@@ -524,6 +524,7 @@ function rFreight(){
     <h3>发货规格（SKU 自动带出）</h3>
     <label>选择 SKU</label><input id="skuSel" list="gcList" style="min-width:220px" value="${(items[0]||{}).sku||''}"><datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
     件数 <input type="number" id="units" value="${defaultUnits}">
+    <span id="skuVol" class="mut" style="margin-left:6px"></span>
     目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
     派送对象 <select id="aud"><option value="2C" ${defaultAud==='2C'?'selected':''}>2C 个人</option><option value="2B" ${defaultAud==='2B'?'selected':''}>2B 商业/FBA</option></select>
     EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
@@ -541,6 +542,9 @@ function rFreight(){
     const destIso = isoOfDisplay[destCn] || chineseToIso(destCn) || destCn;
     const sku=items.find(x=>x.sku===skuStr); const mode=$('input[name=mode]:checked').value;
     if(!sku){ $("#fOut").innerHTML='<div class="err">未找到 SKU「'+skuStr+'」，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
+    // 体积显示
+    const skuVolEl=document.getElementById('skuVol');
+    if(skuVolEl){ const v=sku.l*sku.w*sku.h; skuVolEl.textContent=`体积: ${v}cm³ × ${units}件 = ${(v*units).toFixed(1)}cm³`; }
     // P2 资格校验
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
@@ -630,7 +634,7 @@ function rRoute(){
   const ops=ov.ops.map(o=>`<label><input type="checkbox" class="rtop" data-k="${o.op}"> ${o.op}</label>`).join("");
   const body=`<h3>发货单（成本对象）</h3>
     SKU ${skuOpts}
-    件数 <input type="number" id="rtUnits" value="200">
+    件数 <input type="number" id="rtUnits" value="1">
     头程渠道(DE) <select id="rtTob">${tobOpts}</select>
     <h3>海外仓段操作（勾选=并入全链路）</h3><div class="seg">${ops}</div>
     入库箱数 <input type="number" id="rtBox" value="50">　订单数 <input type="number" id="rtOr" value="300">　退货数 <input type="number" id="rtRe" value="20">　月仓储m³ <input type="number" id="rtM3" value="3">
@@ -899,7 +903,8 @@ function rAll(){
     const s=skuMap[key]||skus.find(x=>(x.sku||'').toLowerCase()===v||(x.name||'').toLowerCase()===v);
     if(s){
       if(s.weight)$("#acW").value=s.weight; if(s.l)$("#acL").value=s.l; if(s.w)$("#acWd").value=s.w; if(s.h)$("#acH").value=s.h;
-      $("#acSkuInfo").innerHTML=`已带出：${s.sku} · ${s.name||''} · ${s.weight}kg · ${s.l}×${s.w}×${s.h}cm`+(s.hs?` · HS:${s.hs}`:'');
+      const vol=s.l*s.w*s.h;
+      $("#acSkuInfo").innerHTML=`已带出：${s.sku} · ${s.name||''} · ${s.weight}kg · ${s.l}×${s.w}×${s.h}cm · 单件体积<b>${vol}cm³</b>`+(s.hs?` · HS:${s.hs}`:'');
     } else { $("#acSkuInfo").innerHTML=''; }
   }
   $("#acSku").addEventListener('change',fillFromSku);
