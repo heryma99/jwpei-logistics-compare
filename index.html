@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784642485";</script>
+<script>window.__BUILD__="1784643583";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -74,7 +74,8 @@
   .result-table td{vertical-align:middle}
   .result-table .c-name{white-space:normal;min-width:130px;max-width:220px}
   .result-table .c-country{white-space:normal;min-width:80px;max-width:140px}
-  .price-cell{font-weight:700;font-size:13px}
+  .price-cell{font-weight:700;font-size:13px;min-width:180px;max-width:300px;white-space:normal;vertical-align:top}
+  .result-table td{vertical-align:top}
   .diff-badge{display:inline-block;padding:2px 7px;border-radius:12px;font-size:11px;background:var(--panel2);border:1px solid var(--line)}
   .diff-badge.best{background:rgba(34,197,94,.18);color:var(--green);border-color:rgba(34,197,94,.35)}
   .scroll-x{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
@@ -470,16 +471,24 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   const effectiveRule = co.charge_rule || p.charge_rule;
   const effectiveMin  = co.min_charge_weight || p.min_charge_weight || 0;
   const cw = chargeWeight(sw, vw, effectiveRule, p.rounding, effectiveMin);
-  let rate = tierRate(p.weight_tiers, cw).rate;
+  // ★ 小包修复：优先用「目的国自己的」brackets 费率与挂号费（此前 bug：全局只取渠道第一个国家的费率/挂号费，导致发法国却按美国 92/kg 计）
+  const coBrackets = (co && co.brackets && co.brackets.length) ? co.brackets : null;
+  let rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
   let freight = rate * cw;
   let items = [{name:"基本运费("+rate+"/kg×"+cw+"kg)", amt:freight}];
   let total = freight;
-  for(const f of (ch.fees||[])){
-    let a = f.type==="fixed" ? f.value
-          : f.type==="per_kg" ? f.value*cw
-          : f.type==="pct_of_freight" ? freight*f.value
-          : f.type==="pct_of_value" ? sku.decl*units*f.value : 0;
-    if(a){ items.push({name:f.name, amt:a}); total+=a; }
+  if(coBrackets){
+    // 挂号费按目的国自己的 reg
+    const regFee = (coBrackets[0] && coBrackets[0].reg) ? coBrackets[0].reg : 0;
+    if(regFee){ items.push({name:"挂号费", amt:regFee}); total+=regFee; }
+  } else {
+    for(const f of (ch.fees||[])){
+      let a = f.type==="fixed" ? f.value
+            : f.type==="per_kg" ? f.value*cw
+            : f.type==="pct_of_freight" ? freight*f.value
+            : f.type==="pct_of_value" ? sku.decl*units*f.value : 0;
+      if(a){ items.push({name:f.name, amt:a}); total+=a; }
+    }
   }
   if(p.fuel_pct){ const a=freight*p.fuel_pct; items.push({name:"燃油("+(p.fuel_pct*100)+"%)",amt:a}); total+=a; }
   // 国家级附加费（战争附加费 / 海关资料处理费 等，随渠道附在 country.add）
@@ -761,7 +770,8 @@ function rFreight(){
       if('0123'.includes(d)) return '美东';
       return '';
     }
-    const cargoType = (document.getElementById('cargoType')?.value) || '箱包皮革';
+    let cargoType = (document.getElementById('cargoType')?.value) || '箱包皮革';
+    if(cargoType==='手提包') cargoType='箱包皮革'; // 手提包并入箱包皮革（sur.cat 无独立"手提包"键，否则附加费会被算成0）
     const b2bAddrType = b2bType || 'FBA';  // FBA/非FBA
     const zip = (document.getElementById('acZip')?.value || '').trim();
     const detectedRegion = postcodeToRegion(zip);
@@ -875,12 +885,16 @@ function rFreight(){
       const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${x.r.cw}kg`;
       const diff = idx===0? `<span class="diff-badge best">★ 最优</span>` : `<span class="diff-badge">+¥${(x.r.mustTotal-best).toFixed(2)}</span>`;
       const usCells = x.rt ? x.rt.map(z=>`<td class="mut">¥${z.t.toFixed(0)}</td>`).join('') : ((CUR==='tob' && destIso==='US')?'<td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>':'');
+      // ★ 费用明细展开：把「基本运费 + 产品附加费 + 各项」逐条加总显示，避免误以为"只算运费"
+      const shortName=(n)=> n.split(/[(（]/)[0].trim();
+      const bd = (x.r.mustItems||[]).map(it=>`${shortName(it.name)} ¥${it.amt.toFixed(0)}`).join(' ＋ ');
+      const bdMaybe = (x.r.maybeItems&&x.r.maybeItems.length)? `<div class="mut" style="font-size:11px;color:var(--warn,#c80)">可能附加：${x.r.maybeItems.map(it=>`${shortName(it.name)} ¥${it.amt.toFixed(0)}`).join(' ＋ ')}（不计入基准）</div>`:'';
       out+=`<tr class="${idx===0?"best":""}">
         <td class="mut">${idx+1}</td>
         <td class="c-name"><b>${x.ch.carrier}</b><br><span class="mut">${x.ch.channel}</span></td>
         <td class="c-country mut" title="${cnList.join('、')}">${cnShort}</td>
         <td title="${cwTip}"><b>${x.r.cw.toFixed(2)}</b>kg<br><span class="mut">÷${x.ch.pricing.divisor}</span></td>
-        <td class="price-cell">¥${x.r.mustTotal.toFixed(2)}</td>
+        <td class="price-cell"><b>¥${x.r.mustTotal.toFixed(2)}</b><div class="mut" style="font-size:11px;line-height:1.5;margin-top:2px;white-space:normal">${bd}</div>${bdMaybe}</td>
         <td>${x.r.transit||'-'}天</td>
         <td>${diff}</td>
         ${usCells}
