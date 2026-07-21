@@ -287,13 +287,13 @@ function tierRate(tiers, cw){
 // destCn: 中文目的国（用于 per-country divisor / 国家级附加费 / 国家级税费覆盖）；eurFx: EUR/CNY 汇率（默认取渠道 fx 或 7.8）
 function computeFreight(ch, sku, units, destCn, eurFx){
   const p = ch.pricing;
-  const cm = ch.countryMap || {};                 // 中文国名 → 该渠道国家级配置（含 per-country divisor / add / tax / 欧盟费）
+  const cm = ch.countryMap || {};
   const co = (destCn && cm[destCn]) || {};
-  const divisor = co.volumetric_divisor || p.divisor;   // ★ per-country 除数优先，回退渠道级
+  const divisor = co.volumetric_divisor || p.divisor;
   const sw = sku.weight * units;
   const vw = volumeWeight(sku.l, sku.w, sku.h, divisor) * units;
-  const effectiveRule = co.charge_rule || p.charge_rule;  // 国家级覆盖优先
-  const effectiveMin  = co.min_charge_weight || p.min_charge_weight || 0;  // 最低计费重：国家级优先
+  const effectiveRule = co.charge_rule || p.charge_rule;
+  const effectiveMin  = co.min_charge_weight || p.min_charge_weight || 0;
   const cw = chargeWeight(sw, vw, effectiveRule, p.rounding, effectiveMin);
   let rate = tierRate(p.weight_tiers, cw).rate;
   let freight = rate * cw;
@@ -333,6 +333,17 @@ function computeFreight(ch, sku, units, destCn, eurFx){
     if(vat){ items.push({name:"VAT("+(p.vat_rate*100)+"%)",amt:vat}); total+=vat; }
   }
   total *= (p.fx||1);
+  // ★ 完整预算：加偏远/磁检/商业清关等可能费用
+  const conservative = typeof document!=='undefined' && document.getElementById('conservativeMode')?.checked;
+  if(conservative && ch.surcharges){
+    const s=ch.surcharges;
+    if(s.remote_per_shipment){ items.push({name:"偏远附加费(RMB/票)",amt:s.remote_per_shipment}); total+=s.remote_per_shipment; }
+    if(s.magnetic_per_shipment && sku.battery){ items.push({name:"磁检费(RMB/票)",amt:s.magnetic_per_shipment}); total+=s.magnetic_per_shipment; }
+    if(s.commercial_clearance_cad){ const v=s.commercial_clearance_cad*(p.fx||1); items.push({name:"商业清关费(上限)",amt:v}); total+=v; }
+    if(s.remote_per_kg){ const v=Math.max(s.remote_per_kg*cw,s.remote_min||0); items.push({name:"偏远附加(估算/kg)",amt:v}); total+=v; }
+    if(s.oversize_per_event){ items.push({name:"超尺寸附加费",amt:s.oversize_per_event}); total+=s.oversize_per_event; }
+    if(s.heavy_per_event){ items.push({name:"超重附加费",amt:s.heavy_per_event}); total+=s.heavy_per_event; }
+  }
   return {cw, items, total, transit:ch.decision?.transit};
 }
 // 资格校验（P2 硬约束）：派送对象匹配? 重量≤上限? 属性接受?
@@ -487,6 +498,7 @@ function rFreight(){
     目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
     派送对象 <select id="aud"><option value="2C" ${defaultAud==='2C'?'selected':''}>2C 个人</option><option value="2B" ${defaultAud==='2B'?'selected':''}>2B 商业/FBA</option></select>
     EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
+    <label style="margin-left:12px"><input type="checkbox" id="conservativeMode"> 完整预算（含偏远/磁检/商业清关等可能费用）</label>
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
     <h3>比对模式</h3>
     <div class="seg">
@@ -837,6 +849,7 @@ function rAll(){
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acConservative"> 完整预算（含偏远/磁检等）</label></div>
     </div>
     ${buildFilterHTML()}
     <div class="row" style="margin-top:10px;align-items:center">
@@ -903,6 +916,13 @@ function rAll(){
         if(co.duty_fixed_eur) parts.push(`临时关税 ${co.duty_fixed_eur}EUR×${opt.eurFx||7.8} ${duty.toFixed(2)}`);
       }
       if(ins) parts.push(`保价 ${ins.toFixed(2)}`);
+      // ★ 完整预算：加补充附加费
+      const acCons=typeof document!=='undefined' && document.getElementById('acConservative')?.checked;
+      if(acCons && ch.surcharges){
+        const s=ch.surcharges;
+        if(s.remote_per_shipment){ base+=s.remote_per_shipment; parts.push(`偏远附加 ${s.remote_per_shipment}/票`); }
+        if(s.commercial_clearance_cad){ const v=s.commercial_clearance_cad*(opt.eurFx||7.8); base+=v; parts.push(`商业清关费(上限) ${v.toFixed(2)}`); }
+      }
       const detail=parts.join(' + ')+(ins?` + 保价 ${ins.toFixed(2)}`:'');
       return {cost:base+ins,bw,detail};
     }
