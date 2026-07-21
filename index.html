@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784639097";</script>
+<script>window.__BUILD__="1784639846";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -261,15 +261,18 @@ function syncTobFromRates(){
   const carriers = window.RATES.channels.filter(c=>c.cat==='b2b-air').map(c=>{
    try{
     if(!c || typeof c!=='object' || !Array.isArray(c.dest) || typeof c.countries!=='object' || Array.isArray(c.countries)) { console.warn('[syncTob] 跳过结构异常的 b2b 渠道:', c&&c.id); return null; }
-    let countries = (c.dest||[]).map(cn=>{
-      const k=cn.trim();
+    const rawDest = (c.dest||[]).map(x=>x.trim());
+    const isUS3 = rawDest.some(x=>['美西','美中','美东'].includes(x));
+    let countries = rawDest.map(cn=>{
+      const k=cn;
       if(typeof CN2ISO==='object' && (CN2ISO[k] || CN2ISO[k.replace(/\s*\(.*\)$/,'').trim()])) return CN2ISO[k] || CN2ISO[k.replace(/\s*\(.*\)$/,'').trim()];
       if(WH2COUNTRY[k]) return WH2COUNTRY[k];
       return null;
     }).filter(Boolean);
     // 美国三区（美西/美中/美东）统一视为 美国：避免资格校验和下拉把区域当国家
-    if(countries.some(x=>['美西','美中','美东'].includes(x))){
-      countries = countries.filter(x=>!['美西','美中','美东'].includes(x));
+    // ★ 必须从原始 dest 字符串判定 isUS3（映射后变成 null，会漏判导致美国渠道整体消失）
+    if(isUS3){
+      countries = countries.filter(x=> x && !['美西','美中','美东'].includes(x));
       if(!countries.includes('US')) countries.push('US');
     }
     const first=Object.values(c.countries||{})[0]; if(!first) return null;
@@ -693,7 +696,13 @@ function rFreight(){
   const defaultAud = audSet.length===1 ? audSet[0] : (audSet.includes('2C') ? '2C' : '2B');
   const defaultUnits = 1;
   // 目的国：内部用 ISO，界面显示中文；对 parcel（已从 RATES 同步为 ISO）做反向映射，其余模块保持原语言
-  const isoCountries = uniq(M.carriers.flatMap(c=>c.countries));
+  // ★ 下拉跨「小包/快递/头程」全量并集，确保「所有渠道能发的国家」都列得上（不再因某模块无该渠道而漏掉）
+  const allFreightCarriers = [].concat(
+    (S.modules.small && S.modules.small.carriers)||[],
+    (S.modules.express && S.modules.express.carriers)||[],
+    (S.modules.tob && S.modules.tob.carriers)||[]
+  );
+  const isoCountries = uniq(allFreightCarriers.flatMap(c=>(c.countries||[]))).filter(Boolean);
   const displayCountries = sortDestinations(isoCountries.map(isoToChinese));
   const isoOfDisplay = {};
   displayCountries.forEach(cn=>{ isoOfDisplay[cn] = (typeof CN2ISO==='object' && CN2ISO[cn]) || cn; });
@@ -854,7 +863,8 @@ function rFreight(){
       return {ch, r, rt};
     }).sort((a,b)=>a.r.mustTotal-b.r.mustTotal);
     const best=res[0].r.mustTotal;
-    const usHeader = destIso==='US'?'<th>美西</th><th>美中</th><th>美东</th>':'';
+    // ★ 美国三区列只在「头程(toB)」模块显示；小包/商业快递美国是单国（从国内直发），不拆分三区
+    const usHeader = (CUR==='tob' && destIso==='US')?'<th>美西</th><th>美中</th><th>美东</th>':'';
     out+=`<h3>横向比价结果 · ${eligible.length} 个入围渠道（按到手总成本升序，绿色=最优）</h3>
       <div class="scroll-x"><table class="result-table"><thead><tr><th>#</th><th>物流商·渠道</th><th>可发国家</th><th>计费重</th><th class="price-cell">到手总成本</th><th>时效</th><th>vs 最优</th>${usHeader}</tr></thead><tbody>`;
     res.forEach((x,idx)=>{
@@ -864,7 +874,7 @@ function rFreight(){
       const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(2);
       const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${x.r.cw}kg`;
       const diff = idx===0? `<span class="diff-badge best">★ 最优</span>` : `<span class="diff-badge">+¥${(x.r.mustTotal-best).toFixed(2)}</span>`;
-      const usCells = x.rt ? x.rt.map(z=>`<td class="mut">¥${z.t.toFixed(0)}</td>`).join('') : (destIso==='US'?'<td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>':'');
+      const usCells = x.rt ? x.rt.map(z=>`<td class="mut">¥${z.t.toFixed(0)}</td>`).join('') : ((CUR==='tob' && destIso==='US')?'<td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>':'');
       out+=`<tr class="${idx===0?"best":""}">
         <td class="mut">${idx+1}</td>
         <td class="c-name"><b>${x.ch.carrier}</b><br><span class="mut">${x.ch.channel}</span></td>
@@ -876,7 +886,7 @@ function rFreight(){
         ${usCells}
       </tr>`;
     });
-    out+=`</tbody></table></div><div class="mut">* 计费重=MAX(实重,体积重)后进位；美国渠道按邮编自动识别美西/美中/美东。DDP vs DDU、divisor 不同者口径仅供参考。</div>`;
+    out+=`</tbody></table></div><div class="mut">* 计费重=MAX(实重,体积重)后进位；${CUR==='tob'&&destIso==='US'?'美国头程渠道按邮编自动识别美西/美中/美东三区；':''}DDP vs DDU、divisor 不同者口径仅供参考。</div>`;
     $("#fOut").innerHTML=out;
   };
   $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#b2bType").onchange=draw; $("#acZip").oninput=draw; $("#cargoType").onchange=draw; $("#euFx").onchange=draw;
