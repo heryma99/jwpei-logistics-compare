@@ -271,14 +271,15 @@ function volumeWeight(l,w,h,divisor){ return (l*w*h)/divisor; }
 // P1-1 计费重规则：max / actual / vol / vol_if_2x_actual(体积重≥实重×2才计体积重，云途加拿大新西兰)
 function chargeWeight(sw, vw, rule, rounding, minW){
   let cw = rule==="actual" ? sw : rule==="vol" ? vw : rule==="vol_if_2x_actual" ? (vw >= sw*2 ? vw : sw) : Math.max(sw, vw);
-  cw = Math.ceil(cw/rounding + 1e-9) * rounding;          // 向上进位到 rounding
+  cw = Math.ceil(cw/rounding - 1e-9) * rounding;          // 向上进位到 rounding（减1e-9修浮点，避免 0.728→0.729）
   if(cw < (minW||0)) cw = minW||0;
   return Math.max(cw, 0);
 }
-// channel-compare 重量段取档铁律：向上取「最小 ≥ cw 的档」
+// channel-compare 重量段取档铁律：向上取「最小 up ≥ cw 的档」
 function tierRate(tiers, cw){
-  const sorted = tiers.slice().sort((a,b)=>a.kg-b.kg);
-  let t = sorted.find(x=>x.kg >= cw - 1e-9);
+  // 数据用 {up, rate, reg}（小包）或 {kg, rate}（B2B）—— 都按上界取
+  const sorted = tiers.slice().sort((a,b)=>(a.up||a.kg||0)-(b.up||b.kg||0));
+  let t = sorted.find(x=> (x.up!=null?x.up:x.kg) >= cw - 1e-9);
   if(!t) t = sorted[sorted.length-1];
   return t;
 }
