@@ -178,7 +178,7 @@ function syncParcelFromRates(){
       channel:c.name, audience:'2C', countries,
       max_weight:Math.max(...(first.brackets||[]).map(b=>b.up), 2),
       accepted: live?['普货','带电']:['普货'],
-      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:c.charge_rule||'max', rounding:0.5, min_charge_weight:0.03, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
+      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:c.charge_rule||'max', rounding:c.rounding||0.001, min_charge_weight:0.001, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
       decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap, countryMap: c.countries
     };
@@ -290,7 +290,8 @@ function computeFreight(ch, sku, units, destCn, eurFx){
   const sw = sku.weight * units;
   const vw = volumeWeight(sku.l, sku.w, sku.h, divisor) * units;
   const effectiveRule = co.charge_rule || p.charge_rule;  // 国家级覆盖优先
-  const cw = chargeWeight(sw, vw, effectiveRule, p.rounding, p.min_charge_weight);
+  const effectiveMin  = co.min_charge_weight || p.min_charge_weight || 0;  // 最低计费重：国家级优先
+  const cw = chargeWeight(sw, vw, effectiveRule, p.rounding, effectiveMin);
   let rate = tierRate(p.weight_tiers, cw).rate;
   let freight = rate * cw;
   let items = [{name:"基本运费("+rate+"/kg×"+cw+"kg)", amt:freight}];
