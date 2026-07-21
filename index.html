@@ -43,6 +43,7 @@
 </style>
   <script src="sku_master.js"></script>
   <script src="rates.js"></script>
+  <script src="cn2iso.js"></script>
 </head>
 <body>
 <header>
@@ -138,6 +139,30 @@ if(!localStorage.getItem(LS_KEY)){
 }else{
   Object.values(GC).forEach(g=>{ if(!S.items.find(x=>x.sku===g.sku)) S.items.push(gcToItem(g)); });
 }
+saveState();
+/* ② 小包专线：直接复用 RATES 小包真实渠道（云途/飞特/亚丰/捷邮…），与 ⑨ 全渠道比价同源，避免「写死 2 条」的脱节 */
+function syncParcelFromRates(){
+  if(!window.RATES||!window.RATES.channels) return;
+  const carriers = window.RATES.channels.filter(c=>c.cat==='small').map(c=>{
+    const countries=(c.dest||[]).map(cn=>{ const k=cn.replace(/\s*\(.*\)$/,'').trim(); return (window.CN2ISO&&(CN2ISO[k]||CN2ISO[cn]))||null; }).filter(Boolean);
+    const first=Object.values(c.countries||{})[0]; if(!first) return null;
+    const weight_tiers=(first.brackets||[]).map(b=>({kg:b.up,rate:b.rate}));
+    const reg=first.brackets&&first.brackets[0]?first.brackets[0].reg:0;
+    const live=(c.name||'').includes('带电');
+    const inc=(c.incoterm==='DDU')?'DDU':'DDP';
+    return {
+      carrier:(c.carrier||(c.name||'').split(/[-·]/)[0]||'云途'),
+      channel:c.name, audience:'2C', countries,
+      max_weight:Math.max(...(first.brackets||[]).map(b=>b.up), 2),
+      accepted: live?['普货','带电']:['普货'],
+      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:'max', rounding:0.5, min_charge_weight:0.03, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
+      fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
+      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}]
+    };
+  }).filter(Boolean);
+  if(carriers.length) S.modules.parcel.carriers = carriers;
+}
+syncParcelFromRates();
 saveState();
 /* 物料主数据表：搜索 + 分页状态（2317 条不能一次性渲染，否则卡死） */
 let ITEM_PAGE=1, ITEM_Q="";
@@ -589,11 +614,16 @@ function rAll(){
     const bw=Math.max(actualW,volW);
     if(ch.cat==='small'){
       if(!ch.countries[country]) return null;
-      const br=ch.countries[country].brackets; if(!br||!br.length) return null;
+      const co=ch.countries[country];
+      const br=co.brackets; if(!br||!br.length) return null;
       const b=findBracket(br,bw);
-      let base=b.rate*bw+b.reg; let ins=0;
-      if(opt.insurance) ins=Math.max(decl*0.007,5);
-      const detail=`运费 ${b.rate}/kg × ${bw.toFixed(2)}kg = ${(b.rate*bw).toFixed(2)} + 挂号 ${b.reg}`+(opt.insurance?` + 保价 ${ins.toFixed(2)}`:'');
+      let base=b.rate*bw+b.reg; const parts=[`运费 ${b.rate}/kg × ${bw.toFixed(2)}kg`, `挂号 ${b.reg}`];
+      let ins=0; if(opt.insurance) ins=Math.max(decl*0.007,5);
+      const add=co.add||{};
+      if(add.war_per_kg){ base+=add.war_per_kg*bw; parts.push(`战争附加费 ${add.war_per_kg}/kg × ${bw.toFixed(2)}kg`); }
+      if(add.custom_per_shipment){ base+=add.custom_per_shipment; parts.push(`海关资料处理费 ${add.custom_per_shipment}`); }
+      if(ins) parts.push(`保价 ${ins.toFixed(2)}`);
+      const detail=parts.join(' + ')+(ins?` + 保价 ${ins.toFixed(2)}`:'');
       return {cost:base+ins,bw,detail};
     }
     if(ch.cat==='b2b-air'){
@@ -684,7 +714,7 @@ function rAll(){
     if(below.length) html+=`<div class="mut" style="margin-top:8px">⚠️ 低于起收重量（未计入）：${below.map(b=>`${b.ch.name}（${b.min}kg起）`).join('、')}</div>`;
     if(na.length) html+=`<div class="mut" style="margin-top:4px">该目的国无报价（不在渠道服务范围）：${na.map(n=>n.ch.name).join('、')}</div>`;
     $("#acResults").innerHTML=html;
-    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，B2B 单件不足最低计费重按最低计（中运通达/亚丰美线12kg、亚丰欧线10kg）；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + <b>产品附加费</b>（按货物类型：中运通达欧洲皮革+4·鞋/服装+7，美/加+2；亚丰美线+1，欧线包+7/衣+8）；勾选后再计非FBA(+1/kg)、单独报关(/票)；④ <b>仍未计入</b>：磁检费、偏远费、超品名费、旺季附加费（按账单实结）。最终以承运商账单为准。';
+    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，B2B 单件不足最低计费重按最低计（中运通达/亚丰美线12kg、亚丰欧线10kg）；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + <b>产品附加费</b>（按货物类型：中运通达欧洲皮革+4·鞋/服装+7，美/加+2；亚丰美线+1，欧线包+7/衣+8）；勾选后再计非FBA(+1/kg)、单独报关(/票)；④ <b>捷邮中东</b>已计入战争附加费(按kg)与海关资料处理费(按票)，但 VAT/DUTY(申报值×比例)未计入；⑤ <b>仍未计入</b>：磁检费、偏远费、超品名费、旺季附加费（按账单实结）。最终以承运商账单为准。';
   }
   $("#acCalc").addEventListener('click',calc);
   calc();
