@@ -40,6 +40,16 @@
   .seg label{display:flex;align-items:center;gap:5px;min-width:auto;background:var(--panel2);border:1px solid var(--line);padding:6px 10px;border-radius:7px;cursor:pointer}
   textarea{width:100%;height:300px;background:#0b0f14;color:#c9d4e0;border:1px solid var(--line);border-radius:8px;font:12px/1.45 ui-monospace,Consolas,monospace;padding:10px}
   .kbd{background:#0b0f14;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font:12px ui-monospace;color:var(--mut)}
+  .filterbox{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-top:12px}
+  .fbhead{font-size:12.5px;color:var(--fg);font-weight:600;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .fbhead .mut{font-weight:400}
+  .flink{color:var(--acc);cursor:pointer;font-size:12px;text-decoration:none;border-bottom:1px dashed var(--acc)}
+  .flink:hover{color:#7fb0ff}
+  .fgroup{margin-top:9px;border-top:1px dashed var(--line);padding-top:8px}
+  .glabel{font-size:12px;color:var(--mut);font-weight:600;margin-bottom:5px}
+  .gitems{display:flex;gap:6px 14px;flex-wrap:wrap}
+  .fitem{display:flex;align-items:center;gap:5px;min-width:auto;font-size:12px;color:var(--fg);cursor:pointer}
+  .fitem input{width:auto;margin:0}
 </style>
   <script src="sku_master.js"></script>
   <script src="rates.js"></script>
@@ -550,6 +560,24 @@ function rAll(){
   const skuOpts = skus.slice(0,3000).map(s=>`<option value="${s.sku} · ${s.name||''}"></option>`).join('');
   const destOpts = Array.from(destSet).sort((a,b)=>a.localeCompare(b,'zh')).map(d=>`<option value="${d}">${d}</option>`).join('');
 
+  function buildFilterHTML(){
+    const cats=[['small','小包渠道（B2C 直发）'],['b2b-air','B2B / 海外仓（批量）'],['express','商业快递（DHL / FedEx / UPS）']];
+    let html='<div id="acFilter" class="filterbox"><div class="fbhead">渠道筛选 <span class="mut">勾选要参与比价的渠道（默认全选，取消勾选即不计入）</span>'
+      +' <a href="#" class="flink" data-act="all">全选</a>'
+      +' <a href="#" class="flink" data-act="none">全不选</a>'
+      +' <a href="#" class="flink" data-act="small">仅小包</a>'
+      +' <a href="#" class="flink" data-act="b2b-air">仅B2B</a>'
+      +' <a href="#" class="flink" data-act="express">仅快递</a></div>';
+    cats.forEach(([cat,label])=>{
+      const chs=RATES.channels.filter(c=>c.cat===cat);
+      html+='<div class="fgroup"><div class="glabel">'+label+'（'+chs.length+'）</div><div class="gitems">';
+      chs.forEach(c=>{ html+='<label class="fitem"><input type="checkbox" class="acChk" data-id="'+c.id+'" data-cat="'+cat+'" checked> '+c.name+'</label>'; });
+      html+='</div></div>';
+    });
+    html+='</div>';
+    return html;
+  }
+
   let h = `<div class="card"><h2>⑨ 全渠道比价　<span class="pill">W102 真实费率 · ${RATES.channels.length} 渠道</span></h2>
     <div class="note">输入一个 SKU（自动带出谷仓 2317 条重量/尺寸）或手填货物 + 目的国 → 自动列出该国<b>所有在约渠道</b>价格，按<b>小包 / B2B / 商业快递</b>三块横向对比，最便宜整行标绿。<br>来源：云途 / 中运通达 / 亚丰(璞景/德翼) / 飞特 报价表（W102 邮箱，2026-07 生效）。</div>
     <div class="row">
@@ -579,8 +607,10 @@ function rAll(){
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
     </div>
+    ${buildFilterHTML()}
     <div class="row" style="margin-top:10px;align-items:center">
       <div style="flex:0 0 auto"><button class="act" id="acCalc">计算全渠道比价</button></div>
+      <div style="flex:0 0 auto"><span id="acCount" class="mut"></span></div>
     </div>
     <div class="mut" style="margin-top:6px">计费重统一 = MAX(实重, 长×宽×高÷除数)；各渠道除数不同（云途10000 / A01 8000 / 区域10000 / 飞特7000 / 中运通达B2B 6000 / 亚丰美线6000·欧线5000 / 商业快递5000）。B2B 已计入<b>产品附加费</b>（按货物类型），非FBA/单独报关勾选后计入。</div>
   </div>
@@ -655,7 +685,11 @@ function rAll(){
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
     const bl=parseFloat($("#acBl").value)||l, bw_=parseFloat($("#acBw").value)||wd, bh=parseFloat($("#acBh").value)||h;
     const results=[];
+    const selN=document.querySelectorAll('.acChk:checked').length, totN=document.querySelectorAll('.acChk').length;
+    const cntEl=document.getElementById('acCount'); if(cntEl) cntEl.textContent='已选 '+selN+' / '+totN+' 个渠道（取消勾选即不参与比价）';
     RATES.channels.forEach(ch=>{
+      const fbox=document.querySelector('.acChk[data-id="'+ch.id+'"]');
+      if(fbox && !fbox.checked) return;
       const div=ch.volumetric_divisor||10000;
       const actualPerBox=w*qty;
       const volPerBox=(bl*bw_*bh)/div;
@@ -717,6 +751,16 @@ function rAll(){
     $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，B2B 单件不足最低计费重按最低计（中运通达/亚丰美线12kg、亚丰欧线10kg）；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + <b>产品附加费</b>（按货物类型：中运通达欧洲皮革+4·鞋/服装+7，美/加+2；亚丰美线+1，欧线包+7/衣+8）；勾选后再计非FBA(+1/kg)、单独报关(/票)；④ <b>捷邮中东</b>已计入战争附加费(按kg)与海关资料处理费(按票)，但 VAT/DUTY(申报值×比例)未计入；⑤ <b>仍未计入</b>：磁检费、偏远费、超品名费、旺季附加费（按账单实结）。最终以承运商账单为准。';
   }
   $("#acCalc").addEventListener('click',calc);
+  function setFilter(act){
+    document.querySelectorAll('.acChk').forEach(b=>{
+      if(act==='all'||act==='reset') b.checked=true;
+      else if(act==='none') b.checked=false;
+      else b.checked=(b.dataset.cat===act);
+    });
+    calc();
+  }
+  document.querySelectorAll('.flink').forEach(a=>{ a.addEventListener('click',e=>{ e.preventDefault(); setFilter(a.dataset.act); }); });
+  document.querySelectorAll('.acChk').forEach(b=>{ b.addEventListener('change',calc); });
   calc();
 }
 
