@@ -166,7 +166,13 @@ function syncParcelFromRates(){
     const reg=first.brackets&&first.brackets[0]?first.brackets[0].reg:0;
     const live=(c.name||'').includes('带电');
     const inc=(c.incoterm==='DDU')?'DDU':'DDP';
-    const taxMap={}; Object.keys(c.countries||{}).forEach(k=>{ const t=(c.countries[k]||{}).tax; if(t){ const iso=(typeof CN2ISO==='object'&&(CN2ISO[k.trim()]||CN2ISO[k]))||k; taxMap[iso]=t; } });
+    const taxMap={}; const euFeeMap={};
+    Object.keys(c.countries||{}).forEach(k=>{
+      const co=c.countries[k];
+      const iso=(typeof CN2ISO==='object'&&(CN2ISO[k.trim()]||CN2ISO[k]))||k;
+      if(co.tax) taxMap[iso]=co.tax;
+      if(co.vat!=null) euFeeMap[iso]={vat:co.vat, service_fee_pct:co.service_fee_pct||0, duty_fixed_eur:co.duty_fixed_eur||0};
+    });
     return {
       carrier:(c.carrier||(c.name||'').split(/[-·]/)[0]||'云途'),
       channel:c.name, audience:'2C', countries,
@@ -174,7 +180,7 @@ function syncParcelFromRates(){
       accepted: live?['普货','带电']:['普货'],
       pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:'max', rounding:0.5, min_charge_weight:0.03, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
-      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap
+      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap
     };
   }).filter(Boolean);
   if(carriers.length) S.modules.parcel.carriers = carriers;
@@ -386,6 +392,7 @@ function rFreight(){
     件数 <input type="number" id="units" value="${defaultUnits}">
     目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
     派送对象 <select id="aud"><option value="2C" ${defaultAud==='2C'?'selected':''}>2C 个人</option><option value="2B" ${defaultAud==='2B'?'selected':''}>2B 商业/FBA</option></select>
+    EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
     <h3>比对模式</h3>
     <div class="seg">
@@ -402,17 +409,31 @@ function rFreight(){
     // P2 资格校验
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
-      const reasons=qualify(ch, sku, units, aud).concat( ch.countries.includes(destIso)?[]:["目的国不符("+destCn+"不在"+M.carriers.flatMap(c=>c.countries).filter((v,i,a)=>a.indexOf(v)===i).map(isoToChinese).join("/")+")"] );
+      const reasons=qualify(ch, sku, units, aud).concat( ch.countries.includes(destIso)?[]:[`目的国不符(${destCn})`] );
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     let out=`<div class="note warn">资格校验（P2 硬约束）：入围 ${eligible.length} 个渠道；淘汰 ${rejected.length} 个。</div>`;
     rejected.forEach(r=> out+=`<div class="err">✗ ${r.ch.carrier}·${r.ch.channel}：淘汰(${r.reasons.join("、")})</div>`);
+    if(rejected.length) out+=`<div class="mut">*「目的国不符」指该渠道服务范围不含当前目的国。入围渠道行会显示其可发国家。</div>`;
     if(!eligible.length){ $("#fOut").innerHTML=out; return; }
     const freight=ch=>{
-      const r0=computeFreight(ch,sku,units);
+      let r0=computeFreight(ch,sku,units);
       if(ch.taxMap && ch.taxMap[destIso]){
         const tax=(sku.decl||0)*units*ch.taxMap[destIso];
-        return {items:[...r0.items,{name:`VAT/DUTY(申报值×${(ch.taxMap[destIso]*100).toFixed(0)}%)`,amt:tax}], total:r0.total+tax, cw:r0.cw, transit:r0.transit};
+        r0={items:[...r0.items,{name:`VAT/DUTY(申报值×${(ch.taxMap[destIso]*100).toFixed(0)}%)`,amt:tax}], total:r0.total+tax, cw:r0.cw, transit:r0.transit};
+      }
+      if(ch.euFeeMap && ch.euFeeMap[destIso]){
+        const fee=ch.euFeeMap[destIso];
+        const eurFx=parseFloat($("#euFx")?.value)||7.8;
+        const declVal=(sku.decl||0)*units;
+        const vat=declVal*fee.vat;
+        const svc=declVal*fee.service_fee_pct;
+        const duty=(fee.duty_fixed_eur||0)*eurFx;
+        r0={items:[...r0.items,
+          {name:`欧盟VAT(${(fee.vat*100).toFixed(0)}%)`,amt:vat},
+          {name:`代缴服务费(${(fee.service_fee_pct*100).toFixed(0)}%)`,amt:svc},
+          {name:`临时固定关税(${fee.duty_fixed_eur}EUR×${eurFx})`,amt:duty}
+        ], total:r0.total+vat+svc+duty, cw:r0.cw, transit:r0.transit};
       }
       return r0;
     };
@@ -427,17 +448,19 @@ function rFreight(){
     }
     // 比价：全候选排序
     const res=eligible.map(ch=>({ch, r:freight(ch)})).sort((a,b)=>a.r.total-b.r.total);
-    const best=res[0].total;
+    const best=res[0].r.total;
     out+=`<h3>横向比价结果（${eligible.length} 渠道 · 同口径到手总成本）</h3>
-      <table><thead><tr><th>物流商·渠道</th><th>缴费重</th><th>到手总成本¥</th><th>时效</th><th>差额 vs 最优</th></tr></thead><tbody>`;
+      <table><thead><tr><th>物流商·渠道</th><th>可发国家</th><th>除数</th><th>缴费重</th><th>到手总成本¥</th><th>时效</th><th>差额 vs 最优</th></tr></thead><tbody>`;
     res.forEach((x,idx)=>{
+      const cnList=x.ch.countries.map(isoToChinese);
+      const cnShort=cnList.slice(0,4).join('、')+(cnList.length>4?` 等${cnList.length}国`:'');
       const diff = idx===0? "★ 最优" : "+¥"+(x.r.total-best).toFixed(2);
-      out+=`<tr class="${idx===0?"best":""}"><td>${x.ch.carrier}·${x.ch.channel}</td><td>${x.r.cw}kg</td><td>${x.r.total.toFixed(2)}</td><td>${x.r.transit}天</td><td>${diff}</td></tr>`;
+      out+=`<tr class="${idx===0?"best":""}"><td>${x.ch.carrier}·${x.ch.channel}</td><td class="mut" title="${cnList.join('、')}">${cnShort}</td><td class="mut">${x.ch.pricing.divisor}</td><td>${x.r.cw}kg</td><td>${x.r.total.toFixed(2)}</td><td>${x.r.transit}天</td><td>${diff}</td></tr>`;
     });
     out+=`</tbody></table><div class="mut">↑ 红涨绿跌法则仅用于环比；此处为成本升序，绿色=最优。标签不齐（如 DDP vs DDU、divisor 不同）时此处会改出「溢价拆解」提示（见 logic 说明）。</div>`;
     $("#fOut").innerHTML=out;
   };
-  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#aud").onchange=draw;
+  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#aud").onchange=draw; $("#euFx").onchange=draw;
   document.querySelectorAll('input[name=mode]').forEach(r=> r.onchange=draw);
   $("#run").onclick=draw;
   bindCombo($("#dest"), $("#destList"), displayCountries, draw);
@@ -599,7 +622,11 @@ function rAll(){
     cats.forEach(([cat,label])=>{
       const chs=RATES.channels.filter(c=>c.cat===cat);
       html+='<div class="fgroup"><div class="glabel">'+label+'（'+chs.length+'）</div><div class="gitems">';
-      chs.forEach(c=>{ html+='<label class="fitem"><input type="checkbox" class="acChk" data-id="'+c.id+'" data-cat="'+cat+'" checked> '+c.name+'</label>'; });
+      chs.forEach(c=>{
+        const destList=c.cat==='small'?Object.keys(c.countries||{}):(c.dest||[]);
+        const destTitle=destList.join('、');
+        html+='<label class="fitem" title="'+destTitle+'"><input type="checkbox" class="acChk" data-id="'+c.id+'" data-cat="'+cat+'" checked> '+c.name+' <span class="mut">('+destList.length+'国)</span></label>';
+      });
       html+='</div></div>';
     });
     html+='</div>';
@@ -619,6 +646,7 @@ function rAll(){
       <div><label>目的国家 / 地区</label><div class="combo"><input id="acDest" type="text" autocomplete="off" placeholder="输入或选择" style="min-width:130px"><span class="combo-arrow">▼</span><div class="combo-list" id="acDestList">${destItems.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div></div>
       <div><label>每箱装几个</label><input id="acQty" type="number" step="1" value="10"></div>
       <div><label>箱数</label><input id="acBoxes" type="number" step="1" value="1"></div>
+      <div><label>EUR/CNY 汇率</label><input id="acEurFx" type="number" step="0.01" value="7.80" style="width:80px" title="欧盟3欧元关税、VAT等欧元费用折算"></div>
       <div><label>箱长 cm（默认单件）</label><input id="acBl" type="number" step="0.1" placeholder="默认"></div>
       <div><label>箱宽 cm</label><input id="acBw" type="number" step="0.1" placeholder="默认"></div>
       <div><label>箱高 cm</label><input id="acBh" type="number" step="0.1" placeholder="默认"></div>
@@ -683,6 +711,17 @@ function rAll(){
       if(add.custom_per_shipment){ base+=add.custom_per_shipment; parts.push(`海关资料处理费 ${add.custom_per_shipment}`); }
       const taxPct=co.tax||0;
       if(taxPct){ const boxDecl=decl*(opt.qty||1); const tax=boxDecl*taxPct; base+=tax; parts.push(`VAT/DUTY(申报值×${(taxPct*100).toFixed(0)}%) ${tax.toFixed(2)}`); }
+      // 云途欧盟：VAT + 代缴服务费(2%) + 3欧元/Item临时固定关税
+      if(co.vat!=null){
+        const boxDecl=decl*(opt.qty||1);
+        const vat=boxDecl*co.vat;
+        const svc=boxDecl*(co.service_fee_pct||0);
+        const duty=(co.duty_fixed_eur||0)*(opt.eurFx||7.8);
+        base+=vat+svc+duty;
+        parts.push(`欧盟VAT(${(co.vat*100).toFixed(0)}%) ${vat.toFixed(2)}`);
+        if(co.service_fee_pct) parts.push(`代缴服务费(${(co.service_fee_pct*100).toFixed(0)}%) ${svc.toFixed(2)}`);
+        if(co.duty_fixed_eur) parts.push(`临时关税 ${co.duty_fixed_eur}EUR×${opt.eurFx||7.8} ${duty.toFixed(2)}`);
+      }
       if(ins) parts.push(`保价 ${ins.toFixed(2)}`);
       const detail=parts.join(' + ')+(ins?` + 保价 ${ins.toFixed(2)}`:'');
       return {cost:base+ins,bw,detail};
@@ -710,7 +749,8 @@ function rAll(){
     const qty=Math.max(1,parseInt($("#acQty").value)||1);
     const boxes=Math.max(1,parseInt($("#acBoxes").value)||1);
     const decl=parseFloat($("#acDecl").value)||0;
-    const opt={insurance:$("#acIns").checked, qty};
+    const eurFx=parseFloat($("#acEurFx").value)||7.8;
+    const opt={insurance:$("#acIns").checked, qty, eurFx};
     const cargoCat=$("#acCargo")?$("#acCargo").value:'箱包皮革';
     const nonFba=$("#acNonfba")?$("#acNonfba").checked:false;
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
@@ -754,10 +794,11 @@ function rAll(){
     rows.sort((a,b)=>a.cost-b.cost);
     const min=rows[0].cost;
     let hh=`<div style="font-weight:700;color:var(--fg);margin:18px 0 6px;font-size:14px;display:flex;gap:8px;align-items:center"><span style="width:9px;height:9px;border-radius:50%;background:${dotColor}"></span>${title}</div>`;
-    hh+=`<div class="card" style="margin-top:8px"><table><thead><tr><th>渠道</th><th>承运商</th><th>计费重/箱</th><th>运费构成</th><th>总价(CNY)</th></tr></thead><tbody>`;
+    hh+=`<div class="card" style="margin-top:8px"><table><thead><tr><th>渠道</th><th>承运商</th><th>除数</th><th>计费重/箱</th><th>运费构成</th><th>总价(CNY)</th></tr></thead><tbody>`;
     rows.forEach(r=>{
       const best=Math.abs(r.cost-min)<1e-6?'best':'';
-      hh+=`<tr class="${best}"><td><b>${r.ch.name}</b><div class="mut" style="font-size:11px">${r.ch.note||''}</div></td><td class="mut">${r.ch.carrier}</td><td>${r.bw.toFixed(2)} kg</td><td>${r.detail}<br><span class="mut" style="font-size:11px">${r.perUnitNote}</span></td><td style="font-weight:700;font-size:15px">¥${r.cost.toFixed(2)}</td></tr>`;
+      const div=r.ch.volumetric_divisor||10000;
+      hh+=`<tr class="${best}"><td><b>${r.ch.name}</b><div class="mut" style="font-size:11px">${r.ch.note||''}</div></td><td class="mut">${r.ch.carrier}</td><td class="mut">${div}</td><td>${r.bw.toFixed(2)} kg</td><td>${r.detail}<br><span class="mut" style="font-size:11px">${r.perUnitNote}</span></td><td style="font-weight:700;font-size:15px">¥${r.cost.toFixed(2)}</td></tr>`;
     });
     hh+=`</tbody></table></div>`;
     return hh;
@@ -779,7 +820,7 @@ function rAll(){
     if(below.length) html+=`<div class="mut" style="margin-top:8px">⚠️ 低于起收重量（未计入）：${below.map(b=>`${b.ch.name}（${b.min}kg起）`).join('、')}</div>`;
     if(na.length) html+=`<div class="mut" style="margin-top:4px">该目的国无报价（不在渠道服务范围）：${na.map(n=>n.ch.name).join('、')}</div>`;
     $("#acResults").innerHTML=html;
-    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，B2B 单件不足最低计费重按最低计（中运通达/亚丰美线12kg、亚丰欧线10kg）；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + <b>产品附加费</b>（按货物类型：中运通达欧洲皮革+4·鞋/服装+7，美/加+2；亚丰美线+1，欧线包+7/衣+8）；勾选后再计非FBA(+1/kg)、单独报关(/票)；④ <b>捷邮中东</b>已计入战争附加费(按kg)、海关资料处理费(按票)与 <b>VAT/DUTY(申报值×比例，按目的国税率)</b>；⑤ <b>仍未计入</b>：磁检费、偏远费、超品名费、旺季附加费（按账单实结）。最终以承运商账单为准。';
+    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，结果表已显示各渠道除数；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + 产品附加费；④ <b>捷邮中东</b>已计入战争附加费(kg)、海关资料处理费(票)、VAT/DUTY(申报值×比例)；⑤ <b>云途欧盟</b>已计入 VAT(申报值×国别税率)+代缴服务费(2%)+3欧元/Item临时固定关税(汇率按上方输入框)；⑥ 仍未计入：磁检费、偏远费、超品名费、旺季附加费。最终以承运商账单为准。';
   }
   $("#acCalc").addEventListener('click',calc);
   function setFilter(act){
@@ -792,6 +833,7 @@ function rAll(){
   }
   document.querySelectorAll('.flink').forEach(a=>{ a.addEventListener('click',e=>{ e.preventDefault(); setFilter(a.dataset.act); }); });
   document.querySelectorAll('.acChk').forEach(b=>{ b.addEventListener('change',calc); });
+  $("#acEurFx").addEventListener('change',calc);
   calc();
 }
 
