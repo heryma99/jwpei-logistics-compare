@@ -462,13 +462,16 @@ function rFreight(){
     // 比价：全候选排序
     const res=eligible.map(ch=>({ch, r:freight(ch)})).sort((a,b)=>a.r.total-b.r.total);
     const best=res[0].r.total;
-    out+=`<h3>横向比价结果（${eligible.length} 渠道 · 同口径到手总成本）</h3>
-      <table><thead><tr><th>物流商·渠道</th><th>可发国家</th><th>除数</th><th>缴费重</th><th>到手总成本¥</th><th>时效</th><th>差额 vs 最优</th></tr></thead><tbody>`;
+      out+=`<h3>横向比价结果（${eligible.length} 渠道 · 同口径到手总成本）</h3>
+      <table><thead><tr><th>物流商·渠道</th><th>可发国家</th><th>除数</th><th>计费重(kg)</th><th>到手总成本¥</th><th>时效</th><th>差额 vs 最优</th></tr></thead><tbody>`;
     res.forEach((x,idx)=>{
       const cnList=x.ch.countries.map(isoToChinese);
       const cnShort=cnList.slice(0,4).join('、')+(cnList.length>4?` 等${cnList.length}国`:'');
+      const sw=(sku.weight*units).toFixed(2);
+      const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(3);
+      const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${x.r.cw}kg`;
       const diff = idx===0? "★ 最优" : "+¥"+(x.r.total-best).toFixed(2);
-      out+=`<tr class="${idx===0?"best":""}"><td>${x.ch.carrier}·${x.ch.channel}</td><td class="mut" title="${cnList.join('、')}">${cnShort}</td><td class="mut">${x.ch.pricing.divisor}</td><td>${x.r.cw}kg</td><td>${x.r.total.toFixed(2)}</td><td>${x.r.transit}天</td><td>${diff}</td></tr>`;
+      out+=`<tr class="${idx===0?"best":""}"><td>${x.ch.carrier}·${x.ch.channel}</td><td class="mut" title="${cnList.join('、')}">${cnShort}</td><td class="mut">${x.ch.pricing.divisor}</td><td title="${cwTip}">${x.r.cw}kg<br><span class="mut" style="font-size:11px">实${sw}/体${vw}</span></td><td>${x.r.total.toFixed(2)}</td><td>${x.r.transit}天</td><td>${diff}</td></tr>`;
     });
     out+=`</tbody></table><div class="mut">↑ 红涨绿跌法则仅用于环比；此处为成本升序，绿色=最优。标签不齐（如 DDP vs DDU、divisor 不同）时此处会改出「溢价拆解」提示（见 logic 说明）。</div>`;
     $("#fOut").innerHTML=out;
