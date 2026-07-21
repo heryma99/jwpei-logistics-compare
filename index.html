@@ -4,7 +4,25 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>/* 版本号：v21.07.2（用于核对是否最新）*/</script>
+<script>window.__BUILD__="1784630346";</script>
+<script>
+// 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
+(function(){
+  try{
+    if(sessionStorage.getItem('__ver_reloaded__')) return;
+    var local = window.__BUILD__ || "";
+    fetch('version.json?_='+Date.now(), {cache:'no-store'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        if(j && j.build && j.build !== local){
+          sessionStorage.setItem('__ver_reloaded__','1');
+          setTimeout(function(){ window.location.reload(true); }, 600);
+        }
+      })
+      .catch(function(){ /* 离线或拉取失败则静默，不影响使用 */ });
+  }catch(e){}
+})();
+</script>
 <title>物流比价 + 预算 · 可扩展骨架 v2（吸收旧方法论 + 补 ERP 三处 P0）</title>
 <style>
   :root{ --bg:#0e1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3340; --fg:#e6edf3; --mut:#9aa7b4; --acc:#3b82f6; --acc2:#22c55e; --warn:#f59e0b; --err:#ef4444; --red:#ef4444; --green:#22c55e; }
