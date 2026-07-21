@@ -250,9 +250,11 @@ function saveCountryOverrides(){
   applyCountryOverrides();
   syncParcelFromRates();
   saveState();
-  const n = Object.keys(JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}')).length;
+  // 数国家 override 总数（不是渠道数）
+  const ov = JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
+  let nCountries = 0; Object.values(ov).forEach(c=>nCountries += Object.keys(c).length);
   const el = document.getElementById('coStat');
-  if(el) el.innerHTML = '<span class="ok">✓ 已保存并生效（'+(n||0)+' 条覆盖待持久化）</span>';
+  if(el) el.innerHTML = '<span class="ok">✓ 已即时生效</span> <span class="mut">· '+nCountries+' 条国家例外已记到浏览器本地（刷新页面不丢，跨浏览器需重新配置）</span>';
 }
 /* 物料主数据表：搜索 + 分页状态（2317 条不能一次性渲染，否则卡死） */
 let ITEM_PAGE=1, ITEM_Q="";
