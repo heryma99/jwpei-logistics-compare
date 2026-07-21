@@ -196,11 +196,12 @@ function syncTobFromRates(){
   if(!window.RATES||!window.RATES.channels) return;
   const carriers = window.RATES.channels.filter(c=>c.cat==='b2b-air').map(c=>{
     const countries = (c.dest||[]).map(cn=>{ return (typeof CN2ISO==='object'&&(CN2ISO[cn]||CN2ISO[cn.trim()]||CN2ISO[cn.replace(/\s*\(.*\)$/,'').trim()])) || cn; }).filter(Boolean);
-    const first=Object.values(c.countries||{})[0]; if(!first||!first.tiers) return null;
-    const weight_tiers=(first.tiers||[]).map(t=>({kg:t.min,rate:t.rate}));
+    const first=Object.values(c.countries||{})[0]; if(!first) return null;
+    // 把 tiers 转为 weight_tiers 兼容老引擎
+    const weight_tiers=(first.tiers||[]).map(t=>({kg:t.min, rate:t.rate}));
     const inc=(c.incoterm==='DDU')?'DDU':'DDP';
-    const declareFee = (c.sur && c.sur.declare) || 0;
-    const minpc = (c.sur && c.sur.minpc) || 12;
+    const declareFee = (c.sur && c.sur.declare) ? (typeof c.sur.declare==='object' ? c.sur.declare.base||0 : c.sur.declare) : 0;
+    const minpc = (first.min_charge_weight) || (c.sur && c.sur.minpc) || 12;
     return {
       carrier: c.carrier || '中运通达',
       channel: c.name,
@@ -212,9 +213,10 @@ function syncTobFromRates(){
       fees: declareFee>0 ? [{name:'清关费', type:'fixed', value:declareFee}] : [],
       decision:{transit: 10},
       history:[{date:'2026-07-01', tiers:weight_tiers, op:declareFee}],
-      // 透传 sur 用于品类/非FBA/磁检
-      sur: c.sur || {},
-      surcharges: c.surcharges || {}
+      sur: c.sur || {},        // ★ 完整 sur (含 cat/nonfba/declare/inspection/over_items/oversize/overweight/remote/addr_change)
+      surcharges: c.surcharges || {},
+      // ★ 区域信息(美西/美中/美东 邮编)
+      regions: c.countries || {},
     };
   }).filter(Boolean);
   if(carriers.length) S.modules.tob.carriers = carriers;
@@ -564,6 +566,8 @@ function rFreight(){
     派送对象 <select id="aud"><option value="2C" ${defaultAud==='2C'?'selected':''}>2C 个人</option><option value="2B" ${defaultAud==='2B'?'selected':''}>2B 商业</option></select>
     2B 类型 <select id="b2bType"><option value="">不限</option><option value="FBA">FBA 仓</option><option value="非FBA">非FBA(商业/住宅)</option></select>
     <span class="mut" style="font-size:11px">·2B 渠道在 FBA 仓地址有特殊附加；非FBA 时按非FBA附加/kg 算</span>
+    邮编 <input id="acZip" type="text" placeholder="选填→自动识别美西/美中/美东" maxlength="5" style="width:130px" title="美国邮编首位：8/9=美西  4-7=美中  0-3=美东">
+    货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option></select>
     EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
     <label style="margin-left:12px"><input type="checkbox" id="conservativeMode"> 完整预算（含偏远/磁检/商业清关等可能费用）</label>
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
@@ -595,50 +599,85 @@ function rFreight(){
     if(!eligible.length){ $("#fOut").innerHTML=out; return; }
     const eurFx=parseFloat($("#euFx")?.value)||7.8;
     const conservative=$("#conservativeMode")?.checked;
-    // ★ ②③ ④ 通用:小包/快递/头程 预估+比价 共用
+    // ② ③ ④ 通用:小包/快递/头程 预估+比价 共用
+    // 邮编 → 区域自动识别 (美西:8,9 / 美中:4,5,6,7 / 美东:0,1,2,3)
+    function postcodeToRegion(zp){
+      if(!zp) return '';
+      const d = String(zp).trim().charAt(0);
+      if('89'.includes(d)) return '美西';
+      if('4567'.includes(d)) return '美中';
+      if('0123'.includes(d)) return '美东';
+      return '';
+    }
+    const cargoType = (document.getElementById('cargoType')?.value) || '箱包皮革';
+    const b2bAddrType = b2bType || 'FBA';  // FBA/非FBA
+    const zip = (document.getElementById('acZip')?.value || '').trim();
+    const detectedRegion = postcodeToRegion(zip);
+    // 选区域: 用户手动选 / 邮编识别 / 目的国同名
+    const finalRegion = (detectedRegion && (ch?.countries?.[detectedRegion]?.tiers)) ? detectedRegion : destCn;
     const computeAll=(ch)=>{
       // ②③(非b2b):用统一引擎
       if(ch.cat!=='b2b-air') return computeFreight(ch, sku, units, destCn, eurFx);
       // ④ 头程(B2B):独立计算,完整费用展开
-      const items=[], cobj=ch.countries?.find ? ch.countries[destIso] : ch.countries[ch.countries[destIso]?destIso:Object.keys(ch.countries).find(k=>ch.countries[k].tiers)];
-      // 用 destCn 直接找
-      const co = ch.countryMap?.[destCn] || ch.countries[destCn] || {};
-      // B2B 需要总重：实重 = sku.weight*units, 体积重 = l*w*h/divisor
-      const sw=sku.weight*units, vw=volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor)*units;
+      const items=[];
+      // 选 region: 如果 ch 有美西/美中/美东, 用 finalRegion; 否则用 destCn
+      const co = ch.countries[finalRegion] || ch.countries[destCn] || Object.values(ch.countries||{})[0] || {};
+      // B2B 总重
+      const sw=sku.weight*units, vw=volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor||co.divisor||6000)*units;
       const bw=Math.max(sw,vw);
-      // 完整预算里 B2B 的单件最低计费重(ch.sur.minpc)要套上
-      const minpc=ch.sur?.minpc||0;
+      const minpc = co.min_charge_weight || ch.sur?.minpc || 0;
       const totalBw=Math.max(bw, minpc);
-      // 找 tier
-      const tiers=(ch.pricing.weight_tiers||[]).sort((a,b)=>a.kg-b.kg);
-      let tier=tiers.find(t=>totalBw<=t.kg); if(!tier) tier=tiers[tiers.length-1];
-      const rate=tier.rate;
-      const base=rate*totalBw;
-      items.push({name:`基本运费 ${rate}/kg × ${totalBw.toFixed(2)}kg`, amt:base});
-      let total=base;
-      // 燃油 (B2B 通常 0)
+      // 找 tier (用 {min,rate} 结构)
+      const tiers = (co.tiers || ch.pricing.weight_tiers || []).slice().sort((a,b)=>(a.min||a.kg||0)-(b.min||b.kg||0));
+      let tier = tiers.find(t=>totalBw <= (t.min||t.kg||0));
+      if(!tier) tier = tiers[tiers.length-1] || {min:0, rate:0};
+      const rate = tier.rate;
+      const base = rate*totalBw;
+      items.push({name:`基本运费 ${rate}/kg × ${totalBw.toFixed(2)}kg ${finalRegion!==destCn?'(分区:'+finalRegion+')':''}`, amt:base});
+      let total = base;
+      // 燃油
       if(ch.pricing.fuel_pct){ const a=base*ch.pricing.fuel_pct; items.push({name:`燃油(${(ch.pricing.fuel_pct*100).toFixed(1)}%)`, amt:a}); total+=a; }
-      // 品类附加(箱包/鞋/服装)
-      const catRate = ch.sur && ch.sur.cat ? (ch.sur.cat['箱包皮革'] || ch.sur.cat['普货'] || 0) : 0;
-      if(catRate){ const a=catRate*totalBw; items.push({name:`品类附加(${catRate}/kg × ${totalBw.toFixed(2)}kg)`, amt:a}); total+=a; }
-      // 清关费
-      if(ch.sur && ch.sur.declare){ items.push({name:`清关费(${ch.sur.declare}/票)`, amt:ch.sur.declare}); total+=ch.sur.declare; }
-      // 非FBA附加
-      if(ch.sur && ch.sur.nonfba){ const a=Math.max((ch.sur.nonfba.kg||0)*totalBw, ch.sur.nonfba.min||0); items.push({name:`非FBA附加(${ch.sur.nonfba.kg||0}/kg, 最低${ch.sur.nonfba.min||0})`, amt:a}); total+=a; }
-      // 2B 地址类型附加(FBA 仓地址通常有/无附加, 商业地址 vs 住宅地址)
-      if(b2bType && ch.sur && ch.sur[b2bType]){ const v=ch.sur[b2bType]; items.push({name:`${b2bType}附加`, amt:v}); total+=v; }
-      // 磁检费(B2B)
-      if(ch.surcharges && ch.surcharges.magnetic_per_shipment && sku.battery){ const a=ch.surcharges.magnetic_per_shipment; items.push({name:`磁检费(${a}/票)`, amt:a}); total+=a; }
-      // 偏远附加 (per kg, 最低)
-      if(ch.surcharges && ch.surcharges.remote_per_kg){ const a=Math.max(ch.surcharges.remote_per_kg*totalBw, ch.surcharges.remote_min||0); items.push({name:`偏远附加(${ch.surcharges.remote_per_kg}/kg, 最低${ch.surcharges.remote_min||0})`, amt:a}); total+=a; }
-      // 超尺寸/超重(per event)
-      if(ch.surcharges && ch.surcharges.oversize_per_event){ items.push({name:`超尺寸附加(${ch.surcharges.oversize_per_event}/件)`, amt:ch.surcharges.oversize_per_event}); total+=ch.surcharges.oversize_per_event; }
-      if(ch.surcharges && ch.surcharges.heavy_per_event){ items.push({name:`超重附加(${ch.surcharges.heavy_per_event}/件)`, amt:ch.surcharges.heavy_per_event}); total+=ch.surcharges.heavy_per_event; }
-      // 商业清关费
-      if(ch.surcharges && ch.surcharges.commercial_clearance_cad){ const a=ch.surcharges.commercial_clearance_cad*(ch.pricing.fx||1); items.push({name:`商业清关费(上限 ${ch.surcharges.commercial_clearance_cad} CAD)`, amt:a}); total+=a; }
+      const sur = co.sur || ch.sur || {};
+      // ★ 品类附加(按货物类型)
+      const catRate = sur.cat ? (sur.cat[cargoType] || sur.cat['普货'] || 0) : 0;
+      if(catRate){ const a=catRate*totalBw; items.push({name:`品类附加(${cargoType} ${catRate}/kg × ${totalBw.toFixed(2)}kg)`, amt:a}); total+=a; }
+      // ★ 非FBA附加(按地址类型)
+      if(sur.nonfba){
+        let nfbAmt=0; let nfbLabel='';
+        if(b2bAddrType==='FBA'){ nfbAmt=0; nfbLabel='FBA 免收'; }
+        else if(b2bAddrType==='非FBA'){ nfbAmt=sur.nonfba.per_kg?sur.nonfba.per_kg*totalBw:0; nfbLabel='非FBA商业地址'; if(nfbAmt===0) nfbLabel='非FBA免附加'; }
+        else if(b2bAddrType==='住宅'){ nfbAmt=sur.nonfba.residential||(sur.nonfba.per_kg?sur.nonfba.per_kg*totalBw:0); nfbLabel='住宅地址'; }
+        if(nfbAmt>0){ items.push({name:`非FBA附加(${nfbLabel} ${nfbAmt.toFixed(2)})`, amt:nfbAmt}); total+=nfbAmt; }
+      }
+      // ★ 报关费
+      if(sur.declare){
+        if(typeof sur.declare === 'object'){
+          const baseFee = sur.declare.base||0;
+          const opFee = (sur.declare.per_kg_op||0) * totalBw;
+          items.push({name:`报关费(基础 ${baseFee}/票 + 操作 ${sur.declare.per_kg_op||0}/kg × ${totalBw.toFixed(2)}kg)`, amt:baseFee+opFee}); total+=baseFee+opFee;
+        } else {
+          items.push({name:`报关费(${sur.declare}/票)`, amt:sur.declare}); total+=sur.declare;
+        }
+      }
+      // ★ 商检费
+      if(sur.inspection){
+        const insp = sur.inspection;
+        const inspKg = sur.inspection_kg ? Math.max(totalBw,1) : totalBw;
+        const inspAmt = Math.max((insp.per_kg||0)*inspKg, insp.min||0);
+        if(inspAmt>0){ items.push({name:`商检费(${(insp.per_kg||0)}/kg, 最低${insp.min||0})`, amt:inspAmt}); total+=inspAmt; }
+      }
+      // ★ 磁检费 (B2B)
+      if(sur.magnetic && (sku.battery || (cargoType && /带磁|磁/.test(cargoType)))){ const a=Math.max((sur.magnetic.per_kg||0)*totalBw, sur.magnetic.min||0); items.push({name:`磁检费(${a.toFixed(2)})`, amt:a}); total+=a; }
+      // ★ 偏远附加 (per kg, 最低)
+      if(sur.remote){ const a=typeof sur.remote==='object'?Math.max((sur.remote.per_kg||0)*totalBw, sur.remote.min||0):sur.remote; if(a>0){ items.push({name:`偏远附加(${a.toFixed(2)})`, amt:a}); total+=a; } }
+      // ★ 超品名 (per item over 5, 假设 1 个品名)
+      if(sur.over_items && units > 5){ const a = sur.over_items * (units-5); items.push({name:`超品名附加(超 ${units-5} 个品名 × ${sur.over_items})`, amt:a}); total+=a; }
+      // ★ 超尺寸/超重
+      if(sur.oversize && totalBw >= 22.5){ items.push({name:`超尺寸附加(单件≥22.5kg) ${sur.oversize}/件`, amt:sur.oversize}); total+=sur.oversize; }
+      if(sur.overweight && totalBw >= 30){ const ow=typeof sur.overweight==='object'?sur.overweight.per_piece||0:sur.overweight; items.push({name:`超重附加(单件≥30kg) ${ow}/件`, amt:ow}); total+=ow; }
       // DDP含税跳过
       total *= (ch.pricing.fx||1);
-      return {cw:totalBw, items, total, transit:ch.decision?.transit||10};
+      return {cw:totalBw, items, total, transit:ch.decision?.transit||10, region:finalRegion};
     };
     if(mode==="estimate"){
       // 预估：可选渠道（用户挑哪个估哪个，默认第一个入围的）
@@ -675,7 +714,7 @@ function rFreight(){
     out+=`</tbody></table><div class="mut">↑ 红涨绿跌法则仅用于环比；此处为成本升序，绿色=最优。标签不齐（如 DDP vs DDU、divisor 不同）时此处会改出「溢价拆解」提示（见 logic 说明）。</div>`;
     $("#fOut").innerHTML=out;
   };
-  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#aud").onchange=draw; $("#b2bType").onchange=draw; $("#euFx").onchange=draw;
+  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#aud").onchange=draw; $("#b2bType").onchange=draw; $("#acZip").oninput=draw; $("#cargoType").onchange=draw; $("#euFx").onchange=draw;
   document.querySelectorAll('input[name=mode]').forEach(r=> r.onchange=draw);
   $("#run").onclick=draw;
   bindCombo($("#dest"), $("#destList"), displayCountries, draw);
