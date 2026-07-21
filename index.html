@@ -710,7 +710,13 @@ function rConfig(){
           </div></div>`;
       }).join('');
     })()}
-    <div style="margin-top:8px"><button class="act" id="saveCO">保存计费例外</button> <span id="coStat" class="mut"></span></div>`;
+    <div style="margin-top:8px">
+      <button class="act" id="saveCO">✓ 应用并确认</button>
+      <button class="ghost" id="expCO">导出 JSON</button>
+      <button class="ghost" id="impCO">导入 JSON</button>
+      <input type="file" id="impCOFile" style="display:none" accept=".json">
+      <span id="coStat" class="mut"></span>
+    </div>`;
   $("#app").innerHTML=h;
   $("#saveDiv").onclick=()=>{
     const ov={};
@@ -725,6 +731,39 @@ function rConfig(){
   $("#imp").onclick=()=> $("#impFile").click();
   $("#impFile").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ try{ S=JSON.parse(rd.result); saveState(); $("#cfg").value=JSON.stringify(S,null,2); $("#cStat").innerHTML='<span class="ok">✓ 已导入</span>'; }catch(err){ $("#cStat").innerHTML='<span class="err">导入失败：'+err.message+'</span>'; } }; rd.readAsText(f); };
   $("#saveCO").onclick=saveCountryOverrides;
+  $("#expCO").onclick=()=>{
+    const data = localStorage.getItem('jwpei_country_overrides')||'{}';
+    const blob = new Blob([data], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "country_overrides_"+new Date().toISOString().slice(0,10)+".json";
+    a.click();
+    const n = JSON.parse(data);
+    let cnt = 0; Object.values(n).forEach(c=>cnt+=Object.keys(c).length);
+    $("#coStat").innerHTML = '<span class="ok">✓ 已导出 '+cnt+' 条国家例外（保存到本地文件）</span>';
+  };
+  $("#impCO").onclick = ()=>$("#impCOFile").click();
+  $("#impCOFile").onchange = e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const rd = new FileReader();
+    rd.onload = ()=>{
+      try{
+        const data = JSON.parse(rd.result);
+        // 验证结构
+        if(typeof data !== 'object' || Array.isArray(data)) throw new Error('JSON 应为对象 {channelId: {country: {charge_rule?, volumetric_divisor?}}}');
+        localStorage.setItem('jwpei_country_overrides', JSON.stringify(data));
+        applyCountryOverrides(data);
+        syncParcelFromRates();
+        saveState();
+        let cnt=0; Object.values(data).forEach(c=>cnt+=Object.keys(c).length);
+        $("#coStat").innerHTML = '<span class="ok">✓ 已导入 '+cnt+' 条国家例外（覆盖现有）</span>';
+        rConfig(); // 刷新面板
+      }catch(err){
+        $("#coStat").innerHTML = '<span class="err">导入失败：'+err.message+'</span>';
+      }
+    };
+    rd.readAsText(f);
+  };
 }
 
 /* ===================== ⑨ 全渠道比价（W102 真实费率 · 15 渠道） ===================== */
