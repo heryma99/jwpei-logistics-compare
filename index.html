@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784649112";</script>
+<script>window.__BUILD__="1784649810";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -103,9 +103,9 @@
   .combo-item{padding:6px 10px;cursor:pointer;font-size:13px;color:var(--fg)}
   .combo-item:hover,.combo-item.active{background:var(--acc);color:#fff}
 </style>
-  <script src="sku_master.js?v=1784649112"></script>
-  <script src="rates.js?v=1784649112"></script>
-  <script src="cn2iso.js?v=1784649112"></script>
+  <script src="sku_master.js?v=1784649810"></script>
+  <script src="rates.js?v=1784649810"></script>
+  <script src="cn2iso.js?v=1784649810"></script>
 </head>
 <body>
 <header>
@@ -893,21 +893,18 @@ function rFreight(){
       const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${x.r.cw}kg`;
       const diff = idx===0? `<span class="diff-badge best">★ 最优</span>` : `<span class="diff-badge">+¥${(x.r.mustTotal-best).toFixed(2)}</span>`;
       const usCells = x.rt ? x.rt.map(z=>`<td class="mut">¥${z.t.toFixed(0)}</td>`).join('') : ((CUR==='tob' && destIso==='US')?'<td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>':'');
-      // ★ 费用明细：每一项费用独占一行，保留完整公式（rate/kg×kg=金额），B/C 同一套逻辑，供逐项核对算法
-      const feeRow=(it,warn)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;line-height:1.7;${warn?'color:var(--warn,#c80)':''}"><span class="mut" style="${warn?'color:var(--warn,#c80)':''}">${it.name}</span><span style="white-space:nowrap;font-weight:600">¥${it.amt.toFixed(2)}</span></div>`;
-      const bd = `<div style="white-space:normal;margin-top:4px;border-top:1px dashed var(--bd,#3a3a3a);padding-top:4px">`
-        + (x.r.mustItems||[]).map(it=>feeRow(it,false)).join('')
-        + `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;line-height:1.8;border-top:1px solid var(--bd,#3a3a3a);margin-top:3px;padding-top:3px"><b>必收合计</b><b>¥${x.r.mustTotal.toFixed(2)}</b></div>`
-        + `</div>`;
-      const bdMaybe = (x.r.maybeItems&&x.r.maybeItems.length)
-        ? `<div style="white-space:normal;margin-top:4px;padding-top:4px;border-top:1px dashed var(--warn,#c80)"><div class="mut" style="font-size:10px;color:var(--warn,#c80)">⚠️ 可能附加（实报实销，不计入基准）：</div>${x.r.maybeItems.map(it=>feeRow(it,true)).join('')}</div>`
-        : '';
+      // ★ 比价列对齐历史标准(head-freight-models)：大字=全包到手总成本，小字=运费+附加费拆解；不逐项展开（逐项留给预估模式）
+      const baseItem=(x.r.mustItems||[]).find(it=>it.name.includes('基本运费'))||(x.r.mustItems||[])[0];
+      const base=baseItem?baseItem.amt:x.r.mustTotal;
+      const addon=x.r.mustTotal-base;
+      const priceInner=`<div style="font-size:17px;font-weight:800;${idx===0?'color:var(--green)':''}">¥${x.r.mustTotal.toFixed(2)}</div>`
+        + `<div class="mut" style="font-size:11px;line-height:1.5">运费 ¥${base.toFixed(2)}<br>+ 附加费 ¥${addon.toFixed(2)}</div>`;
       out+=`<tr class="${idx===0?"best":""}">
         <td class="mut">${idx+1}</td>
         <td class="c-name"><b>${x.ch.carrier}</b><br><span class="mut">${x.ch.channel}</span></td>
         <td class="c-country mut" title="${cnList.join('、')}">${cnShort}</td>
         <td title="${cwTip}"><b>${x.r.cw.toFixed(2)}</b>kg<br><span class="mut">÷${x.ch.pricing.divisor}</span></td>
-        <td class="price-cell">${bd}${bdMaybe}</td>
+        <td class="price-cell">${priceInner}</td>
         <td>${x.r.transit||'-'}天</td>
         <td>${diff}</td>
         ${usCells}
