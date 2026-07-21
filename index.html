@@ -574,9 +574,8 @@ function rFreight(){
     件数 <input type="number" id="units" value="${defaultUnits}">
     <span id="skuVol" class="mut" style="margin-left:6px"></span>
     目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
-    派送对象 <select id="aud"><option value="2C" ${defaultAud==='2C'?'selected':''}>2C 个人</option><option value="2B" ${defaultAud==='2B'?'selected':''}>2B 商业</option></select>
-    2B 类型 <select id="b2bType"><option value="">不限</option><option value="FBA">FBA 仓</option><option value="非FBA">非FBA(商业/住宅)</option></select>
-    <span class="mut" style="font-size:11px">·2B 渠道在 FBA 仓地址有特殊附加；非FBA 时按非FBA附加/kg 算</span>
+    收货类型 <select id="b2bType"><option value="">不限（2C 个人）</option><option value="FBA">2B · FBA 仓</option><option value="非FBA">2B · 非FBA（商业/住宅）</option></select>
+    <span class="mut" style="font-size:11px">·发 2C 个人选「不限」；发 2B 商业选 FBA/非FBA，渠道在 FBA 仓地址有特殊附加、非FBA 按 非FBA附加/kg 算</span>
     邮编 <input id="acZip" type="text" placeholder="选填→自动识别美西/美中/美东" maxlength="5" style="width:130px" title="美国邮编首位：8/9=美西  4-7=美中  0-3=美东">
     货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option></select>
     EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
@@ -590,7 +589,7 @@ function rFreight(){
     <div id="fOut"></div></div>`;
   $("#app").innerHTML=h;
   const draw=()=>{
-    const skuStr=$("#skuSel").value, units=+$("#units").value, destCn=$("#dest").value, aud=$("#aud").value;
+    const skuStr=$("#skuSel").value, units=+$("#units").value, destCn=$("#dest").value, aud=defaultAud;
     const destIso = isoOfDisplay[destCn] || chineseToIso(destCn) || destCn;
     const sku=items.find(x=>x.sku===skuStr); const mode=$('input[name=mode]:checked').value;
     if(!sku){ $("#fOut").innerHTML='<div class="err">未找到 SKU「'+skuStr+'」，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
@@ -725,7 +724,7 @@ function rFreight(){
     out+=`</tbody></table><div class="mut">↑ 红涨绿跌法则仅用于环比；此处为成本升序，绿色=最优。标签不齐（如 DDP vs DDU、divisor 不同）时此处会改出「溢价拆解」提示（见 logic 说明）。</div>`;
     $("#fOut").innerHTML=out;
   };
-  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#aud").onchange=draw; $("#b2bType").onchange=draw; $("#acZip").oninput=draw; $("#cargoType").onchange=draw; $("#euFx").onchange=draw;
+  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#b2bType").onchange=draw; $("#acZip").oninput=draw; $("#cargoType").onchange=draw; $("#euFx").onchange=draw;
   document.querySelectorAll('input[name=mode]').forEach(r=> r.onchange=draw);
   $("#run").onclick=draw;
   bindCombo($("#dest"), $("#destList"), displayCountries, draw);
