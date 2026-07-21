@@ -113,7 +113,12 @@ const DEF = {
         pricing:{incoterm:"DDU",tax_included:false,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.26,weight_tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],duty_rate:0,vat_rate:0,fx:1},
         fees:[{name:"住宅派送",type:"fixed",value:22},{name:"报关费",type:"fixed",value:35}],
         decision:{transit:5},
-        history:[ {date:"2026-07-01",tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],fuel:0.26,op:35} ] }
+        history:[ {date:"2026-07-01",tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],fuel:0.26,op:35} ] },
+      {carrier:"FedEx",channel:"IP多国(含DDP)",audience:"2B",countries:["US","DE","UK","JP","CA","AU","FR","IT","ES","KR","SG","MY","TH","VN","PH","MX","BR","CL","RU"],max_weight:null,accepted:["普货","带电"],
+        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.385,weight_tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:1.5,rate:300},{kg:2,rate:359},{kg:3,rate:424},{kg:5,rate:639},{kg:10,rate:1118},{kg:20,rate:1600},{kg:30,rate:2200}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"住宅派送",type:"fixed",value:22},{name:"报关费",type:"fixed",value:35}],
+        decision:{transit:5},
+        history:[ {date:"2026-07-01",tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:5,rate:639}],fuel:0.385,op:35} ] }
     ]},
     tob:{ name:"toB 头程", engine:"freight", carriers:[
       {carrier:"云途",channel:"德国空派",audience:"2B",countries:["DE"],max_weight:null,accepted:["普货","带电"],
@@ -215,6 +220,30 @@ function applyCountryOverrides(ov){
     });
   });
 }
+/* 国家名别名：简名↔全名 双向兜底查找（防数据命名不一致导致误淘汰） */
+const COUNTRY_ALIAS = {
+  '沙特阿拉伯':'沙特','沙特':'沙特阿拉伯',
+  '阿拉伯联合酋长国':'阿联酋','阿联酋':'阿拉伯联合酋长国',
+  '美国':'美','美':'美国',
+  '英国':'UK','UK':'英国',
+  '德国':'DE','DE':'德国',
+  '加拿大':'CA','CA':'加拿大',
+  '澳大利亚':'澳洲','澳洲':'澳大利亚',
+  '新西兰':'纽西兰','纽西兰':'新西兰',
+  '韩国':'南韩','南韩':'韩国',
+};
+function findCountryWithAlias(countryMap, destCn){
+  if(!destCn) return {};
+  if(countryMap[destCn] && Object.keys(countryMap[destCn]).length) return countryMap[destCn];
+  // 尝试别名
+  const alias = COUNTRY_ALIAS[destCn];
+  if(alias && countryMap[alias] && Object.keys(countryMap[alias]).length) return countryMap[alias];
+  // 尝试模糊匹配（如"沙特" vs "沙特阿拉伯"）
+  for(const k of Object.keys(countryMap)){
+    if(k && (k.includes(destCn) || destCn.includes(k))) return countryMap[k];
+  }
+  return {};
+}
 /* 添加/删除/保存 per-country 覆盖（全局，供 UI 按钮调用） */
 function addCountryOverride(chId){
   const ov = JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
@@ -288,7 +317,7 @@ function tierRate(tiers, cw){
 function computeFreight(ch, sku, units, destCn, eurFx){
   const p = ch.pricing;
   const cm = ch.countryMap || {};
-  const co = (destCn && cm[destCn]) || {};
+  const co = findCountryWithAlias(cm, destCn);
   const divisor = co.volumetric_divisor || p.divisor;
   const sw = sku.weight * units;
   const vw = volumeWeight(sku.l, sku.w, sku.h, divisor) * units;
@@ -963,7 +992,7 @@ function rAll(){
     RATES.channels.forEach(ch=>{
       const fbox=document.querySelector('.acChk[data-id="'+ch.id+'"]');
       if(fbox && !fbox.checked) return;
-      const co=(ch.countries[country]||{});
+      const co=findCountryWithAlias(ch.countries||{}, country);
       const div=co.volumetric_divisor||ch.volumetric_divisor||10000;   // ★ per-country 除数优先，回退渠道级
       const actualPerBox=w*qty;
       const volPerBox=(bl*bw_*bh)/div;
