@@ -160,6 +160,7 @@ function syncParcelFromRates(){
     const reg=first.brackets&&first.brackets[0]?first.brackets[0].reg:0;
     const live=(c.name||'').includes('带电');
     const inc=(c.incoterm==='DDU')?'DDU':'DDP';
+    const taxMap={}; Object.keys(c.countries||{}).forEach(k=>{ const t=(c.countries[k]||{}).tax; if(t){ const iso=(window.CN2ISO&&(CN2ISO[k.trim()]||CN2ISO[k]))||k; taxMap[iso]=t; } });
     return {
       carrier:(c.carrier||(c.name||'').split(/[-·]/)[0]||'云途'),
       channel:c.name, audience:'2C', countries,
@@ -167,7 +168,7 @@ function syncParcelFromRates(){
       accepted: live?['普货','带电']:['普货'],
       pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:'max', rounding:0.5, min_charge_weight:0.03, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
-      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}]
+      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap
     };
   }).filter(Boolean);
   if(carriers.length) S.modules.parcel.carriers = carriers;
@@ -390,9 +391,17 @@ function rFreight(){
     let out=`<div class="note warn">资格校验（P2 硬约束）：入围 ${eligible.length} 个渠道；淘汰 ${rejected.length} 个。</div>`;
     rejected.forEach(r=> out+=`<div class="err">✗ ${r.ch.carrier}·${r.ch.channel}：淘汰(${r.reasons.join("、")})</div>`);
     if(!eligible.length){ $("#fOut").innerHTML=out; return; }
+    const freight=ch=>{
+      const r0=computeFreight(ch,sku,units);
+      if(ch.taxMap && ch.taxMap[dest]){
+        const tax=(sku.decl||0)*units*ch.taxMap[dest];
+        return {items:[...r0.items,{name:`VAT/DUTY(申报值×${(ch.taxMap[dest]*100).toFixed(0)}%)`,amt:tax}], total:r0.total+tax, cw:r0.cw, transit:r0.transit};
+      }
+      return r0;
+    };
     if(mode==="estimate"){
       // 预估：选 1 个渠道 → 完整费用明细
-      const ch=eligible[0]; const r=computeFreight(ch,sku,units);
+      const ch=eligible[0]; const r=freight(ch);
       out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3><table><thead><tr><th>科目</th><th>金额¥</th></tr></thead><tbody>`;
       r.items.forEach(it=> out+=`<tr><td>${it.name}</td><td>${it.amt.toFixed(2)}</td></tr>`);
       out+=`<tr class="best"><td>到手总成本（Landed Cost）</td><td>¥${r.total.toFixed(2)}</td></tr></tbody></table>
@@ -400,7 +409,7 @@ function rFreight(){
       $("#fOut").innerHTML=out; return;
     }
     // 比价：全候选排序
-    const res=eligible.map(ch=>({ch, r:computeFreight(ch,sku,units)})).sort((a,b)=>a.r.total-b.r.total);
+    const res=eligible.map(ch=>({ch, r:freight(ch)})).sort((a,b)=>a.r.total-b.r.total);
     const best=res[0].total;
     out+=`<h3>横向比价结果（${eligible.length} 渠道 · 同口径到手总成本）</h3>
       <table><thead><tr><th>物流商·渠道</th><th>缴费重</th><th>到手总成本¥</th><th>时效</th><th>差额 vs 最优</th></tr></thead><tbody>`;
@@ -652,6 +661,8 @@ function rAll(){
       const add=co.add||{};
       if(add.war_per_kg){ base+=add.war_per_kg*bw; parts.push(`战争附加费 ${add.war_per_kg}/kg × ${bw.toFixed(2)}kg`); }
       if(add.custom_per_shipment){ base+=add.custom_per_shipment; parts.push(`海关资料处理费 ${add.custom_per_shipment}`); }
+      const taxPct=co.tax||0;
+      if(taxPct){ const boxDecl=decl*(opt.qty||1); const tax=boxDecl*taxPct; base+=tax; parts.push(`VAT/DUTY(申报值×${(taxPct*100).toFixed(0)}%) ${tax.toFixed(2)}`); }
       if(ins) parts.push(`保价 ${ins.toFixed(2)}`);
       const detail=parts.join(' + ')+(ins?` + 保价 ${ins.toFixed(2)}`:'');
       return {cost:base+ins,bw,detail};
@@ -679,7 +690,7 @@ function rAll(){
     const qty=Math.max(1,parseInt($("#acQty").value)||1);
     const boxes=Math.max(1,parseInt($("#acBoxes").value)||1);
     const decl=parseFloat($("#acDecl").value)||0;
-    const opt={insurance:$("#acIns").checked};
+    const opt={insurance:$("#acIns").checked, qty};
     const cargoCat=$("#acCargo")?$("#acCargo").value:'箱包皮革';
     const nonFba=$("#acNonfba")?$("#acNonfba").checked:false;
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
@@ -748,7 +759,7 @@ function rAll(){
     if(below.length) html+=`<div class="mut" style="margin-top:8px">⚠️ 低于起收重量（未计入）：${below.map(b=>`${b.ch.name}（${b.min}kg起）`).join('、')}</div>`;
     if(na.length) html+=`<div class="mut" style="margin-top:4px">该目的国无报价（不在渠道服务范围）：${na.map(n=>n.ch.name).join('、')}</div>`;
     $("#acResults").innerHTML=html;
-    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，B2B 单件不足最低计费重按最低计（中运通达/亚丰美线12kg、亚丰欧线10kg）；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + <b>产品附加费</b>（按货物类型：中运通达欧洲皮革+4·鞋/服装+7，美/加+2；亚丰美线+1，欧线包+7/衣+8）；勾选后再计非FBA(+1/kg)、单独报关(/票)；④ <b>捷邮中东</b>已计入战争附加费(按kg)与海关资料处理费(按票)，但 VAT/DUTY(申报值×比例)未计入；⑤ <b>仍未计入</b>：磁检费、偏远费、超品名费、旺季附加费（按账单实结）。最终以承运商账单为准。';
+    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，B2B 单件不足最低计费重按最低计（中运通达/亚丰美线12kg、亚丰欧线10kg）；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + <b>产品附加费</b>（按货物类型：中运通达欧洲皮革+4·鞋/服装+7，美/加+2；亚丰美线+1，欧线包+7/衣+8）；勾选后再计非FBA(+1/kg)、单独报关(/票)；④ <b>捷邮中东</b>已计入战争附加费(按kg)、海关资料处理费(按票)与 <b>VAT/DUTY(申报值×比例，按目的国税率)</b>；⑤ <b>仍未计入</b>：磁检费、偏远费、超品名费、旺季附加费（按账单实结）。最终以承运商账单为准。';
   }
   $("#acCalc").addEventListener('click',calc);
   function setFilter(act){
