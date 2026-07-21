@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784644255";</script>
+<script>window.__BUILD__="1784644998";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -796,15 +796,15 @@ function rFreight(){
       const minpc = co.min_charge_weight || ch.sur?.minpc || 0;
       const totalBw=Math.max(bw, minpc);
       const tiers = (co.tiers || ch.pricing.weight_tiers || []).slice().sort((a,b)=>(a.min||a.kg||0)-(b.min||b.kg||0));
-      let tier = tiers.find(t=>totalBw <= (t.min||t.kg||0));
-      if(!tier) tier = tiers[tiers.length-1] || {min:0, rate:0};
+      // ★ 重量段命中：min 是「下界」（报价单「12≤W≤51」的 12）。取 weight≥min 的最高档，避免轻段错算进下一档
+      let tier = [...tiers].reverse().find(t=>totalBw >= (t.min||t.kg||0)) || tiers[0] || {min:0, rate:0};
       const rate = tier.rate;
       const base = rate*totalBw;
       const sur = co.sur || ch.sur || {};
       // 命中的重量段区间（让用户核对用了哪个 kg 段的费率）
       const tIdx = tiers.indexOf(tier);
-      const bandLo = tIdx>0 ? (tiers[tIdx-1].min||tiers[tIdx-1].kg||0) : 0;
-      const bandHi = tier.min||tier.kg||0;
+      const bandLo = tier.min||tier.kg||0;
+      const bandHi = (tIdx < tiers.length-1) ? (tiers[tIdx+1].min||tiers[tIdx+1].kg||0) : null;
       const bandLabel = bandHi ? `${bandLo}~${bandHi}kg段` : `${bandLo}kg+段`;
       // ── 必收费用 ──
       const mustItems=[]; let mustTotal=0;
