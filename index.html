@@ -206,7 +206,12 @@ function syncParcelFromRates(){
 function syncTobFromRates(){
   if(!window.RATES||!window.RATES.channels) return;
   const carriers = window.RATES.channels.filter(c=>c.cat==='b2b-air').map(c=>{
-    const countries = (c.dest||[]).map(cn=>{ return (typeof CN2ISO==='object'&&(CN2ISO[cn]||CN2ISO[cn.trim()]||CN2ISO[cn.replace(/\s*\(.*\)$/,'').trim()])) || cn; }).filter(Boolean);
+    let countries = (c.dest||[]).map(cn=>{ return (typeof CN2ISO==='object'&&(CN2ISO[cn]||CN2ISO[cn.trim()]||CN2ISO[cn.replace(/\s*\(.*\)$/,'').trim()])) || cn; }).filter(Boolean);
+    // 美国三区（美西/美中/美东）统一视为 美国：避免资格校验和下拉把区域当国家
+    if(countries.some(x=>['美西','美中','美东'].includes(x))){
+      countries = countries.filter(x=>!['美西','美中','美东'].includes(x));
+      if(!countries.includes('US')) countries.push('US');
+    }
     const first=Object.values(c.countries||{})[0]; if(!first) return null;
     // 把 tiers 转为 weight_tiers 兼容老引擎
     const weight_tiers=(first.tiers||[]).map(t=>({kg:t.min, rate:t.rate}));
@@ -624,14 +629,14 @@ function rFreight(){
     const zip = (document.getElementById('acZip')?.value || '').trim();
     const detectedRegion = postcodeToRegion(zip);
     // 选区域: 用户手动选 / 邮编识别 / 目的国同名
-    const finalRegion = (detectedRegion && (ch?.countries?.[detectedRegion]?.tiers)) ? detectedRegion : destCn;
+    const finalRegion = (detectedRegion && (ch?.regions?.[detectedRegion]?.tiers)) ? detectedRegion : destCn;
     const computeAll=(ch)=>{
       // ②③(非b2b):用统一引擎
       if(ch.cat!=='b2b-air') return computeFreight(ch, sku, units, destCn, eurFx);
       // ④ 头程(B2B):独立计算,完整费用展开
       const items=[];
       // 选 region: 如果 ch 有美西/美中/美东, 用 finalRegion; 否则用 destCn
-      const co = ch.countries[finalRegion] || ch.countries[destCn] || Object.values(ch.countries||{})[0] || {};
+      const co = ch.regions?.[finalRegion] || ch.regions?.[destCn] || Object.values(ch.regions||{})[0] || {};
       // B2B 总重
       const sw=sku.weight*units, vw=volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor||co.divisor||6000)*units;
       const bw=Math.max(sw,vw);
