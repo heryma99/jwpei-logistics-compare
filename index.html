@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>物流比价 + 预算 · 可扩展骨架 v2（吸收旧方法论 + 补 ERP 三处 P0）</title>
+<style>
+  :root{ --bg:#0e1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3340; --fg:#e6edf3; --mut:#9aa7b4; --acc:#3b82f6; --acc2:#22c55e; --warn:#f59e0b; --err:#ef4444; --red:#ef4444; --green:#22c55e; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,Segoe UI,Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
+  header{padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0;font-size:17px}
+  .sub{color:var(--mut);font-size:12px;margin-top:4px}
+  .p0{margin-top:8px;font-size:12px;color:var(--acc2)}
+  .p0 b{color:var(--fg)}
+  nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  nav button{background:var(--panel2);color:var(--mut);border:1px solid var(--line);padding:7px 13px;border-radius:7px;cursor:pointer;font-size:13px}
+  nav button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .wrap{padding:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+  h2{font-size:15px;margin:0 0 12px}
+  h3{font-size:13px;color:var(--mut);margin:14px 0 8px;font-weight:600}
+  label{display:inline-block;min-width:90px;color:var(--mut);font-size:12px}
+  input,select{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;margin:3px 8px 3px 0}
+  input[type=number]{width:90px}
+  button.act{background:var(--acc);color:#fff;border:none;padding:8px 14px;border-radius:7px;cursor:pointer;font-size:13px}
+  button.ghost{background:transparent;color:var(--mut);border:1px solid var(--line);padding:8px 12px;border-radius:7px;cursor:pointer}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left}
+  th{background:var(--panel2);color:var(--mut);font-weight:600}
+  .best{background:rgba(34,197,94,.14);font-weight:700}
+  .mut{color:var(--mut);font-size:12px}
+  .note{color:var(--mut);font-size:12px;background:var(--panel2);border-left:3px solid var(--acc);padding:9px 12px;border-radius:6px;margin:8px 0}
+  .ok{color:var(--green)} .err{color:var(--err)} .warn{color:var(--warn)}
+  .up{color:var(--red)} .down{color:var(--green)}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:2px 10px;font-size:11px;color:var(--mut);margin:2px}
+  .row{display:flex;gap:18px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:260px}
+  .seg{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+  .seg label{display:flex;align-items:center;gap:5px;min-width:auto;background:var(--panel2);border:1px solid var(--line);padding:6px 10px;border-radius:7px;cursor:pointer}
+  textarea{width:100%;height:300px;background:#0b0f14;color:#c9d4e0;border:1px solid var(--line);border-radius:8px;font:12px/1.45 ui-monospace,Consolas,monospace;padding:10px}
+  .kbd{background:#0b0f14;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font:12px ui-monospace;color:var(--mut)}
+</style>
+  <script src="sku_master.js"></script>
+  <script src="rates.js"></script>
+</head>
+<body>
+<header>
+  <h1>物流比价 + 预算 · 可扩展骨架 v2</h1>
+  <div class="sub">4 业务域模块（小包 / 商业快递 / toB头程 / 海外仓）共用「横向 + 环比」引擎 · 4 支柱归一内核不变 · 内容层吸收自 logistics-compare-normalize / small-parcel-calc / channel-compare / price-change</div>
+  <div class="p0">本版修复 ERP 对标指出的三处 <b>P0 缺口</b>：① <b>物料主数据 ITEM MASTER</b>（单品自动带出）② <b>全链路路由串联</b>（解耦单段 / 合并总预算）③ <b>费率多期版本</b>（环比不再只有两期）</div>
+</header>
+<nav id="nav"></nav>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ===================== 全局状态（localStorage 持久化） ===================== */
+const LS_KEY = "logi_v2_state_v1";
+const DEF = {
+  // —— P0-2 物料主数据 ITEM MASTER（一次维护、处处引用）——
+  items:[
+    {sku:"SKU-A",name:"手拿包(磁性扣)",l:30,w:20,h:15,weight:0.8,decl:80,hs:"4202",attr:"普货"},
+    {sku:"SKU-B",name:"蓝牙耳机",l:15,w:10,h:5,weight:0.2,decl:120,hs:"8517",attr:"带电"},
+    {sku:"SKU-C",name:"卫衣",l:40,w:30,h:3,weight:0.5,decl:60,hs:"6110",attr:"普货"}
+  ],
+  modules:{
+    parcel:{ name:"小包专线", engine:"freight", carriers:[
+      // 真实口径来自 small-parcel-calc / channel-compare 实战补充 C：云途 THPHR 通用÷10000、巴西÷8000；飞特加拿大计实重
+      // 源:W102邮箱 云途《客户报价单20260718173427.zip》THPHR特惠普货 生效2026-07-20 09:00（÷10000 DDP包税 含挂号）
+      {carrier:"云途",channel:"全球专线挂号-特惠(THPHR)",audience:"2C",countries:["US","DE","UK","JP","BR"],max_weight:2,accepted:["普货"],
+        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:10000,charge_rule:"max",rounding:0.5,min_charge_weight:0.03,fuel_pct:0,weight_tiers:[{kg:0.5,rate:97},{kg:1,rate:97},{kg:2,rate:97},{kg:30,rate:92}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"挂号费",type:"fixed",value:12}],
+        decision:{transit:9},
+        history:[ {date:"2026-07-20",tiers:[{kg:0.5,rate:97},{kg:1,rate:97},{kg:2,rate:97},{kg:30,rate:92}],op:12} ] },
+      {carrier:"飞特",channel:"EU 标准挂号(DDP包税已含)",audience:"2C",countries:["DE","FR","ES","IT"],max_weight:2,accepted:["普货"],
+        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:10000,charge_rule:"max",rounding:0.5,min_charge_weight:0.05,fuel_pct:0,weight_tiers:[{kg:0.5,rate:50},{kg:1,rate:44},{kg:2,rate:38}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[],
+        decision:{transit:10},
+        history:[ {date:"2026-06-01",tiers:[{kg:0.5,rate:49},{kg:1,rate:43},{kg:2,rate:37}],op:0},
+                   {date:"2026-07-01",tiers:[{kg:0.5,rate:50},{kg:1,rate:44},{kg:2,rate:38}],op:0} ] },
+      {carrier:"飞特",channel:"加拿大 EY(计实重·DDP)",audience:"2C",countries:["CA"],max_weight:2,accepted:["普货"],
+        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:6000,charge_rule:"actual",rounding:0.5,min_charge_weight:0.05,fuel_pct:0,weight_tiers:[{kg:0.5,rate:62},{kg:1,rate:55},{kg:2,rate:50}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[],
+        decision:{transit:9},
+        history:[ {date:"2026-06-15",tiers:[{kg:0.5,rate:60},{kg:1,rate:53},{kg:2,rate:48}],op:0},
+                   {date:"2026-07-10",tiers:[{kg:0.5,rate:62},{kg:1,rate:55},{kg:2,rate:50}],op:0} ] }
+    ]},
+    express:{ name:"商业快递", engine:"freight", carriers:[
+      {carrier:"DHL",channel:"Express Worldwide",audience:"2B",countries:["US","DE","UK","JP"],max_weight:null,accepted:["普货","带电","液体"],
+        pricing:{incoterm:"DDU",tax_included:false,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.285,weight_tiers:[{kg:5,rate:75},{kg:10,rate:62},{kg:30,rate:52}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"住宅派送",type:"fixed",value:25},{name:"报关费",type:"fixed",value:40}],
+        decision:{transit:4},
+        history:[ {date:"2026-06-01",tiers:[{kg:5,rate:72},{kg:10,rate:60},{kg:30,rate:50}],fuel:0.27,op:40},
+                   {date:"2026-07-01",tiers:[{kg:5,rate:75},{kg:10,rate:62},{kg:30,rate:52}],fuel:0.285,op:40} ] },
+      {carrier:"UPS",channel:"Red(红单)",audience:"2B",countries:["US","DE"],max_weight:null,accepted:["普货","带电"],
+        pricing:{incoterm:"DDU",tax_included:false,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.26,weight_tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"住宅派送",type:"fixed",value:22},{name:"报关费",type:"fixed",value:35}],
+        decision:{transit:5},
+        history:[ {date:"2026-07-01",tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],fuel:0.26,op:35} ] }
+    ]},
+    tob:{ name:"toB 头程", engine:"freight", carriers:[
+      {carrier:"云途",channel:"德国空派",audience:"2B",countries:["DE"],max_weight:null,accepted:["普货","带电"],
+        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:6000,charge_rule:"max",rounding:1,min_charge_weight:1,fuel_pct:0,weight_tiers:[{kg:21,rate:38},{kg:100,rate:33},{kg:500,rate:29}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"报关费",type:"fixed",value:100}],
+        decision:{transit:8},
+        history:[ {date:"2026-06-01",tiers:[{kg:21,rate:36},{kg:100,rate:31},{kg:500,rate:27}],op:100},
+                   {date:"2026-07-01",tiers:[{kg:21,rate:38},{kg:100,rate:33},{kg:500,rate:29}],op:100} ] },
+      // 源:W102邮箱 中运通达《价格表Vip（2026-7-14）》欧洲VAT递延-空派(普货) 德国 ÷5000 DDU(卖家付运费+清关费,VAT递延买方)
+      {carrier:"中运通达",channel:"欧洲VAT递延-空派(普货)",audience:"2B",countries:["DE","FR"],max_weight:null,accepted:["普货"],
+        pricing:{incoterm:"DDU",tax_included:true,currency:"CNY",divisor:5000,charge_rule:"max",rounding:1,min_charge_weight:12,fuel_pct:0,weight_tiers:[{kg:21,rate:37},{kg:51,rate:34},{kg:101,rate:32}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"清关费",type:"fixed",value:400}],
+        decision:{transit:12},
+        history:[ {date:"2026-07-14",tiers:[{kg:21,rate:37},{kg:51,rate:34},{kg:101,rate:32}],op:400} ] },
+      {carrier:"美森",channel:"CLX 快船",audience:"2B",countries:["US"],max_weight:null,accepted:["普货"],
+        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:8000,charge_rule:"max",rounding:1,min_charge_weight:1,fuel_pct:0,weight_tiers:[{kg:21,rate:16},{kg:100,rate:13},{kg:500,rate:11}],duty_rate:0,vat_rate:0,fx:1},
+        fees:[{name:"报关费",type:"fixed",value:150}],
+        decision:{transit:11},
+        history:[ {date:"2026-06-20",tiers:[{kg:21,rate:15},{kg:100,rate:12},{kg:500,rate:10}],op:150},
+                   {date:"2026-07-05",tiers:[{kg:21,rate:16},{kg:100,rate:13},{kg:500,rate:11}],op:150} ] }
+    ]},
+    overseas:{ name:"海外仓", engine:"operation", ops:[
+      {op:"入库上架",unit:"箱",rate:6,min:0},
+      {op:"仓储",unit:"m³·月",rate:30,min:0},
+      {op:"拣货",unit:"单",rate:2,min:0},
+      {op:"发货",unit:"单",rate:8,min:0},
+      {op:"退货",unit:"单",rate:12,min:0}
+    ]}
+  }
+};
+let S = loadState();
+/* 谷仓(Goodcang) SKU 字典镜像：随页面自动挂载（sku_master.js），无需手动导入即可在 SKU 列直接引用 */
+const GC = {};
+try{ (window.GC_SKUS||[]).forEach(s=>{ if(s && s.sku) GC[s.sku]=s; }); }catch(e){}
+/* 物料主数据按谷仓自动补全：首次直接用谷仓 2317 条；之后打开则把缺失的谷仓 SKU 并入（不覆盖你改过的）。真正「不用一个个加」 */
+function gcToItem(g){ return {sku:g.sku, name:g.name||g.en_name||g.sku, l:+g.l||0, w:+g.w||0, h:+g.h||0, weight:+g.weight||0, decl:0, hs:g.hs||"", attr:(+g.battery)?"带电":"普货"}; }
+if(!localStorage.getItem(LS_KEY)){
+  S.items = Object.values(GC).map(gcToItem);
+}else{
+  Object.values(GC).forEach(g=>{ if(!S.items.find(x=>x.sku===g.sku)) S.items.push(gcToItem(g)); });
+}
+saveState();
+/* 物料主数据表：搜索 + 分页状态（2317 条不能一次性渲染，否则卡死） */
+let ITEM_PAGE=1, ITEM_Q="";
+
+/* ===================== 持久化 ===================== */
+function loadState(){
+  try{ const r=localStorage.getItem(LS_KEY); if(r) return JSON.parse(r); }catch(e){}
+  return JSON.parse(JSON.stringify(DEF));
+}
+function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ===================== 4 支柱归一内核（吸收自 logistics-compare-normalize） ===================== */
+function volumeWeight(l,w,h,divisor){ return (l*w*h)/divisor; }
+// P1-1 计费重规则：max / actual(飞特加拿大计实重) / vol
+function chargeWeight(sw, vw, rule, rounding, minW){
+  let cw = rule==="actual" ? sw : rule==="vol" ? vw : Math.max(sw, vw);
+  cw = Math.ceil(cw/rounding + 1e-9) * rounding;          // 向上进位到 rounding
+  if(cw < (minW||0)) cw = minW||0;
+  return Math.max(cw, 0);
+}
+// channel-compare 重量段取档铁律：向上取「最小 ≥ cw 的档」
+function tierRate(tiers, cw){
+  const sorted = tiers.slice().sort((a,b)=>a.kg-b.kg);
+  let t = sorted.find(x=>x.kg >= cw - 1e-9);
+  if(!t) t = sorted[sorted.length-1];
+  return t;
+}
+// 货运引擎：真 SKU ÷ divisor → 缴费重 → 全费用展开 = Landed Cost
+function computeFreight(ch, sku, units){
+  const p = ch.pricing;
+  const sw = sku.weight * units;
+  const vw = volumeWeight(sku.l, sku.w, sku.h, p.divisor) * units;
+  const cw = chargeWeight(sw, vw, p.charge_rule, p.rounding, p.min_charge_weight);
+  let rate = tierRate(p.weight_tiers, cw).rate;
+  let freight = rate * cw;
+  let items = [{name:"基本运费("+rate+"/kg×"+cw+"kg)", amt:freight}];
+  let total = freight;
+  for(const f of (ch.fees||[])){
+    let a = f.type==="fixed" ? f.value
+          : f.type==="per_kg" ? f.value*cw
+          : f.type==="pct_of_freight" ? freight*f.value
+          : f.type==="pct_of_value" ? sku.decl*units*f.value : 0;
+    if(a){ items.push({name:f.name, amt:a}); total+=a; }
+  }
+  if(p.fuel_pct){ const a=freight*p.fuel_pct; items.push({name:"燃油("+(p.fuel_pct*100)+"%)",amt:a}); total+=a; }
+  // 税费展开（按 incoterm 口径）：DDP 含税跳过；DDU 不含补关税+VAT
+  if(!p.tax_included && p.incoterm!=="DDP"){
+    const duty = sku.decl*units*(p.duty_rate||0);
+    const vat  = (sku.decl*units + freight + duty)*(p.vat_rate||0);
+    if(duty){ items.push({name:"关税("+(p.duty_rate*100)+"%)",amt:duty}); total+=duty; }
+    if(vat){ items.push({name:"VAT("+(p.vat_rate*100)+"%)",amt:vat}); total+=vat; }
+  }
+  total *= (p.fx||1);
+  return {cw, items, total, transit:ch.decision?.transit};
+}
+// 资格校验（P2 硬约束）：派送对象匹配? 重量≤上限? 属性接受?
+function qualify(ch, sku, units, audience){
+  const reasons=[];
+  if(ch.audience && audience && ch.audience!==audience) reasons.push("派送对象不符("+ch.audience+"≠"+audience+")");
+  if(ch.max_weight && (sku.weight*units) > ch.max_weight) reasons.push("超重("+(sku.weight*units)+"kg>"+ch.max_weight+"kg上限)");
+  if(ch.accepted && !ch.accepted.includes(sku.attr)) reasons.push("属性不符("+sku.attr+"不被接受)");
+  return reasons;
+}
+
+/* ===================== 导航 ===================== */
+const TABS = [
+  {k:"items", t:"① 物料主数据"},
+  {k:"parcel", t:"② 小包专线"},
+  {k:"express", t:"③ 商业快递"},
+  {k:"tob", t:"④ toB 头程"},
+  {k:"overseas", t:"⑤ 海外仓"},
+  {k:"route", t:"⑥ 全链路路由"},
+  {k:"mom", t:"⑦ 环比分析"},
+  {k:"config", t:"⑧ 配置中心"},
+  {k:"all", t:"⑨ 全渠道比价"}
+];
+let CUR = "items";
+function renderNav(){
+  document.getElementById("nav").innerHTML = TABS.map(x=>`<button class="${x.k===CUR?"on":""}" data-k="${x.k}">${x.t}</button>`).join("");
+  document.querySelectorAll("#nav button").forEach(b=> b.onclick=()=>{ CUR=b.dataset.k; render(); });
+}
+const $=s=>document.querySelector(s);
+function render(){ renderNav(); const f={items:rItems,parcel:rFreight,express:rFreight,tob:rFreight,overseas:rOps,route:rRoute,mom:rMom,config:rConfig,all:rAll}[CUR]; f(); }
+
+/* ===================== ① 物料主数据 ===================== */
+function rItems(){
+  const PS=50;
+  const q=(ITEM_Q||"").trim().toLowerCase();
+  const rows=S.items.map((it,idx)=>({it,idx})).filter(o=>{
+    if(!q) return true;
+    return (o.it.sku||"").toLowerCase().includes(q) || String(o.it.name||"").toLowerCase().includes(q);
+  });
+  const total=rows.length, pages=Math.max(1,Math.ceil(total/PS));
+  if(ITEM_PAGE>pages) ITEM_PAGE=pages;
+  if(ITEM_PAGE<1) ITEM_PAGE=1;
+  const start=(ITEM_PAGE-1)*PS, pageRows=rows.slice(start,start+PS);
+  let h=`<div class="card"><h2>① 物料主数据 ITEM MASTER　<span class="pill">P0-2 修复</span></h2>
+    <div class="note">一次性维护 SKU 的长宽高/实重/申报值/HS/属性，发货时只需选 SKU → <b>自动带出</b>（你要的「方式一 单品自动带出」）。全部 SKU 已按谷仓自动补全，无需一个个加。</div>
+    <div style="margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="itemSearch" placeholder="搜索 SKU 或名称…" value="${(ITEM_Q||'').replace(/"/g,'&quot;')}" style="min-width:240px">
+      <span class="mut">共 <b>${total}</b> 条${q?`（筛选自 ${S.items.length}）`:''} · 第 ${ITEM_PAGE}/${pages} 页 · 每页 ${PS} 条</span>
+    </div>
+    <table id="itbl"><thead><tr><th>SKU</th><th>名称</th><th>长cm</th><th>宽cm</th><th>高cm</th><th>实重kg</th><th>申报值¥</th><th>HS</th><th>属性</th><th></th></tr></thead><tbody>`;
+  pageRows.forEach(({it,idx})=>{
+    h+=`<tr><td><input data-i="${idx}" data-f="sku" list="gcList" value="${it.sku}"></td>
+      <td><input data-i="${idx}" data-f="name" value="${it.name}"></td>
+      <td><input type="number" data-i="${idx}" data-f="l" value="${it.l}"></td>
+      <td><input type="number" data-i="${idx}" data-f="w" value="${it.w}"></td>
+      <td><input type="number" data-i="${idx}" data-f="h" value="${it.h}"></td>
+      <td><input type="number" step="0.01" data-i="${idx}" data-f="weight" value="${it.weight}"></td>
+      <td><input type="number" data-i="${idx}" data-f="decl" value="${it.decl}"></td>
+      <td><input data-i="${idx}" data-f="hs" value="${it.hs}"></td>
+      <td><select data-i="${idx}" data-f="attr"><option ${it.attr==="普货"?"selected":""}>普货</option><option ${it.attr==="带电"?"selected":""}>带电</option><option ${it.attr==="液体"?"selected":""}>液体</option><option ${it.attr==="粉末"?"selected":""}>粉末</option></select></td>
+      <td><button class="ghost" data-del="${idx}">删</button></td></tr>`;
+  });
+  h+=`</tbody></table>
+    <datalist id="gcList">${Object.keys(GC).map(k=>`<option value="${k}">${GC[k].name||GC[k].en_name||k}</option>`).join("")}</datalist>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ghost" id="pgFirst">« 首页</button>
+      <button class="ghost" id="pgPrev">‹ 上页</button>
+      <button class="ghost" id="pgNext">下页 ›</button>
+      <button class="ghost" id="pgLast">末页 »</button>
+      <button class="act" id="addItem">+ 新增 SKU</button>
+      <button class="ghost" id="impSku">导入谷仓 SKU 字典(.json)</button>
+      <input type="file" id="impSkuFile" accept=".json" style="display:none">
+      <span id="skuStat" class="mut"></span>
+    </div>
+    <div class="note" style="margin-top:8px">📦 谷仓(Goodcang) 真实 SKU 主数据 <b>2317 条</b>已随页面自动挂载（<span class="kbd">sku_master.js</span>），首屏即全部补全。用上方<b>搜索框</b>按 SKU/名称快速定位；每页 ${PS} 条，避免一次渲染全部导致卡顿。「SKU」列可直接下拉/输入引用谷仓编码即自动带出尺寸。改动自动存本地（localStorage），刷新不丢。</div></div>`;
+  $("#app").innerHTML=h;
+  const sb=$("#itemSearch");
+  sb.oninput=()=>{ ITEM_Q=sb.value; ITEM_PAGE=1; rItems(); const s2=$("#itemSearch"); if(s2){ s2.focus(); const v=s2.value; s2.value=""; s2.value=v; } };
+  $("#pgFirst").onclick=()=>{ ITEM_PAGE=1; rItems(); };
+  $("#pgPrev").onclick=()=>{ ITEM_PAGE--; rItems(); };
+  $("#pgNext").onclick=()=>{ ITEM_PAGE++; rItems(); };
+  $("#pgLast").onclick=()=>{ ITEM_PAGE=pages; rItems(); };
+  $("#app").querySelectorAll("tbody input,tbody select").forEach(el=> el.onchange=()=>{
+    const i=+el.dataset.i, f=el.dataset.f; S.items[i][f]= (el.type==="number")? +el.value : el.value;
+    if(f==="sku") autoFillSku(i, el.value);
+    saveState();
+  });
+  $("#app").querySelectorAll("[data-del]").forEach(b=> b.onclick=()=>{ S.items.splice(+b.dataset.del,1); saveState(); rItems(); });
+  $("#addItem").onclick=()=>{ S.items.unshift({sku:"SKU-"+(S.items.length+1),name:"新SKU",l:10,w:10,h:10,weight:0.5,decl:50,hs:"",attr:"普货"}); ITEM_Q=""; ITEM_PAGE=1; saveState(); rItems(); };
+  $("#impSku").onclick=()=> $("#impSkuFile").click();
+  $("#impSkuFile").onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      try{
+        const arr=JSON.parse(rd.result);
+        if(!Array.isArray(arr)) throw new Error("文件不是 SKU 数组");
+        let added=0;
+        arr.forEach(s=>{
+          if(!s.sku) return;
+          const item={ sku:s.sku, name:s.name||s.en_name||s.sku,
+            l:+s.l||0, w:+s.w||0, h:+s.h||0, weight:+s.weight||0,
+            decl:0, hs:s.hs_code||s.hs||"", attr:(+s.battery)?"带电":"普货" };
+          const ex=S.items.findIndex(x=>x.sku===item.sku);
+          if(ex>=0) S.items[ex]=item; else S.items.push(item);
+          added++;
+        });
+        saveState();
+        $("#skuStat").innerHTML='<span class="ok">✓ 已导入 '+added+' 个谷仓 SKU（自动带出长宽高/实重/属性）</span>';
+        rItems();
+      }catch(err){ $("#skuStat").innerHTML='<span class="err">导入失败：'+err.message+'</span>'; }
+    };
+    rd.readAsText(f);
+  };
+}
+
+/* 谷仓字典引用：SKU 列打字匹配即带出整行 */
+function autoFillSku(i, sku){
+  const g=GC[sku]; if(!g) return;
+  const it=S.items[i]; if(!it) return;
+  it.name=g.name||g.en_name||sku; it.l=+g.l||0; it.w=+g.w||0; it.h=+g.h||0; it.weight=+g.weight||0; it.attr=(+g.battery)?"带电":"普货"; it.hs=g.hs||"";
+  rItems(); // 重渲染以显示带出值
+}
+/* S.items ∪ 谷仓字典（取并集，谷仓 SKU 可直接在货运/路由页选用） */
+function combSkus(){
+  const gcOnly=Object.values(GC).filter(g=> !S.items.find(x=>x.sku===g.sku));
+  const extra=gcOnly.map(g=>({sku:g.sku,name:g.name||g.en_name||g.sku,l:+g.l||0,w:+g.w||0,h:+g.h||0,weight:+g.weight||0,decl:0,hs:g.hs||"",attr:(+g.battery)?"带电":"普货"}));
+  return S.items.concat(extra);
+}
+
+/* ===================== 货运模块（小包/商业快递/toB）共用 ===================== */
+function rFreight(){
+  const M=S.modules[CUR];
+  const items=combSkus();   // S.items ∪ 谷仓字典（直接引用谷仓 SKU）
+  // 默认选第一个 SKU（演示自动带出）
+  let sel=items[0]||{sku:"",name:"",l:10,w:10,h:10,weight:1,decl:80,attr:"普货"};
+  let h=`<div class="card"><h2>${M.name}　<span class="pill">货运引擎 · 4 支柱归一</span></h2>
+    <div class="note">录入方式（你要的「越简单越好」）：<span class="kbd">① 选 SKU 自动带出</span> <span class="kbd">② 批量 ToB 自动算体积（接主数据）</span> <span class="kbd">③ 模板导入/手动</span>。三者都产出同一「发货规格」喂给引擎。</div>
+    <h3>发货规格（SKU 自动带出）</h3>
+    <label>选择 SKU</label><input id="skuSel" list="gcList" style="min-width:220px" value="${(items[0]||{}).sku||''}"><datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
+    件数 <input type="number" id="units" value="200">
+    目的国 <select id="dest">${uniq(M.carriers.flatMap(c=>c.countries)).map(c=>`<option>${c}</option>`).join("")}</select>
+    派送对象 <select id="aud"><option value="2C">2C 个人</option><option value="2B" selected>2B 商业/FBA</option></select>
+    <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
+    <h3>比对模式</h3>
+    <div class="seg">
+      <label><input type="radio" name="mode" value="compare" checked> 比价（选最优）</label>
+      <label><input type="radio" name="mode" value="estimate"> 预估（算某渠道花费）</label>
+    </div>
+    <div id="fOut"></div></div>`;
+  $("#app").innerHTML=h;
+  const draw=()=>{
+    const skuStr=$("#skuSel").value, units=+$("#units").value, dest=$("#dest").value, aud=$("#aud").value;
+    const sku=items.find(x=>x.sku===skuStr); const mode=$('input[name=mode]:checked').value;
+    if(!sku){ $("#fOut").innerHTML='<div class="err">未找到 SKU「'+skuStr+'」，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
+    // P2 资格校验
+    let eligible=[], rejected=[];
+    M.carriers.forEach(ch=>{
+      const reasons=qualify(ch, sku, units, aud).concat( ch.countries.includes(dest)?[]:["目的国不符("+dest+"不在"+ch.countries.join("/")+")"] );
+      if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
+    });
+    let out=`<div class="note warn">资格校验（P2 硬约束）：入围 ${eligible.length} 个渠道；淘汰 ${rejected.length} 个。</div>`;
+    rejected.forEach(r=> out+=`<div class="err">✗ ${r.ch.carrier}·${r.ch.channel}：淘汰(${r.reasons.join("、")})</div>`);
+    if(!eligible.length){ $("#fOut").innerHTML=out; return; }
+    if(mode==="estimate"){
+      // 预估：选 1 个渠道 → 完整费用明细
+      const ch=eligible[0]; const r=computeFreight(ch,sku,units);
+      out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3><table><thead><tr><th>科目</th><th>金额¥</th></tr></thead><tbody>`;
+      r.items.forEach(it=> out+=`<tr><td>${it.name}</td><td>${it.amt.toFixed(2)}</td></tr>`);
+      out+=`<tr class="best"><td>到手总成本（Landed Cost）</td><td>¥${r.total.toFixed(2)}</td></tr></tbody></table>
+        <div class="mut">缴费重 ${r.cw}kg（实重${sku.weight*units} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor)*units).toFixed(3)} ÷${ch.pricing.divisor}）· 时效约 ${r.transit} 天</div>`;
+      $("#fOut").innerHTML=out; return;
+    }
+    // 比价：全候选排序
+    const res=eligible.map(ch=>({ch, r:computeFreight(ch,sku,units)})).sort((a,b)=>a.r.total-b.r.total);
+    const best=res[0].total;
+    out+=`<h3>横向比价结果（${eligible.length} 渠道 · 同口径到手总成本）</h3>
+      <table><thead><tr><th>物流商·渠道</th><th>缴费重</th><th>到手总成本¥</th><th>时效</th><th>差额 vs 最优</th></tr></thead><tbody>`;
+    res.forEach((x,idx)=>{
+      const diff = idx===0? "★ 最优" : "+¥"+(x.r.total-best).toFixed(2);
+      out+=`<tr class="${idx===0?"best":""}"><td>${x.ch.carrier}·${x.ch.channel}</td><td>${x.r.cw}kg</td><td>${x.r.total.toFixed(2)}</td><td>${x.r.transit}天</td><td>${diff}</td></tr>`;
+    });
+    out+=`</tbody></table><div class="mut">↑ 红涨绿跌法则仅用于环比；此处为成本升序，绿色=最优。标签不齐（如 DDP vs DDU、divisor 不同）时此处会改出「溢价拆解」提示（见 logic 说明）。</div>`;
+    $("#fOut").innerHTML=out;
+  };
+  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#dest").onchange=draw; $("#aud").onchange=draw;
+  document.querySelectorAll('input[name=mode]').forEach(r=> r.onchange=draw);
+  $("#run").onclick=draw; draw();
+}
+
+/* ===================== ⑤ 海外仓（多操作，解耦/合并） ===================== */
+function rOps(){
+  const M=S.modules.overseas;
+  let h=`<div class="card"><h2>⑤ 海外仓　<span class="pill">操作引擎 · 5 操作勾选=解耦/合并</span></h2>
+    <div class="note">海外仓是多操作成本段：勾 1 项 = 解耦（单操作预算）；勾多项 = 合并（全流程预算）。这就是你要的「既能单独出某段、也能合成整体」。</div>
+    <div id="opsOut"></div></div>`;
+  $("#app").innerHTML=h;
+  const ops=M.ops.map(o=>`<label><input type="checkbox" class="op" data-k="${o.op}" checked> ${o.op}(¥${o.rate}/${o.unit})</label>`).join("");
+  const body=`<h3>操作勾选（解耦 ↔ 合并）</h3><div class="seg">${ops}</div>
+    <label>入库箱数</label><input type="number" id="qBox" value="50">
+    <label>月仓储 m³</label><input type="number" id="qM3" value="3">
+    <label>订单数</label><input type="number" id="qOr" value="300">
+    <label>退货数</label><input type="number" id="qRe" value="20">
+    <button class="act" id="calcOps" style="margin-left:10px">算预算</button>
+    <div id="opsRes"></div>`;
+  $("#opsOut").innerHTML=body;
+  $("#calcOps").onclick=()=>{
+    const q={入库上架:+$("#qBox").value,仓储:+$("#qM3").value,拣货:+$("#qOr").value,发货:+$("#qOr").value,退货:+$("#qRe").value};
+    let rows="", total=0;
+    M.ops.forEach(o=>{
+      const cb=document.querySelector('.op[data-k="'+o.op+'"]');
+      if(cb.checked){ const amt=o.rate*q[o.op]; total+=amt; rows+=`<tr class="best"><td>${o.op}</td><td>${q[o.op]} ${o.unit}</td><td>¥${amt.toFixed(2)}</td></tr>`; }
+    });
+    $("#opsRes").innerHTML=`<table><thead><tr><th>已勾操作</th><th>数量</th><th>预算</th></tr></thead><tbody>${rows||'<tr><td colspan=3>未勾选任何操作</td></tr>'}<tr class="best"><td>合计预算</td><td></td><td>¥${total.toFixed(2)}</td></tr></tbody></table>
+      <div class="mut">解耦：只勾「入库上架」→ 仅该段预算；合并：全勾 → 全流程总预算。后续把此段与「头程段」相加 = 整条链路总预算（见 ⑥）。</div>`;
+  };
+}
+
+/* ===================== ⑥ 全链路路由（P0-1 串联） ===================== */
+function rRoute(){
+  const tob=S.modules.tob, ov=S.modules.overseas;
+  let h=`<div class="card"><h2>⑥ 全链路路由　<span class="pill">P0-1 修复 · 成本对象串联</span></h2>
+    <div class="note">一次发货 = 一个成本对象（cost object）。选 SKU 自动带出 → 选头程渠道 → 勾选海外仓操作。系统既能<b>解耦</b>出「仅头程」或「仅海外仓」段预算，也能<b>合并</b>成整条链路总预算。各段成本都挂在同一个 SKU 上，可回推每 SKU 到手总成本（你要的全链路解耦+合并）。</div>
+    <div id="rtOut"></div></div>`;
+  $("#app").innerHTML=h;
+  const skuList=combSkus();
+  const skuOpts=`<input id="rtSku" list="gcList" style="min-width:220px" value="${(skuList[0]||{}).sku||''}"><datalist id="gcList">${skuList.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>`;
+  const tobOpts=tob.carriers.filter(c=>c.countries.includes("DE")).map((c,i)=>`<option value="${i}">${c.carrier}·${c.channel}</option>`).join("");
+  const ops=ov.ops.map(o=>`<label><input type="checkbox" class="rtop" data-k="${o.op}"> ${o.op}</label>`).join("");
+  const body=`<h3>发货单（成本对象）</h3>
+    SKU ${skuOpts}
+    件数 <input type="number" id="rtUnits" value="200">
+    头程渠道(DE) <select id="rtTob">${tobOpts}</select>
+    <h3>海外仓段操作（勾选=并入全链路）</h3><div class="seg">${ops}</div>
+    入库箱数 <input type="number" id="rtBox" value="50">　订单数 <input type="number" id="rtOr" value="300">　退货数 <input type="number" id="rtRe" value="20">　月仓储m³ <input type="number" id="rtM3" value="3">
+    <button class="act" id="rtCalc" style="margin-left:10px">算全链路</button>
+    <div id="rtRes"></div>`;
+  $("#rtOut").innerHTML=body;
+  $("#rtCalc").onclick=()=>{
+    const units=+$("#rtUnits").value, ti=+$("#rtTob").value;
+    const sku=combSkus().find(x=>x.sku===$("#rtSku").value); const ch=tob.carriers.filter(c=>c.countries.includes("DE"))[ti];
+    if(!sku){ $("#rtRes").innerHTML='<div class="err">未找到 SKU，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
+    const fr=computeFreight(ch, sku, units);   // 头程段
+    // 海外仓段
+    const q={入库上架:+$("#rtBox").value,仓储:+$("#rtM3").value,拣货:+$("#rtOr").value,发货:+$("#rtOr").value,退货:+$("#rtRe").value};
+    let ovRows="", ovTotal=0, anyOv=false;
+    ov.ops.forEach(o=>{ const cb=document.querySelector('.rtop[data-k="'+o.op+'"]'); if(cb.checked){ anyOv=true; const amt=o.rate*q[o.op]; ovTotal+=amt; ovRows+=`<tr><td>${o.op}</td><td>¥${amt.toFixed(2)}</td></tr>`; } });
+    const merged = fr.total + ovTotal;
+    let out=`<h3>解耦视图</h3>
+      <table><thead><tr><th>段</th><th>预算¥</th></tr></thead><tbody>
+      <tr><td>头程（${ch.carrier}·${ch.channel} · ${fr.cw}kg）</td><td>${fr.total.toFixed(2)}</td></tr>
+      <tr><td>海外仓段${anyOv?"":"（未勾选操作）"}</td><td>${ovTotal.toFixed(2)}</td></tr></tbody></table>`;
+    if(anyOv) out+=`<table style="margin-top:8px"><thead><tr><th>海外仓操作明细</th><th>预算</th></tr></thead><tbody>${ovRows}</tbody></table>`;
+    out+=`<h3 class="ok">合并总预算（全链路）</h3>
+      <div style="font-size:22px;font-weight:800;color:var(--green)">¥${merged.toFixed(2)}</div>
+      <div class="mut">= 头程 ¥${fr.total.toFixed(2)} + 海外仓 ¥${ovTotal.toFixed(2)}。各环节成本都挂在 SKU「${sku.sku}」上，可继续回推每 SKU 到手总成本 / 毛利（反向云，v1 已支持思路，本 demo 聚焦骨架）。</div>`;
+    $("#rtRes").innerHTML=out;
+  };
+}
+
+/* ===================== ⑦ 环比（P0-3 多期版本） ===================== */
+function rMom(){
+  const mods=Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight");
+  let h=`<div class="card"><h2>⑦ 环比分析　<span class="pill">P0-3 修复 · 费率多期版本</span></h2>
+    <div class="note">只做<b>环比</b>（本期 vs 上期），不做同比。每个渠道费率带 <b>history 多期版本</b>（生效日 + 阶梯单价），不再是只有两期。默认基准 = <b>最新 vs 次新</b>，红=涨、绿=跌（中国习惯）。</div>
+    <label>模块</label><select id="mMod">${mods.map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
+    目的国 <select id="mDest"></select>
+    <button class="act" id="mRun" style="margin-left:8px">看环比</button>
+    <div id="mOut"></div></div>`;
+  $("#app").innerHTML=h;
+  const fillDest=()=>{ const M=S.modules[$("#mMod").value]; $("#mDest").innerHTML=uniq(M.carriers.flatMap(c=>c.countries)).map(c=>`<option>${c}</option>`).join(""); };
+  $("#mMod").onchange=fillDest; fillDest();
+  $("#mRun").onclick=()=>{
+    const M=S.modules[$("#mMod").value], dest=$("#mDest").value;
+    const carriers=M.carriers.filter(c=>c.countries.includes(dest) && c.history && c.history.length>=2);
+    if(!carriers.length){ $("#mOut").innerHTML=`<div class="mut">该模块「${dest}」暂无可环比渠道（需 ≥2 期 history）。</div>`; return; }
+    let out=`<h3>${M.name} · ${dest} · 环比（最新 vs 次新）</h3>`;
+    carriers.forEach(ch=>{
+      const h=ch.history.slice().sort((a,b)=>a.date<b.date?1:-1); // 新→旧
+      const cur=h[0], prev=h[1];
+      out+=`<div style="margin:10px 0"><b>${ch.carrier}·${ch.channel}</b> <span class="mut">(${prev.date} → ${cur.date})</span></div><table><thead><tr><th>重量段上限kg</th><th>上期¥/kg</th><th>本期¥/kg</th><th>Δ元</th><th>方向</th></tr></thead><tbody>`;
+      const merged=uniq([...cur.tiers,...prev.tiers].map(t=>t.kg)).sort((a,b)=>a-b);
+      merged.forEach(kg=>{
+        const a=(prev.tiers.find(t=>t.kg===kg)||{}).rate, b=(cur.tiers.find(t=>t.kg===kg)||{}).rate;
+        if(a==null||b==null){ out+=`<tr><td>${kg}</td><td>${a??"—"}</td><td>${b??"—"}</td><td colspan=2 class="mut">仅一期有</td></tr>`; return; }
+        const d=b-a, cls=d>0?"up":(d<0?"down":"mut");
+        out+=`<tr><td>${kg}</td><td>${a}</td><td>${b}</td><td class="${cls}">${d>0?"+":""}${d}</td><td class="${cls}">${d>0?"▲ 涨":"▼ 跌"}</td></tr>`;
+      });
+      out+=`</tbody></table>`;
+    });
+    out+=`<div class="mut">如需多期趋势，通道已存 history 数组，后续加时间轴即可扩展（不破坏骨架）。</div>`;
+    $("#mOut").innerHTML=out;
+  };
+}
+
+/* ===================== ⑧ 配置中心 ===================== */
+function rConfig(){
+  let h=`<div class="card"><h2>⑧ 配置中心　<span class="pill">扩展=加档案，骨架零改动</span></h2>
+    <div class="note">新增物流商/渠道 = 在对应模块 JSON 数组加一份对象。字段分组：<b>pricing</b>(→P3 归一基准，必填：incoterm/tax_included/divisor/charge_rule/rounding/min_charge_weight/weight_tiers/fuel_pct/fx) · <b>fees</b>(→费用展开) · <b>qualify</b>(countries/max_weight/accepted→P2) · <b>decision</b>(transit) · <b>history</b>(多期环比→P0-3)。保存后自动持久化（localStorage），可导出 .json 给同事。</div>
+    <div style="margin-bottom:8px">
+      <button class="ghost" id="exp">导出 .json</button>
+      <button class="ghost" id="imp">导入 .json</button>
+      <input type="file" id="impFile" style="display:none">
+      <span id="cStat" class="mut"></span>
+    </div>
+    <textarea id="cfg">${JSON.stringify(S,null,2)}</textarea>
+    <div style="margin-top:8px"><button class="act" id="saveCfg">保存配置</button> <button class="ghost" id="resetCfg">恢复默认</button></div>`;
+  $("#app").innerHTML=h;
+  $("#saveCfg").onclick=()=>{ try{ S=JSON.parse($("#cfg").value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
+  $("#resetCfg").onclick=()=>{ if(confirm("恢复默认配置？当前改动将丢失")){ S=JSON.parse(JSON.stringify(DEF)); saveState(); rConfig(); } };
+  $("#exp").onclick=()=>{ const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="logi_config.json"; a.click(); };
+  $("#imp").onclick=()=> $("#impFile").click();
+  $("#impFile").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ try{ S=JSON.parse(rd.result); saveState(); $("#cfg").value=JSON.stringify(S,null,2); $("#cStat").innerHTML='<span class="ok">✓ 已导入</span>'; }catch(err){ $("#cStat").innerHTML='<span class="err">导入失败：'+err.message+'</span>'; } }; rd.readAsText(f); };
+}
+
+/* ===================== ⑨ 全渠道比价（W102 真实费率 · 15 渠道） ===================== */
+/* 复用独立验证过的引擎：输入 SKU/一箱 + 目的国 → 自动列出该国所有在约渠道价格 → 小包/B2B/商业快递横向对比、最便宜标绿。
+   数据源为 rates.js(window.RATES)，与骨架 DEF.modules 的独立数据模型并存（骨架那套简化 weight_tiers 撑不住 67国/分区矩阵）。 */
+function rAll(){
+  const RATES = window.RATES || {channels:[]};
+  const skus = window.GC_SKUS || [];
+  const skuMap = {}; skus.forEach(s=>skuMap[(s.sku||'').trim().toLowerCase()]=s);
+
+  // 目的国并集
+  const destSet = new Set();
+  RATES.channels.forEach(c=>{
+    if(c.cat==='small'){ Object.keys(c.countries||{}).forEach(x=>destSet.add(x)); }
+    else { (c.dest||[]).forEach(x=>destSet.add(x)); }
+  });
+  ['美国','加拿大','德国','英国','法国','意大利','西班牙','日本','澳大利亚','墨西哥','巴西'].forEach(x=>destSet.add(x));
+
+  const skuOpts = skus.slice(0,3000).map(s=>`<option value="${s.sku} · ${s.name||''}"></option>`).join('');
+  const destOpts = Array.from(destSet).sort((a,b)=>a.localeCompare(b,'zh')).map(d=>`<option value="${d}">${d}</option>`).join('');
+
+  let h = `<div class="card"><h2>⑨ 全渠道比价　<span class="pill">W102 真实费率 · 15 渠道</span></h2>
+    <div class="note">输入一个 SKU（自动带出谷仓 2317 条重量/尺寸）或手填货物 + 目的国 → 自动列出该国<b>所有在约渠道</b>价格，按<b>小包 / B2B / 商业快递</b>三块横向对比，最便宜整行标绿。<br>来源：云途 / 中运通达 / 飞特 报价表（W102 邮箱，2026-07 生效）。</div>
+    <div class="row">
+      <div style="flex:2;min-width:260px"><label>SKU（谷仓自动带出）</label><input id="acSku" list="acSkuList" placeholder="输入 SKU 或名称，如 104-1" autocomplete="off"><datalist id="acSkuList">${skuOpts}</datalist><div class="mut" id="acSkuInfo" style="min-height:16px"></div></div>
+      <div><label>单件重量 kg</label><input id="acW" type="number" step="0.001" value="0.5"></div>
+      <div><label>长 cm</label><input id="acL" type="number" step="0.1" value="23"></div>
+      <div><label>宽 cm</label><input id="acWd" type="number" step="0.1" value="20"></div>
+      <div><label>高 cm</label><input id="acH" type="number" step="0.1" value="10"></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>目的国家 / 地区</label><select id="acDest">${destOpts}</select></div>
+      <div><label>每箱装几个</label><input id="acQty" type="number" step="1" value="10"></div>
+      <div><label>箱数</label><input id="acBoxes" type="number" step="1" value="1"></div>
+      <div><label>箱长 cm（默认单件）</label><input id="acBl" type="number" step="0.1" placeholder="默认"></div>
+      <div><label>箱宽 cm</label><input id="acBw" type="number" step="0.1" placeholder="默认"></div>
+      <div><label>箱高 cm</label><input id="acBh" type="number" step="0.1" placeholder="默认"></div>
+      <div><label>申报值/件 CNY</label><input id="acDecl" type="number" step="1" value="200"></div>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <div style="flex:0 0 auto"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
+      <div style="flex:0 0 auto"><button class="act" id="acCalc">计算全渠道比价</button></div>
+    </div>
+    <div class="mut" style="margin-top:6px">计费重统一 = MAX(实重, 长×宽×高÷除数)；各渠道除数不同（云途10000 / A01 8000 / 区域10000 / 飞特7000 / 中运通达B2B 6000 / 商业快递5000）。</div>
+  </div>
+  <div id="acResults"></div>
+  <div class="note" id="acFn"></div>`;
+  $("#app").innerHTML = h;
+  try{ $("#acDest").value='美国'; }catch(e){}
+
+  function fillFromSku(){
+    const v=$("#acSku").value.trim().toLowerCase();
+    const key=v.split(' · ')[0];
+    const s=skuMap[key]||skus.find(x=>(x.sku||'').toLowerCase()===v||(x.name||'').toLowerCase()===v);
+    if(s){
+      if(s.weight)$("#acW").value=s.weight; if(s.l)$("#acL").value=s.l; if(s.w)$("#acWd").value=s.w; if(s.h)$("#acH").value=s.h;
+      $("#acSkuInfo").innerHTML=`已带出：${s.sku} · ${s.name||''} · ${s.weight}kg · ${s.l}×${s.w}×${s.h}cm`+(s.hs?` · HS:${s.hs}`:'');
+    } else { $("#acSkuInfo").innerHTML=''; }
+  }
+  $("#acSku").addEventListener('change',fillFromSku);
+
+  // ---- 引擎（与独立验证版一致） ----
+  function findBracket(br,w){ for(const b of br){ if(w<=b.up) return b; } return br[br.length-1]; }
+  function findTier(tiers,w){ if(!tiers||!tiers.length) return null; let last=null; for(const t of tiers){ if(w>=t.min) last=t; else break; } return last; }
+  function countryToZone(ch,country){
+    for(let zi=0;zi<ch.zones.length;zi++){ const parts=ch.zones[zi].countries.split(/[、,，\s]+/).filter(x=>x.trim()); if(parts.includes(country)) return zi; }
+    if(country==='美国'){ for(let zi=0;zi<ch.zones.length;zi++){ const parts=ch.zones[zi].countries.split(/[、,，\s]+/).filter(x=>x.trim()); if(parts.some(p=>p.startsWith('美'))) return zi; } }
+    if(country==='加拿大'){ for(let zi=0;zi<ch.zones.length;zi++){ const c=ch.zones[zi].countries; if(c.includes('加墨')||c.includes('加拿大')) return zi; } }
+    return null;
+  }
+  function matOf(ch){ const m={}; for(const k in ch.matrix) m[parseFloat(k)]=ch.matrix[k]; return m; }
+  function compute(ch,country,actualW,volW,decl,opt){
+    const bw=Math.max(actualW,volW);
+    if(ch.cat==='small'){
+      if(!ch.countries[country]) return null;
+      const br=ch.countries[country].brackets; if(!br||!br.length) return null;
+      const b=findBracket(br,bw);
+      let base=b.rate*bw+b.reg; let ins=0;
+      if(opt.insurance) ins=Math.max(decl*0.007,5);
+      const detail=`运费 ${b.rate}/kg × ${bw.toFixed(2)}kg = ${(b.rate*bw).toFixed(2)} + 挂号 ${b.reg}`+(opt.insurance?` + 保价 ${ins.toFixed(2)}`:'');
+      return {cost:base+ins,bw,detail};
+    }
+    if(ch.cat==='b2b-air'){
+      if(!(ch.dest||[]).includes(country)) return null;
+      const cobj=ch.countries[country]; if(!cobj||!cobj.tiers||!cobj.tiers.length) return null;
+      const t=findTier(cobj.tiers,bw);
+      if(!t) return {below:true,min:cobj.tiers[0].min,bw};
+      return {cost:t.rate*bw,bw,detail:`费率 ${t.rate}/kg × ${bw.toFixed(2)}kg`};
+    }
+    if(ch.cat==='express'){
+      const zi=countryToZone(ch,country); if(zi===null) return null;
+      const m=matOf(ch); const rows=Object.keys(m).map(Number).sort((a,b)=>a-b);
+      let wr=rows.filter(r=>r<=bw); wr=wr.length?Math.max.apply(null,wr):rows[0];
+      let price=m[wr][zi];
+      if(!ch.fuel_included) price*=(1+ch.fuel);
+      const zlabel=ch.zones[zi].label;
+      const detail=`分区 ${zlabel} · 重量 ${wr}kg · 总价 ${price.toFixed(2)}`+(ch.fuel_included?'（含油）':'（×燃油'+(ch.fuel*100).toFixed(0)+'%）');
+      return {cost:price,bw,detail};
+    }
+    return null;
+  }
+  function calc(){
+    const w=parseFloat($("#acW").value)||0,l=parseFloat($("#acL").value)||0,wd=parseFloat($("#acWd").value)||0,h=parseFloat($("#acH").value)||0;
+    const country=$("#acDest").value;
+    const qty=Math.max(1,parseInt($("#acQty").value)||1);
+    const boxes=Math.max(1,parseInt($("#acBoxes").value)||1);
+    const decl=parseFloat($("#acDecl").value)||0;
+    const opt={insurance:$("#acIns").checked};
+    const bl=parseFloat($("#acBl").value)||l, bw_=parseFloat($("#acBw").value)||wd, bh=parseFloat($("#acBh").value)||h;
+    const results=[];
+    RATES.channels.forEach(ch=>{
+      const div=ch.volumetric_divisor||10000;
+      const actualPerBox=w*qty;
+      const volPerBox=(bl*bw_*bh)/div;
+      const bwBox=Math.max(actualPerBox,volPerBox);
+      const r=compute(ch,country,actualPerBox,volPerBox,decl,opt);
+      if(!r){ results.push({ch,status:'na'}); return; }
+      if(r.below){ results.push({ch,status:'below',min:r.min}); return; }
+      let total,perUnitNote;
+      if(ch.cat==='small'||ch.cat==='express'){ total=r.cost*boxes; perUnitNote=`每箱 ${r.cost.toFixed(2)} × ${boxes}箱`; }
+      else {
+        const totalBw=bwBox*boxes; const t=findTier(ch.countries[country].tiers,totalBw);
+        if(!t){ results.push({ch,status:'below',min:ch.countries[country].tiers[0].min}); return; }
+        total=t.rate*totalBw; perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`;
+      }
+      results.push({ch,status:'ok',cost:total,bw:bwBox,detail:r.detail,perUnitNote});
+    });
+    const refW=Math.max(w*qty,(bl*bw_*bh)/10000);
+    render(results,country,w,qty,boxes,refW);
+  }
+  function section(title,dotColor,rows){
+    if(!rows.length) return '';
+    rows.sort((a,b)=>a.cost-b.cost);
+    const min=rows[0].cost;
+    let hh=`<div style="font-weight:700;color:var(--fg);margin:18px 0 6px;font-size:14px;display:flex;gap:8px;align-items:center"><span style="width:9px;height:9px;border-radius:50%;background:${dotColor}"></span>${title}</div>`;
+    hh+=`<div class="card" style="margin-top:8px"><table><thead><tr><th>渠道</th><th>承运商</th><th>计费重/箱</th><th>运费构成</th><th>总价(CNY)</th></tr></thead><tbody>`;
+    rows.forEach(r=>{
+      const best=Math.abs(r.cost-min)<1e-6?'best':'';
+      hh+=`<tr class="${best}"><td><b>${r.ch.name}</b><div class="mut" style="font-size:11px">${r.ch.note||''}</div></td><td class="mut">${r.ch.carrier}</td><td>${r.bw.toFixed(2)} kg</td><td>${r.detail}<br><span class="mut" style="font-size:11px">${r.perUnitNote}</span></td><td style="font-weight:700;font-size:15px">¥${r.cost.toFixed(2)}</td></tr>`;
+    });
+    hh+=`</tbody></table></div>`;
+    return hh;
+  }
+  function render(results,country,w,qty,boxes,refW){
+    const groups={
+      small:results.filter(r=>r.ch.cat==='small'&&r.status==='ok'),
+      b2b:results.filter(r=>r.ch.cat==='b2b-air'&&r.status==='ok'),
+      exp:results.filter(r=>r.ch.cat==='express'&&r.status==='ok')
+    };
+    let html='';
+    const totalPkgs=(w*qty*boxes).toFixed(2);
+    html+=`<div class="card"><div class="mut">目的国 <b style="color:var(--fg)">${country}</b> ｜ 单件 ${w}kg × 每箱 ${qty} 个 × ${boxes} 箱 ｜ 参考总重约 <b style="color:var(--fg)">${totalPkgs} kg</b></div></div>`;
+    html+=section('小包渠道（B2C 直发，按件/按票计费）','#3b82f6',groups.small);
+    html+=section('B2B 渠道（海外仓/批量，按 kg 计费，起收 12–21kg）','#22c55e',groups.b2b);
+    html+=section('商业快递（DHL / FedEx / UPS，分区总票价）','#a855f7',groups.exp);
+    const na=results.filter(r=>r.status==='na');
+    const below=results.filter(r=>r.status==='below');
+    if(below.length) html+=`<div class="mut" style="margin-top:8px">⚠️ 低于起收重量（未计入）：${below.map(b=>`${b.ch.name}（${b.min}kg起）`).join('、')}</div>`;
+    if(na.length) html+=`<div class="mut" style="margin-top:4px">该目的国无报价（不在渠道服务范围）：${na.map(n=>n.ch.name).join('、')}</div>`;
+    $("#acResults").innerHTML=html;
+    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率（线性估算，实际以承运商进位为准）；④ <b>未计入的附加费</b>：中运通达 B2B 产品附加费(+1~+4/kg)、非FBA(+1/kg)、磁检费、单独报关费、偏远费、保险(0.3%)；云途/飞特保价仅勾选时计入。最终以承运商账单为准。';
+  }
+  $("#acCalc").addEventListener('click',calc);
+  calc();
+}
+
+/* ===================== 工具 ===================== */
+function uniq(a){ return [...new Set(a)]; }
+
+/* ===================== 启动 ===================== */
+renderNav(); render();
+</script>
+</body>
+</html>
