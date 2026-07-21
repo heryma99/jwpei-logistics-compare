@@ -50,6 +50,12 @@
   .gitems{display:flex;gap:6px 14px;flex-wrap:wrap}
   .fitem{display:flex;align-items:center;gap:5px;min-width:auto;font-size:12px;color:var(--fg);cursor:pointer}
   .fitem input{width:auto;margin:0}
+  .combo{position:relative;display:inline-block;vertical-align:middle}
+  .combo input{padding-right:26px;min-width:130px}
+  .combo-arrow{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--mut);pointer-events:none}
+  .combo-list{position:absolute;left:0;right:0;top:100%;margin-top:3px;max-height:240px;overflow-y:auto;background:var(--panel2);border:1px solid var(--line);border-radius:7px;z-index:200;display:none;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+  .combo-item{padding:6px 10px;cursor:pointer;font-size:13px;color:var(--fg)}
+  .combo-item:hover,.combo-item.active{background:var(--acc);color:#fff}
 </style>
   <script src="sku_master.js"></script>
   <script src="rates.js"></script>
@@ -363,16 +369,23 @@ function rFreight(){
   const items=combSkus();   // S.items ∪ 谷仓字典（直接引用谷仓 SKU）
   // 默认选第一个 SKU（演示自动带出）
   let sel=items[0]||{sku:"",name:"",l:10,w:10,h:10,weight:1,decl:80,attr:"普货"};
-  const destCountries=sortDestinations(uniq(M.carriers.flatMap(c=>c.countries)));
-  const defaultDest=destCountries.find(x=>["美国","英国","德国"].includes(x))||destCountries[0]||"";
+  // 模块化默认：小包/快递 默认2C、1件；toB 默认2B、200件
+  const isC2 = (CUR==='parcel' || CUR==='express');
+  const defaultAud = isC2 ? '2C' : '2B';
+  const defaultUnits = isC2 ? 1 : 200;
+  // 目的国：内部用 ISO，界面显示中文；对 parcel（已从 RATES 同步为 ISO）做反向映射，其余模块保持原语言
+  const isoCountries = uniq(M.carriers.flatMap(c=>c.countries));
+  const displayCountries = sortDestinations(isoCountries.map(isoToChinese));
+  const isoOfDisplay = {};
+  displayCountries.forEach(cn=>{ isoOfDisplay[cn] = (typeof CN2ISO==='object' && CN2ISO[cn]) || cn; });
+  const defaultDest = displayCountries.find(x=>["美国","英国","德国"].includes(x)) || displayCountries[0] || "";
   let h=`<div class="card"><h2>${M.name}　<span class="pill">货运引擎 · 4 支柱归一</span></h2>
     <div class="note">录入方式（你要的「越简单越好」）：<span class="kbd">① 选 SKU 自动带出</span> <span class="kbd">② 批量 ToB 自动算体积（接主数据）</span> <span class="kbd">③ 模板导入/手动</span>。三者都产出同一「发货规格」喂给引擎。</div>
     <h3>发货规格（SKU 自动带出）</h3>
     <label>选择 SKU</label><input id="skuSel" list="gcList" style="min-width:220px" value="${(items[0]||{}).sku||''}"><datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
-    件数 <input type="number" id="units" value="1">
-    目的国 <input list="destList" id="dest" value="${defaultDest}" placeholder="输入或选择" style="min-width:120px">
-    <datalist id="destList">${destCountries.map(c=>`<option value="${c}">${c}</option>`).join("")}</datalist>
-    派送对象 <select id="aud"><option value="2C">2C 个人</option><option value="2B" selected>2B 商业/FBA</option></select>
+    件数 <input type="number" id="units" value="${defaultUnits}">
+    目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
+    派送对象 <select id="aud"><option value="2C" ${defaultAud==='2C'?'selected':''}>2C 个人</option><option value="2B" ${defaultAud==='2B'?'selected':''}>2B 商业/FBA</option></select>
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
     <h3>比对模式</h3>
     <div class="seg">
@@ -381,14 +394,16 @@ function rFreight(){
     </div>
     <div id="fOut"></div></div>`;
   $("#app").innerHTML=h;
+  bindCombo($("#dest"), $("#destList"), displayCountries, draw);
   const draw=()=>{
-    const skuStr=$("#skuSel").value, units=+$("#units").value, dest=$("#dest").value, aud=$("#aud").value;
+    const skuStr=$("#skuSel").value, units=+$("#units").value, destCn=$("#dest").value, aud=$("#aud").value;
+    const destIso = isoOfDisplay[destCn] || chineseToIso(destCn) || destCn;
     const sku=items.find(x=>x.sku===skuStr); const mode=$('input[name=mode]:checked').value;
     if(!sku){ $("#fOut").innerHTML='<div class="err">未找到 SKU「'+skuStr+'」，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
     // P2 资格校验
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
-      const reasons=qualify(ch, sku, units, aud).concat( ch.countries.includes(dest)?[]:["目的国不符("+dest+"不在"+ch.countries.join("/")+")"] );
+      const reasons=qualify(ch, sku, units, aud).concat( ch.countries.includes(destIso)?[]:["目的国不符("+destCn+"不在"+M.carriers.flatMap(c=>c.countries).filter((v,i,a)=>a.indexOf(v)===i).map(isoToChinese).join("/")+")"] );
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     let out=`<div class="note warn">资格校验（P2 硬约束）：入围 ${eligible.length} 个渠道；淘汰 ${rejected.length} 个。</div>`;
@@ -396,9 +411,9 @@ function rFreight(){
     if(!eligible.length){ $("#fOut").innerHTML=out; return; }
     const freight=ch=>{
       const r0=computeFreight(ch,sku,units);
-      if(ch.taxMap && ch.taxMap[dest]){
-        const tax=(sku.decl||0)*units*ch.taxMap[dest];
-        return {items:[...r0.items,{name:`VAT/DUTY(申报值×${(ch.taxMap[dest]*100).toFixed(0)}%)`,amt:tax}], total:r0.total+tax, cw:r0.cw, transit:r0.transit};
+      if(ch.taxMap && ch.taxMap[destIso]){
+        const tax=(sku.decl||0)*units*ch.taxMap[destIso];
+        return {items:[...r0.items,{name:`VAT/DUTY(申报值×${(ch.taxMap[destIso]*100).toFixed(0)}%)`,amt:tax}], total:r0.total+tax, cw:r0.cw, transit:r0.transit};
       }
       return r0;
     };
@@ -423,7 +438,7 @@ function rFreight(){
     out+=`</tbody></table><div class="mut">↑ 红涨绿跌法则仅用于环比；此处为成本升序，绿色=最优。标签不齐（如 DDP vs DDU、divisor 不同）时此处会改出「溢价拆解」提示（见 logic 说明）。</div>`;
     $("#fOut").innerHTML=out;
   };
-  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#dest").onchange=draw; $("#aud").onchange=draw;
+  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#aud").onchange=draw;
   document.querySelectorAll('input[name=mode]').forEach(r=> r.onchange=draw);
   $("#run").onclick=draw; draw();
 }
@@ -569,8 +584,9 @@ function rAll(){
   });
   ['美国','加拿大','德国','英国','法国','意大利','西班牙','日本','澳大利亚','墨西哥','巴西','沙特阿拉伯','阿联酋','巴林','卡塔尔','科威特','阿曼','以色列'].forEach(x=>destSet.add(x));
 
+  const destItems = sortDestinations(Array.from(destSet));
   const skuOpts = skus.slice(0,3000).map(s=>`<option value="${s.sku} · ${s.name||''}"></option>`).join('');
-  const destOpts = sortDestinations(Array.from(destSet)).map(d=>`<option value="${d}">${d}</option>`).join('');
+  // const destOpts = ...  // 已弃用，改用 combo
 
   function buildFilterHTML(){
     const cats=[['small','小包渠道（B2C 直发）'],['b2b-air','B2B / 海外仓（批量）'],['express','商业快递（DHL / FedEx / UPS）']];
@@ -600,7 +616,7 @@ function rAll(){
       <div><label>高 cm</label><input id="acH" type="number" step="0.1" value="10"></div>
     </div>
     <div class="row" style="margin-top:8px">
-      <div><label>目的国家 / 地区</label><input id="acDest" list="acDestList" placeholder="输入或选择" style="min-width:130px"><datalist id="acDestList">${destOpts}</datalist></div>
+      <div><label>目的国家 / 地区</label><div class="combo"><input id="acDest" type="text" autocomplete="off" placeholder="输入或选择" style="min-width:130px"><span class="combo-arrow">▼</span><div class="combo-list" id="acDestList">${destItems.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div></div>
       <div><label>每箱装几个</label><input id="acQty" type="number" step="1" value="10"></div>
       <div><label>箱数</label><input id="acBoxes" type="number" step="1" value="1"></div>
       <div><label>箱长 cm（默认单件）</label><input id="acBl" type="number" step="0.1" placeholder="默认"></div>
@@ -630,6 +646,7 @@ function rAll(){
   <div class="note" id="acFn"></div>`;
   $("#app").innerHTML = h;
   try{ $("#acDest").value='美国'; }catch(e){}
+  bindCombo($("#acDest"), $("#acDestList"), destItems, calc);
 
   function fillFromSku(){
     const v=$("#acSku").value.trim().toLowerCase();
@@ -785,6 +802,28 @@ function sortDestinations(arr){
   const p = priority.filter(x=>arr.includes(x));
   const rest = arr.filter(x=>!priority.includes(x)).sort((a,b)=>a.localeCompare(b,"zh"));
   return p.concat(rest);
+}
+function buildIso2Cn(){
+  if(window._ISO2CN) return window._ISO2CN;
+  const m={}; if(typeof CN2ISO==='object'){ Object.keys(CN2ISO).forEach(cn=>{ const iso=CN2ISO[cn]; if(iso && !m[iso]) m[iso]=cn; }); }
+  window._ISO2CN=m; return m;
+}
+function isoToChinese(iso){ return buildIso2Cn()[iso] || iso; }
+function chineseToIso(cn){ return (typeof CN2ISO==='object' && CN2ISO[cn]) || cn; }
+function bindCombo(input, listEl, items, onChange){
+  const wrapper = input && input.parentElement;
+  function render(filter=''){
+    const f=filter.trim().toLowerCase();
+    const filtered = f ? items.filter(x=>x.toLowerCase().includes(f)) : items;
+    listEl.innerHTML = filtered.map(x=>`<div class="combo-item" data-v="${x}">${x}</div>`).join('');
+    listEl.style.display = filtered.length ? 'block' : 'none';
+  }
+  input.addEventListener('focus', ()=>render(input.value));
+  input.addEventListener('input', ()=>render(input.value));
+  input.addEventListener('change', ()=>{ if(input._comboJustSelected){ input._comboJustSelected=false; return; } if(onChange) onChange(input.value); });
+  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ listEl.style.display='none'; if(onChange) onChange(input.value); } });
+  listEl.addEventListener('mousedown', (e)=>{ if(e.target.classList.contains('combo-item')){ input.value=e.target.dataset.v; input._comboJustSelected=true; listEl.style.display='none'; if(onChange) onChange(input.value); } });
+  if(wrapper) document.addEventListener('click', (e)=>{ if(!wrapper.contains(e.target)) listEl.style.display='none'; });
 }
 
 /* ===================== 启动 ===================== */
