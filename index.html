@@ -180,7 +180,7 @@ function syncParcelFromRates(){
       accepted: live?['普货','带电']:['普货'],
       pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:'max', rounding:0.5, min_charge_weight:0.03, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
-      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap
+      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap, countryMap: c.countries
     };
   }).filter(Boolean);
   if(carriers.length) S.modules.parcel.carriers = carriers;
@@ -227,10 +227,14 @@ function tierRate(tiers, cw){
   return t;
 }
 // 货运引擎：真 SKU ÷ divisor → 缴费重 → 全费用展开 = Landed Cost
-function computeFreight(ch, sku, units){
+// destCn: 中文目的国（用于 per-country divisor / 国家级附加费 / 国家级税费覆盖）；eurFx: EUR/CNY 汇率（默认取渠道 fx 或 7.8）
+function computeFreight(ch, sku, units, destCn, eurFx){
   const p = ch.pricing;
+  const cm = ch.countryMap || {};                 // 中文国名 → 该渠道国家级配置（含 per-country divisor / add / tax / 欧盟费）
+  const co = (destCn && cm[destCn]) || {};
+  const divisor = co.volumetric_divisor || p.divisor;   // ★ per-country 除数优先，回退渠道级
   const sw = sku.weight * units;
-  const vw = volumeWeight(sku.l, sku.w, sku.h, p.divisor) * units;
+  const vw = volumeWeight(sku.l, sku.w, sku.h, divisor) * units;
   const cw = chargeWeight(sw, vw, p.charge_rule, p.rounding, p.min_charge_weight);
   let rate = tierRate(p.weight_tiers, cw).rate;
   let freight = rate * cw;
@@ -244,7 +248,25 @@ function computeFreight(ch, sku, units){
     if(a){ items.push({name:f.name, amt:a}); total+=a; }
   }
   if(p.fuel_pct){ const a=freight*p.fuel_pct; items.push({name:"燃油("+(p.fuel_pct*100)+"%)",amt:a}); total+=a; }
-  // 税费展开（按 incoterm 口径）：DDP 含税跳过；DDU 不含补关税+VAT
+  // 国家级附加费（战争附加费 / 海关资料处理费 等，随渠道附在 country.add）
+  const add = co.add || {};
+  if(add.war_per_kg){ const a=add.war_per_kg*cw; items.push({name:"战争附加费("+add.war_per_kg+"/kg)",amt:a}); total+=a; }
+  if(add.custom_per_shipment){ const a=add.custom_per_shipment; items.push({name:"海关资料处理费",amt:a}); total+=a; }
+  // 国家级税费 VAT/DUTY（申报值×比例，如中东捷邮按目的国税率）
+  const taxPct = co.tax || 0;
+  if(taxPct){ const a=(sku.decl||0)*units*taxPct; items.push({name:"VAT/DUTY(申报值×"+(taxPct*100).toFixed(0)+"%)",amt:a}); total+=a; }
+  // 欧盟：VAT + 代缴服务费(2%) + 3欧元/Item临时固定关税（云途欧盟路向）
+  if(co.vat!=null){
+    const fx = eurFx || p.fx || 7.8;
+    const declVal=(sku.decl||0)*units;
+    const vat=declVal*co.vat;
+    const svc=declVal*(co.service_fee_pct||0);
+    const duty=(co.duty_fixed_eur||0)*fx;
+    items.push({name:`欧盟VAT(${(co.vat*100).toFixed(0)}%)`,amt:vat}); total+=vat;
+    if(co.service_fee_pct){ items.push({name:`代缴服务费(${(co.service_fee_pct*100).toFixed(0)}%)`,amt:svc}); total+=svc; }
+    if(co.duty_fixed_eur){ items.push({name:`临时关税(${co.duty_fixed_eur}EUR×${fx})`,amt:duty}); total+=duty; }
+  }
+  // 整渠道级 DDP/DDU 口径：DDP 含税跳过补税；DDU 按整渠道 duty_rate/vat_rate 补（绝大多数渠道这两项=0，税费已由国家字段承担）
   if(!p.tax_included && p.incoterm!=="DDP"){
     const duty = sku.decl*units*(p.duty_rate||0);
     const vat  = (sku.decl*units + freight + duty)*(p.vat_rate||0);
@@ -430,25 +452,9 @@ function rFreight(){
     if(rejected.length) out+=`<div class="mut">*「目的国不符」指该渠道服务范围不含当前目的国。入围渠道行会显示其可发国家。</div>`;
     if(!eligible.length){ $("#fOut").innerHTML=out; return; }
     const freight=ch=>{
-      let r0=computeFreight(ch,sku,units);
-      if(ch.taxMap && ch.taxMap[destIso]){
-        const tax=(sku.decl||0)*units*ch.taxMap[destIso];
-        r0={items:[...r0.items,{name:`VAT/DUTY(申报值×${(ch.taxMap[destIso]*100).toFixed(0)}%)`,amt:tax}], total:r0.total+tax, cw:r0.cw, transit:r0.transit};
-      }
-      if(ch.euFeeMap && ch.euFeeMap[destIso]){
-        const fee=ch.euFeeMap[destIso];
-        const eurFx=parseFloat($("#euFx")?.value)||7.8;
-        const declVal=(sku.decl||0)*units;
-        const vat=declVal*fee.vat;
-        const svc=declVal*fee.service_fee_pct;
-        const duty=(fee.duty_fixed_eur||0)*eurFx;
-        r0={items:[...r0.items,
-          {name:`欧盟VAT(${(fee.vat*100).toFixed(0)}%)`,amt:vat},
-          {name:`代缴服务费(${(fee.service_fee_pct*100).toFixed(0)}%)`,amt:svc},
-          {name:`临时固定关税(${fee.duty_fixed_eur}EUR×${eurFx})`,amt:duty}
-        ], total:r0.total+vat+svc+duty, cw:r0.cw, transit:r0.transit};
-      }
-      return r0;
+      const eurFx=parseFloat($("#euFx")?.value)||7.8;
+      // 直接交给统一引擎：per-country 除数 / 国家级附加费 / 国家级税费（VAT-DUTY / 欧盟费）全在里面处理
+      return computeFreight(ch, sku, units, destCn, eurFx);
     };
     if(mode==="estimate"){
       // 预估：选 1 个渠道 → 完整费用明细
@@ -596,7 +602,13 @@ function rConfig(){
   ['express','tob'].forEach(cat=>{ (S.modules[cat]&&S.modules[cat].carriers||[]).forEach(c=>{ if(!divMap[c.id]) divMap[c.id]={id:c.id,carrier:c.carrier||'',name:c.channel||'',div:(c.pricing?c.pricing.divisor:10000),src:'S'}; }); });
   const divRows=Object.values(divMap).sort((a,b)=>(a.carrier+a.name).localeCompare(b.carrier+b.name,'zh')).map(c=>`<tr><td class="mut">${c.carrier}</td><td>${c.name}</td><td class="mut" style="text-align:center">${c.div}</td><td><input class="divInput" data-id="${c.id}" type="number" step="500" min="1000" value="${c.div}" style="width:90px"></td></tr>`).join('');
   let h=`<div class="card"><h2>⑧ 配置中心　<span class="pill">扩展=加档案，骨架零改动</span></h2>
-    <div class="note">新增物流商/渠道 = 在对应模块 JSON 数组加一份对象。字段分组：<b>pricing</b>(→P3 归一基准，必填：incoterm/tax_included/divisor/charge_rule/rounding/min_charge_weight/weight_tiers/fuel_pct/fx) · <b>fees</b>(→费用展开) · <b>qualify</b>(countries/max_weight/accepted→P2) · <b>decision</b>(transit) · <b>history</b>(多期环比→P0-3)。保存后自动持久化（localStorage），可导出 .json 给同事。</div>
+    <div class="note">新增物流商/渠道 = 在对应模块 JSON 数组加一份对象。字段分组：<b>pricing</b>(→P3 归一基准) · <b>fees</b>(→费用展开) · <b>qualify</b>(countries/max_weight/accepted→P2) · <b>decision</b>(transit) · <b>history</b>(多期环比→P0-3)。保存后自动持久化（localStorage），可导出 .json 给同事。
+<div style="margin-top:6px;padding:6px 8px;background:#1c2530;border-radius:4px">你关心的三项核心配置（算式写死、数据可配）：</div>
+<ul style="margin:4px 0 0 18px;line-height:1.7">
+  <li><b>① 计费重规则</b> <code>pricing.charge_rule</code>：<code>"max"</code>=MAX(实重,体积重)（绝大多数渠道）· <code>"actual"</code>=只按实重（如飞特加拿大）· <code>"vol"</code>=只按体积重。</li>
+  <li><b>② 体积重除数（双层，按国家覆盖）</b> 渠道级 <code>pricing.divisor</code>（默认，如云途10000/飞特7000/捷邮6000）；<b>国家级覆盖</b> 写在 <code>countries["国家名"].volumetric_divisor</code>，引擎优先用国家级、否则回退渠道级。例：<code>countries["巴西"].volumetric_divisor:8000</code> → 云途特惠普货巴西按 /8000、其余国家按 /10000。</li>
+  <li><b>③ 运费是否已含全部税费</b> <code>pricing.tax_included</code>：<code>true</code>（或 incoterm=DDP/双清包税）= 报价已含所有税费，引擎<b>不再叠加</b> VAT/DUTY；<code>false</code>（incoterm=DDU）= 不含，按各国税率补（如中东捷邮的战争附加费/海关资料处理费/VAT-DUTY 全部计入到手总成本）。</li>
+</ul></div>
     <div style="margin-bottom:8px">
       <button class="ghost" id="exp">导出 .json</button>
       <button class="ghost" id="imp">导入 .json</button>
@@ -793,7 +805,8 @@ function rAll(){
     RATES.channels.forEach(ch=>{
       const fbox=document.querySelector('.acChk[data-id="'+ch.id+'"]');
       if(fbox && !fbox.checked) return;
-      const div=ch.volumetric_divisor||10000;
+      const co=(ch.countries[country]||{});
+      const div=co.volumetric_divisor||ch.volumetric_divisor||10000;   // ★ per-country 除数优先，回退渠道级
       const actualPerBox=w*qty;
       const volPerBox=(bl*bw_*bh)/div;
       let bwBox=Math.max(actualPerBox,volPerBox);
