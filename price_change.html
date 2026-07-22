@@ -66,7 +66,7 @@ body.embed .banner{background:#1c2533;border-color:#30363d;color:#e6edf3}
 </style></head>
 <body><div class="wrap">
 <div class="tabs tabs-bar"></div>
-<div class="banner" id="bannerPos"><b>说明：</b>每个渠道报价分版本存档，可切换「对比基准版本」逐（国家×重量段）比对运费/kg ｜ 生成于 2026-07-22 14:58</div>
+<div class="banner" id="bannerPos"><b>说明：</b>每个渠道报价分版本存档，可切换「对比基准版本」逐（国家×重量段）比对运费/kg ｜ 生成于 2026-07-22 15:08</div>
 <div class="layout">
   <aside class="side" id="sidebar"></aside>
   <main class="detail" id="detail"></main>
@@ -79,76 +79,184 @@ var CAT_COUNT = __CAT_COUNT__;
 var GROUP_ORDER = ["yuntu","feit","deyi","zytd","express","overseas"];
 function flatten(mat){var d={};for(var c in mat){for(var i=0;i<mat[c].length;i++){var b=mat[c][i];d[c+"||"+b[0]]={fr:b[1],reg:b[2]};}}return d;}
 var state = {cat:"all", code:null, baseIdx:null, showFlat:{}};
-(function(){
-  var p=new URLSearchParams(location.search);
-  if(p.get("cat")) state.cat=p.get("cat");
-  if(p.get("embed")==="1") document.body.classList.add("embed");
-  var cats=[{k:"all",t:"全部"},{k:"small",t:"小包专线"},{k:"express",t:"商业快递"},{k:"b2b-air",t:"2B头程"},{k:"overseas",t:"海外仓"}];
-  var h=""; cats.forEach(function(c){ h+="<button class=\"tab"+(c.k===state.cat?" on":"")+"" data-cat=\""+c.k+"">"+c.t+' <span class="cnt" id="cnt-"+c.k+"></span></button>"; });
-  document.querySelector(".tabs-bar").innerHTML=h;
-  Object.keys(CAT_COUNT).forEach(function(c){ var el=document.getElementById("cnt-"+c); if(el) el.textContent="("+CAT_COUNT[c]+")"; });
-  document.querySelectorAll(".tab").forEach(function(t){ t.onclick=function(){
-    var on=this.getAttribute("data-cat");
-    document.querySelectorAll(".tab").forEach(function(x){x.classList.toggle("on",x.getAttribute("data-cat")===on);});
-    state.cat=on;
-    var first=null; for(var code in DATA){ if(state.cat==="all"||DATA[code].cat===state.cat){ first=code; break; } }
-    state.code=first; if(first){ var vs=DATA[first].versions; state.baseIdx=Math.max(0,vs.length-2); }
-    buildSidebar(); renderDetail();
-  };});
-  var first=null; for(var code in DATA){ if(state.cat==="all"||DATA[code].cat===state.cat){ first=code; break; } }
-  state.code=first; if(first){ var vs=DATA[first].versions; state.baseIdx=Math.max(0,vs.length-2); }
-})();
-function buildSidebar(){
-  var sb=document.getElementById("sidebar");
-  var bg={}; for(var code in DATA){ var ch=DATA[code]; if(state.cat!=="all"&&ch.cat!==state.cat) continue; bg[ch.group]=bg[ch.group]||[]; bg[ch.group].push({code:code,name:ch.name,n:ch.versions.length}); }
-  var h=""; GROUP_ORDER.forEach(function(g){ var lst=bg[g]; if(!lst||!lst.length) return; h+='<div class="cg"><div class="cg-title">'+g+' <span style="margin-left:auto;font-size:11px;color:#8a94a6">'+lst.length+'</span></div><div class="cg-list">'; lst.forEach(function(it){ h+='<div class="cn'+(it.code===state.code?" on":"")+'" data-code="'+it.code+'"><span>'+it.name+'</span><span class="badge-v">'+it.n+'版</span></div>'; }); h+="</div></div>"; });
-  if(!h) h='<div class="placeholder" style="padding:30px 12px">该业务域下暂无渠道</div>';
-  sb.innerHTML=h;
-  sb.querySelectorAll(".cn").forEach(function(el){ el.onclick=function(){ state.code=this.getAttribute("data-code"); var vs=DATA[state.code].versions; state.baseIdx=Math.max(0,vs.length-2); buildSidebar(); renderDetail(); };});
-}
-function renderDetail(){
-  var d=document.getElementById("detail");
-  var code=state.code;
-  if(!code||!DATA[code]){ d.innerHTML='<div class="placeholder"><h3>未选择渠道</h3><p>请从左侧选一个渠道查看环比详情</p></div>'; return; }
-  var ch=DATA[code]; var vs=ch.versions;
-  if(!vs||!vs.length){ d.innerHTML='<div class="placeholder"><h3>'+ch.name+'</h3><p>⚠ 暂无可比数据</p></div>'; return; }
-  var latest=vs[vs.length-1];
-  var bi=typeof state.baseIdx==="number"&&state.baseIdx<vs.length-1?state.baseIdx:Math.max(0,vs.length-2);
-  var base=vs[bi];
-  var fb=flatten(base.matrix), fl=flatten(latest.matrix);
-  var keys=Object.keys(fl); Object.keys(fb).forEach(function(k){if(keys.indexOf(k)<0)keys.push(k);});
-  keys.sort(function(a,b){var ca=a.split("||")[0],cb=b.split("||")[0];if(ca!=cb)return ca<cb?-1:1;return a<b?-1:1;});
-  var u=d=e=a=r=0; var trs="";
-  keys.forEach(function(k){
-    var of=fb[k]?fb[k].fr:null, nf=fl[k]?fl[k].fr:null, c=k.split("||")[0], band=k.split("||")[1];
-    if(of!=null&&nf!=null){
-      var delta=Math.round((nf-of)*100)/100, pct=of?Math.round(delta/of*1000)/10:null;
-      var dir=delta>0?"涨":(delta<0?"跌":"平");
-      if(dir=="涨")u++;else if(dir=="跌")d++;else e++;
-      if(dir=="平"&&!state.showFlat[code]) return;
-      var cls=dir=="涨"?"up":(dir=="跌"?"down":"eq");
-      var ds=delta>0?"+"+delta.toFixed(1):delta.toFixed(1);
-      var ps=pct==null?"—":(pct>0?"+"+pct.toFixed(1)+"%":pct.toFixed(1)+"%");
-      if(dir=="平") ds="0";
-      trs+="<tr><td class="pl">"+c+"</td><td>"+band+'</td><td class="num">'+of.toFixed(1)+'</td><td class="num">'+nf.toFixed(1)+'</td><td class="num '+cls+'">'+ds+'</td><td class="num '+cls+'">'+ps+'</td><td class="'+cls+'">'+dir+'</td></tr>';
-    } else if(nf!=null&&of==null){ a++; trs+='<tr><td class="pl">'+c+'</td><td>'+band+'</td><td class="num">—</td><td class="num">'+nf.toFixed(1)+'</td><td class="num new">新增</td><td class="num new">—</td><td class="new">新增</td></tr>'; }
-    else if(of!=null&&nf==null){ r++; trs+='<tr><td class="pl">'+c+'</td><td>'+band+'</td><td class="num">'+of.toFixed(1)+'</td><td class="num">—</td><td class="num rm">移除</td><td class="num rm">—</td><td class="rm">移除</td></tr>'; }
+
+function buildTabs(){
+  var cats = [
+    {k:"all", t:"全部"},
+    {k:"small", t:"小包专线"},
+    {k:"express", t:"商业快递"},
+    {k:"b2b-air", t:"2B头程"},
+    {k:"overseas", t:"海外仓"}
+  ];
+  var html = "";
+  cats.forEach(function(c){
+    var on = (c.k === state.cat) ? " on" : "";
+    html += '<button class="tab'+on+'" data-cat="'+c.k+'">'+c.t+' <span class="cnt" id="cnt-'+c.k+'"></span></button>';
   });
-  if(!trs) trs='<tr><td colspan="7" class="ch-empty">✅ 本期无动</td></tr>';
-  var tl=""; for(var i=0;i<vs.length;i++){ tl+='<span class="tl-node'+(i===bi?" on":"")+'" data-idx="'+i+'">'+vs[i].eff+'</span>'; }
-  var sm="对比基准 <b>"+base.eff+"</b> → 最新 <b>"+latest.eff+"</b>";
-  if(trs.indexOf("ch-empty")===-1) sm+=' | 涨 <b class="up">'+u+'</b> | 跌 <b class="down">'+d+'</b>';
-  var html='<div class="detail-card"><div class="dc-name">'+ch.name+'</div>';
-  html+='<div class="dc-meta">版本时间轴（点击切换基准）</div><div class="tl">'+tl+'</div>';
-  html+='<div class="dc-base"><select class="base-sel" id="baseSel">';
-  for(var i=0;i<vs.length-1;i++) html+='<option value="'+i+'"'+(i===bi?" selected":"")+'>'+vs[i].eff+'</option>';
-  html+='</select></div><div class="dc-sum">'+sm+'</div>';
-  if(trs.indexOf("ch-empty")===-1&&e>0) html+='<button class="flat-toggle" id="flatToggle">'+(state.showFlat[code]?'⊖ 隐藏持平项（仅看变动）':'⊕ 显示持平项('+e+'项)')+'</button>';
-  html+='<div class="tbl-wrap"><table><thead><tr><th>国家/分区</th><th>重量段</th><th>基准¥/kg</th><th>最新¥/kg</th><th>Δ元</th><th>±%</th><th>方向</th></tr></thead><tbody>'+trs+'</tbody></table></div></div>';
-  d.innerHTML=html;
-  d.querySelectorAll(".tl-node").forEach(function(el){ el.onclick=function(){ state.baseIdx=parseInt(this.getAttribute("data-idx")); renderDetail(); };});
-  var sel=d.getElementById("baseSel"); if(sel) sel.onchange=function(){ state.baseIdx=parseInt(this.value); renderDetail(); };
-  var ft=d.getElementById("flatToggle"); if(ft) ft.onclick=function(){ state.showFlat[code]=!state.showFlat[code]; renderDetail(); };
+  document.querySelector(".tabs-bar").innerHTML = html;
+  Object.keys(CAT_COUNT).forEach(function(c){
+    var el = document.getElementById("cnt-"+c);
+    if(el) el.textContent = "("+CAT_COUNT[c]+")";
+  });
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.onclick = function(){
+      var on = this.getAttribute("data-cat");
+      document.querySelectorAll(".tab").forEach(function(x){
+        x.classList.toggle("on", x.getAttribute("data-cat") === on);
+      });
+      state.cat = on;
+      var first = null;
+      for(var code in DATA){
+        if(state.cat==="all" || DATA[code].cat === state.cat){ first = code; break; }
+      }
+      state.code = first;
+      if(first){ var vs = DATA[first].versions; state.baseIdx = Math.max(0, vs.length-2); }
+      buildSidebar();
+      renderDetail();
+    };
+  });
 }
+
+function buildSidebar(){
+  var sb = document.getElementById("sidebar");
+  var bg = {};
+  for(var code in DATA){
+    var ch = DATA[code];
+    if(state.cat!=="all" && ch.cat !== state.cat) continue;
+    bg[ch.group] = bg[ch.group] || [];
+    bg[ch.group].push({code:code, name:ch.name, n:ch.versions.length});
+  }
+  var html = "";
+  GROUP_ORDER.forEach(function(g){
+    var lst = bg[g];
+    if(!lst || !lst.length) return;
+    html += '<div class="cg"><div class="cg-title">'+g+' <span style="margin-left:auto;font-size:11px;color:#8a94a6">'+lst.length+'</span></div><div class="cg-list">';
+    lst.forEach(function(it){
+      var on = (it.code === state.code) ? " on" : "";
+      html += '<div class="cn'+on+'" data-code="'+it.code+'"><span>'+it.name+'</span><span class="badge-v">'+it.n+'版</span></div>';
+    });
+    html += "</div></div>";
+  });
+  if(!html) html = '<div class="placeholder" style="padding:30px 12px">该业务域下暂无渠道</div>';
+  sb.innerHTML = html;
+  sb.querySelectorAll(".cn").forEach(function(el){
+    el.onclick = function(){
+      state.code = this.getAttribute("data-code");
+      var vs = DATA[state.code].versions;
+      state.baseIdx = Math.max(0, vs.length-2);
+      buildSidebar();
+      renderDetail();
+    };
+  });
+}
+
+function renderDetail(){
+  var d = document.getElementById("detail");
+  var code = state.code;
+  if(!code || !DATA[code]){
+    d.innerHTML = '<div class="placeholder"><h3>未选择渠道</h3><p>请从左侧选一个渠道查看环比详情</p></div>';
+    return;
+  }
+  var ch = DATA[code];
+  var vs = ch.versions;
+  if(!vs || !vs.length){
+    d.innerHTML = '<div class="placeholder"><h3>'+ch.name+'</h3><p>⚠ 暂无可比数据</p></div>';
+    return;
+  }
+  var latest = vs[vs.length-1];
+  var bi = (typeof state.baseIdx === "number" && state.baseIdx < vs.length-1) ? state.baseIdx : Math.max(0, vs.length-2);
+  var base = vs[bi];
+  var fb = flatten(base.matrix);
+  var fl = flatten(latest.matrix);
+  var keys = Object.keys(fl);
+  Object.keys(fb).forEach(function(k){ if(keys.indexOf(k) < 0) keys.push(k); });
+  keys.sort(function(a,b){
+    var ca = a.split("||")[0], cb = b.split("||")[0];
+    if(ca !== cb) return ca < cb ? -1 : 1;
+    return a < b ? -1 : 1;
+  });
+  var u=d=e=a=r=0;
+  var trs = "";
+  keys.forEach(function(k){
+    var of = fb[k] ? fb[k].fr : null;
+    var nf = fl[k] ? fl[k].fr : null;
+    var c = k.split("||")[0];
+    var band = k.split("||")[1];
+    if(of != null && nf != null){
+      var delta = Math.round((nf-of)*100)/100;
+      var pct = of ? Math.round(delta/of*1000)/10 : null;
+      var dir = delta > 0 ? "涨" : (delta < 0 ? "跌" : "平");
+      if(dir === "涨") u++;
+      else if(dir === "跌") d++;
+      else e++;
+      if(dir === "平" && !state.showFlat[code]) return;
+      var cls = dir === "涨" ? "up" : (dir === "跌" ? "down" : "eq");
+      var ds = delta > 0 ? ("+" + delta.toFixed(1)) : delta.toFixed(1);
+      var ps = pct == null ? "—" : (pct > 0 ? ("+"+pct.toFixed(1)+"%") : (pct.toFixed(1)+"%"));
+      if(dir === "平") ds = "0";
+      trs += '<tr><td class="pl">'+c+'</td><td>'+band+'</td><td class="num">'+of.toFixed(1)+'</td><td class="num">'+nf.toFixed(1)+'</td><td class="num '+cls+'">'+ds+'</td><td class="num '+cls+'">'+ps+'</td><td class="'+cls+'">'+dir+'</td></tr>';
+    } else if(nf != null && of == null){
+      a++;
+      trs += '<tr><td class="pl">'+c+'</td><td>'+band+'</td><td class="num">—</td><td class="num">'+nf.toFixed(1)+'</td><td class="num new">新增</td><td class="num new">—</td><td class="new">新增</td></tr>';
+    } else if(of != null && nf == null){
+      r++;
+      trs += '<tr><td class="pl">'+c+'</td><td>'+band+'</td><td class="num">'+of.toFixed(1)+'</td><td class="num">—</td><td class="num rm">移除</td><td class="num rm">—</td><td class="rm">移除</td></tr>';
+    }
+  });
+  if(!trs) trs = '<tr><td colspan="7" class="ch-empty">✅ 本期无变动</td></tr>';
+
+  // 时间轴
+  var tl = "";
+  for(var i=0; i<vs.length; i++){
+    var on = (i === bi) ? " on" : "";
+    tl += '<span class="tl-node'+on+'" data-idx="'+i+'">'+vs[i].eff+'</span>';
+  }
+
+  var sm = '对比基准 <b>'+base.eff+'</b> → 最新 <b>'+latest.eff+'</b>';
+  if(trs.indexOf("ch-empty") === -1) sm += ' ｜ 涨 <b class="up">'+u+'</b> ｜ 跌 <b class="down">'+d+'</b>';
+
+  var html = '<div class="detail-card">';
+  html += '<div class="dc-name">'+ch.name+'</div>';
+  html += '<div class="dc-meta">版本时间轴（点击切换基准）</div><div class="tl">'+tl+'</div>';
+  html += '<div class="dc-base"><select class="base-sel" id="baseSel">';
+  for(var i=0; i<vs.length-1; i++){
+    var sel = (i === bi) ? " selected" : "";
+    html += '<option value="'+i+'"'+sel+'>'+vs[i].eff+'</option>';
+  }
+  html += '</select></div><div class="dc-sum">'+sm+'</div>';
+  if(trs.indexOf("ch-empty") === -1 && e > 0){
+    var showAll = !!state.showFlat[code];
+    html += '<button class="flat-toggle" id="flatToggle">'+(showAll ? '⊖ 隐藏持平项（仅看变动）' : '⊕ 显示持平项('+e+'项)')+'</button>';
+  }
+  html += '<div class="tbl-wrap"><table><thead><tr><th>国家/分区</th><th>重量段</th><th>基准¥/kg</th><th>最新¥/kg</th><th>Δ元</th><th>±%</th><th>方向</th></tr></thead><tbody>'+trs+'</tbody></table></div>';
+  html += '</div>';
+
+  d.innerHTML = html;
+  d.querySelectorAll(".tl-node").forEach(function(el){
+    el.onclick = function(){ state.baseIdx = parseInt(this.getAttribute("data-idx")); renderDetail(); };
+  });
+  var sel = d.getElementById("baseSel");
+  if(sel) sel.onchange = function(){ state.baseIdx = parseInt(this.value); renderDetail(); };
+  var ft = d.getElementById("flatToggle");
+  if(ft) ft.onclick = function(){ state.showFlat[code] = !state.showFlat[code]; renderDetail(); };
+}
+
+// 初始化
+(function(){
+  var p = new URLSearchParams(location.search);
+  if(p.get("cat")) state.cat = p.get("cat");
+  if(p.get("embed") === "1") document.body.classList.add("embed");
+  // 默认渠道
+  var first = null;
+  for(var code in DATA){
+    if(state.cat==="all" || DATA[code].cat === state.cat){ first = code; break; }
+  }
+  state.code = first;
+  if(first){ var vs = DATA[first].versions; state.baseIdx = Math.max(0, vs.length-2); }
+  // 渲染
+  buildTabs();
+  buildSidebar();
+  renderDetail();
+})();
 </script>
 </body></html>
