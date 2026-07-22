@@ -1445,14 +1445,29 @@ function rRoute(){
 
 /* ===================== ⑦ 环比（P0-3 多期版本） ===================== */
 function rMom(){
-  const mods=Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight");
-  let h=`<div class="card"><h2>⑦ 环比分析　<span class="pill">P0-3 修复 · 费率多期版本</span></h2>
-    <div class="note">只做<b>环比</b>（本期 vs 上期），不做同比。每个渠道费率带 <b>history 多期版本</b>（生效日 + 阶梯单价），不再是只有两期。默认基准 = <b>最新 vs 次新</b>，红=涨、绿=跌（中国习惯）。</div>
-    <label>模块</label><select id="mMod">${mods.map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
-    目的国 <select id="mDest"></select>
-    <button class="act" id="mRun" style="margin-left:8px">看环比</button>
-    <div id="mOut"></div></div>`;
+  // 把主比价 4 业务域分类用于环比：iframe 嵌入 price_change.html（按 cat 切），保留原两期环比为次要区块
+  const tabs=[{k:'all',t:'全部'},{k:'small',t:'小包专线'},{k:'express',t:'商业快递'},{k:'b2b-air',t:'2B头程'},{k:'overseas',t:'海外仓'}];
+  const tb="border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:20px;padding:7px 18px;font-size:14px;cursor:pointer;font-family:inherit";
+  const tbon="background:var(--acc);color:#fff;border-color:var(--acc)";
+  let h=`<div class="card"><h2>⑦ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
+    <div class="note">把主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）用于环比：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。商业快递 / 海外仓待接入历史报价单。</div>
+    <div class="mom-tabs" style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">${tabs.map((x,i)=>`<button class="mom-tab" data-cat="${x.k}" style="${tb} ${i===0?tbon:''}">${x.t}</button>`).join('')}</div>
+    <iframe id="mIframe" src="price_change.html?cat=all&embed=1" style="width:100%;border:0;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
+      <div style="margin-top:10px">
+        <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
+        目的国 <select id="mDest"></select>
+        <button class="act" id="mRun" style="margin-left:8px">看环比</button>
+        <div id="mOut"></div>
+      </div>
+    </details>
+  </div>`;
   $("#app").innerHTML=h;
+  document.querySelectorAll('.mom-tab').forEach(t=> t.onclick=()=>{
+    document.querySelectorAll('.mom-tab').forEach(x=>{x.style.cssText=tb;});
+    t.style.cssText=tb+' '+tbon;
+    document.getElementById('mIframe').src=`price_change.html?cat=${t.dataset.cat}&embed=1`;
+  });
   const fillDest=()=>{ const M=S.modules[$("#mMod").value]; $("#mDest").innerHTML=uniq(M.carriers.flatMap(c=>Array.isArray(c.isoCountries)?c.isoCountries:(Array.isArray(c.countries)?c.countries:[]))).map(c=>`<option>${c}</option>`).join(""); };
   $("#mMod").onchange=fillDest; fillDest();
   $("#mRun").onclick=()=>{
