@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784736000";</script>
+<script>window.__BUILD__="1784741000";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -526,6 +526,34 @@ function syncTobFromRates(){
 applyCountryOverrides();     // ★ per-country 覆盖先注入 RATES
 syncParcelFromRates();
 syncTobFromRates();          // ★ 头程也从 RATES 同步（亚丰/中运通达/海运/卡航/海派/卡派 全进来）
+/* ⑤/⑥ 头程与 ④ 头程「统一数据源」：把 RATES.b2b-air 全部真实渠道并入 OV_HC.carriers，
+   按物流商归并（中运通达/亚丰），渠道=具体服务线，目的地=region。这样海外仓头程/全链路头程
+   与 toB 头程模块看到的是同一套完整渠道（不再只是 2 个泛化承运商）。
+   注：计费引擎 calcHead 已增强为优先读取 per-region sur，故并入渠道的附加费也会生效。 */
+function syncHeadCarriersFromRates(){
+  if(!window.OV_HC || !window.OV_HC.carriers || !window.RATES || !window.RATES.channels) return;
+  var HC = window.OV_HC;
+  function carrierKeyOf(name){
+    if(name && name.indexOf('中运通达')>=0) return 'zhongyuntong';
+    if(name && name.indexOf('亚丰')>=0) return 'yafeng';
+    return 'b2b_' + (name||'x').replace(/[^A-Za-z0-9一-龥]/g,'');
+  }
+  window.RATES.channels.filter(function(c){ return c.cat==='b2b-air'; }).forEach(function(c){
+    var countries = c.countries||{};
+    var regions = {};
+    Object.keys(countries).forEach(function(rk){
+      var co = countries[rk];
+      if(!co || !co.tiers || !co.tiers.length) return;
+      regions[rk] = { tiers: co.tiers.map(function(t){ return [t.min, t.rate]; }), sur: co.sur||{} };
+    });
+    if(!Object.keys(regions).length) return;
+    var ck = carrierKeyOf(c.carrier||'');
+    if(!HC.carriers[ck]) HC.carriers[ck] = { name: c.carrier, channels:{}, sur:{}, updated: window.RATES.generated };
+    HC.carriers[ck].channels['ch_'+(c.id||(c.carrier+'_'+c.name))] = { label: c.name, regions: regions };
+    HC.carriers[ck].name = c.carrier || HC.carriers[ck].name;
+    HC.carriers[ck].updated = window.RATES.generated || HC.carriers[ck].updated;
+  });
+}
 applyDivisorOverrides();
 saveState();
 /* 渠道体积重除数维护：覆盖存于浏览器本地(localStorage)，免改 rates.json / 免重部署 */
@@ -1183,7 +1211,7 @@ function rOps(){
   const regOptsFor=(ck,ch)=>{const c=HC.carriers[ck];return Object.keys(c.channels[ch].regions).map(r=>'<option value="'+r+'">'+((HC.meta.regions[r])||r)+'</option>').join('');};
 
   let h='<div class="card"><h2>⑤ 海外仓价格预估　<span class="pill">真实账单校验引擎</span></h2>'
-    +'<div class="note">统一费用科目、同场景测算：<b>谷仓 GoodCang / 跨境在线 / VIP华人行 / 万邑通 / 襄派</b>。每个科目带<b>可验证性评级</b>（🟢已验证 / 🟡部分对齐 / 🔴未对齐 / ⚪无数据）。<br><b>怎么用</b>：默认看「某一个」海外仓的明细；想几仓一起比，勾右上「横向对比」并多选。<b>范围感知</b>：某仓未提供的科目标「—」、未对齐/无数据标「N/A」，二者均不参与该科目最低/最高判定，绝不误判谁更贵。<b>费率来源</b>：模型内置研究报价（非实时 API），以各仓「费率生效月」为准；头程为中运通达/亚丰等真实报价。要接美森CLX/云途等，把报价表发我即可（不凭空编费率）。</div>'
+    +'<div class="note">统一费用科目、同场景测算：<b>谷仓 GoodCang / 跨境在线 / VIP华人行 / 万邑通 / 襄派</b>。每个科目带<b>可验证性评级</b>（🟢已验证 / 🟡部分对齐 / 🔴未对齐 / ⚪无数据）。<br><b>怎么用</b>：默认看「某一个」海外仓的明细；想几仓一起比，勾右上「横向对比」并多选。<b>范围感知</b>：某仓未提供的科目标「—」、未对齐/无数据标「N/A」，二者均不参与该科目最低/最高判定，绝不误判谁更贵。<b>费率来源</b>：模型内置研究报价（非实时 API），以各仓「费率生效月」为准；头程已与 ④ toB 头程「统一数据源」——自动并入 RATES.b2b-air 全部真实渠道（中运通达/亚丰，覆盖美国/欧洲/英国/加拿大/澳洲/日本 的空派/海派美森CLX/海卡/卡航/海运等 50+ 服务线），按物流商归并、按目的地选分区。要加新渠道把报价表发我即可（不凭空编费率）。</div>'
     +'<div class="ov-toolbar">'
       +'<label class="ov-lbl">看哪个海外仓</label>'
       +'<select id="ovWh" class="inline-in" style="min-width:230px">'+whIds.map(id=>'<option value="'+id+'"'+(id===st.wh?' selected':'')+'>'+E.esc(WH[id].name)+'</option>').join('')+'</select>'
@@ -1903,7 +1931,7 @@ function calcHead(sc){
   var rate=reg.tiers[0][1];
   for(var i=0;i<reg.tiers.length;i++){ if(cw>=reg.tiers[i][0]) rate=reg.tiers[i][1]; else break; }
   var base=rate*cw;
-  var S=carrier.sur||{};
+  var S=reg.sur||carrier.sur||{};
   var qty=Math.max(1, sc.qty||1);
   // 常规附加费（偏远 + 非FBA + 产品类别）
   var remoteFee=0;
@@ -2089,219 +2117,11 @@ function badge(r){ var m={'green':'🟢已验证','yellow':'🟡部分对齐','r
 function fmt(x){ return (Math.round(x*100)/100).toFixed(2); }
 function esc(s){ return String(s).replace(/&/g,'&amp;amp;').replace(/</g,'&amp;lt;').replace(/>/g,'&amp;gt;'); }
 window.OV_ENGINE={calcOne:calcOne, calcHead:calcHead, calcXpU:calcXpU, badge:badge, fmt:fmt, esc:esc, WH:WH, GC:OV_GC, SEGS:SEGS, tailGoodcang:tailGoodcang, tailNorm:tailNorm, calcTail:calcTail, periodOf:periodOf, tierRate:tierRate, volCapOf:volCapOf, wtCapOf:wtCapOf, tailXpUSPS:tailXpUSPS};
+/* ★ 头程数据源统一：此时 OV_HC 已挂载，把 RATES.b2b-air 全部真实渠道并入头程承运商池（⑤/⑥ 与 ④ 同源） */
+syncHeadCarriersFromRates();
 
 </script>
-<script>
 
-</script>
-<script>
-/* 海外仓计算引擎 — 抽取自 overseas_warehouse_model.html (已用真实账单校验) */
-var WH=window.OV_DATA.warehouses, OV_GC=window.OV_DATA.gc_D, HC=window.OV_HC, SEGS=window.OV_SEGS||[];
-function calcHead(sc){
-  if(sc.hc==='manual'){
-    var amt=+(sc.hcash||0);
-    return {amt:amt, rating: amt>0?'yellow':'na', note:'手动手填头程 ¥'+fmt(amt)+(amt?'（含附加费请自估）':'（未填金额）')};
-  }
-  var carrier=HC.carriers[sc.hc];
-  if(!carrier) return {amt:0, rating:'na', note:'未选头程物流商'};
-  var ch=carrier.channels[sc.hch];
-  if(!ch) return {amt:0, rating:'yellow', note:'「'+carrier.name+'」无「'+sc.hch+'」渠道报价'};
-  var reg=ch.regions[sc.hr];
-  if(!reg) return {amt:0, rating:'yellow', note:'该渠道无「'+sc.hr+'」目的地报价'};
-  // 计费重 = max(实重×件数, 体积重/8000)
-  var cw = (sc.hwt&&sc.hwt>0)?sc.hwt : Math.max(sc.kg*sc.qty, sc.L*sc.W*sc.H*sc.qty/8000);
-  if(cw<=0) return {amt:0, rating:'na', note:'计费重为0'};
-  // 取档：tiers 升序 [minKg, rate]，取最小档 >= cw
-  var rate=reg.tiers[0][1];
-  for(var i=0;i<reg.tiers.length;i++){ if(cw>=reg.tiers[i][0]) rate=reg.tiers[i][1]; else break; }
-  var base=rate*cw;
-  var S=carrier.sur||{};
-  var qty=Math.max(1, sc.qty||1);
-  // 常规附加费（偏远 + 非FBA + 产品类别）
-  var remoteFee=0;
-  if(sc.hremote==='yes' && S.remote){
-    if(S.remote.mode==='kg') remoteFee=Math.max(S.remote.kg*cw, S.remote.min||0);
-    else remoteFee=(S.remote.piece||0)*qty;
-  }
-  var nonfbaFee=0;
-  if(S.nonfba){ var nf=S.nonfba[sc.haddr]||{v:0,u:'kg'}; if(nf.v>0) nonfbaFee=(nf.u==='kg')?nf.v*cw:nf.v*qty; }
-  var prodFee=(S.product&&S.product[sc.hprod]?S.product[sc.hprod]:0)*cw;
-  var regular=base+remoteFee+nonfbaFee+prodFee;
-  // 特殊附加费（超品名 + 单独报关 + 带磁 + 竹木商检）
-  var overskuFee=0;
-  if(S.oversku && (sc.hsku||1)>S.oversku.free) overskuFee=((sc.hsku||1)-S.oversku.free)*S.oversku.per;
-  var customsFee=0;
-  if(sc.hcustoms==='yes' && S.customs){ customsFee=S.customs.base+(S.customs.op||0)*cw; }
-  var magnetFee=0;
-  if(sc.hmagnet==='yes' && S.magnet){ if(S.magnet.mode==='fixed') magnetFee=S.magnet.fixed; else magnetFee=Math.max(S.magnet.kg*cw, S.magnet.min||0); }
-  var bambooFee=0;
-  if(sc.hbamboo==='yes' && S.bamboo && S.bamboo.mode!=='none'){ bambooFee=Math.max(S.bamboo.kg*cw, S.bamboo.min||0); }
-  var allin=regular+overskuFee+customsFee+magnetFee+bambooFee;
-  var note=carrier.name+'·'+ch.label+'·'+HC.meta.regions[sc.hr]
-    +' ｜ 计费重 '+fmt(cw)+'kg × ¥'+rate+'/kg'
-    +' ｜ 裸价 ¥'+fmt(base)+' ｜ 含常规 ¥'+fmt(regular)+' ｜ 全包到门 ¥'+fmt(allin)
-    +' ｜ '+carrier.updated;
-  return {amt:allin, rating:'yellow', note:note};
-}
-function wtTier(kg){
-  var tiers=[['0<X≤0.5 KG',0.5],['0.5<X≤1 KG',1],['1<X≤3 KG',3],['3<X≤5 KG',5],['5<X≤8 KG',8],['8<X≤10 KG',10],['10<X≤15 KG',15],['15<X≤20 KG',20],['20<X≤30 KG',30]];
-  for(var i=0;i<tiers.length;i++){ if(kg<=tiers[i][1]) return tiers[i][0]; }
-  return '20<X≤30 KG';
-}
-function bffTier(kg){ return kg<=0.5 ? '0.5<X≤1 KG' : wtTier(kg); }
-// ---- 尾程查找 ----
-function ceilKey(keys, t){
-  var pairs=keys.map(function(k){return [k, Number(k)];}).sort(function(a,b){return a[1]-b[1];});
-  for(var i=0;i<pairs.length;i++){ if(pairs[i][1]>=t-1e-9) return pairs[i][0]; }
-  return pairs[pairs.length-1][0];
-}
-function tailGoodcang(sc){
-  var g=OV_GC.tail['GC Parcel'].grid;
-  var bk=Math.max(sc.kg, sc.L*sc.W*sc.H/8000);
-  var tier=ceilKey(Object.keys(g), bk);
-  var row=g[tier]; if(!row) return null;
-  var p=row[sc.zone]; if(p==null) return null;
-  return {price:p*0.88, listPrice:p, bk:bk, tier:tier, disc:0.88};
-}
-function tailNorm(norm, sc, kind){
-  var bk, oz, lb, row, price;
-  if(kind==='vip'){
-    var Lin=sc.L/2.54,Win=sc.W/2.54,Hin=sc.H/2.54;
-    var vlb=(Lin*Win*Hin)/166;
-    var blb=Math.max(sc.kg/0.45359237, vlb);
-    if(blb<=1){ oz=Math.ceil(blb*16); var ok=ceilKey(Object.keys(norm.oz), oz); row=norm.oz[String(ok)]; }
-    else { lb=Math.ceil(blb); var lk=ceilKey(Object.keys(norm.lb), lb); row=norm.lb[String(lk)]; }
-  } else {
-    var vkg=sc.L*sc.W*sc.H/6000;
-    var bkg=Math.max(sc.kg, vkg);
-    if(bkg<=0.45359237){ oz=Math.ceil(bkg/0.028); var ok2=ceilKey(Object.keys(norm.oz), oz); row=norm.oz[String(ok2)]; }
-    else { lb=Math.ceil(bkg/0.45359237); var lk2=ceilKey(Object.keys(norm.lb), lb); row=norm.lb[String(lk2)]; }
-  }
-  if(!row) return null;
-  price=row[sc.zone]; if(price==null) return null;
-  return {price:price, bk:(lb?lb:(oz/16)), unit:(lb?'lb':'oz')};
-}
-function calcTail(wh, sc){
-  if(wh.id==='goodcang') return tailGoodcang(sc);
-  return tailNorm(wh.tail.norm, sc, wh.id);
-}
-// ---- 襄派专用计算(双轨仓储/双渠道尾程/退货换标) ----
-function periodOf(d){ if(d<=30)return 0; if(d<=90)return 1; if(d<=180)return 2; if(d<=270)return 3; if(d<=360)return 4; return 5; }
-function tierRate(tiers, v, inclusive){ inclusive=(inclusive===false)?false:true; for(var i=0;i<tiers.length;i++){ if(v>=tiers[i][0] && (inclusive? v<=tiers[i][1] : v<tiers[i][1])) return tiers[i]; } return tiers[tiers.length-1]; }
-function volCapOf(st, vol){ var c=st.vol_fee; for(var i=0;i<c.length;i++){ if(vol<=c[i][0]) return i; } return c.length-1; }
-function wtCapOf(st, wt){ var c=st.wt_fee; for(var i=0;i<c.length;i++){ if(wt<=c[i][0]*1000) return i; } return c.length-1; }
-function tailXpUSPS(xp, sc){
-  var dimKg=sc.L*sc.W*sc.H/6000; var bkg=Math.max(sc.kg, dimKg);
-  var rows=xp.tail_usps.zones['zone'+sc.zone]; if(!rows) return null;
-  var fee=null; for(var i=0;i<rows.length;i++){ if(bkg>=rows[i][0] && bkg<=rows[i][1]){ fee=rows[i][2]; break; } }
-  if(fee==null) fee=rows[rows.length-1][2];
-  return {price:fee, bk:bkg, unit:'kg', tnote:xp.tail_usps.note};
-}
-function calcXpU(wh, sc){
-  var cats={}; var total=0;
-  var wh_weight=sc.kg*sc.qty;
-  // 入库费(一件代发): 平件 $3(≤3kg)/$6(>3kg) × 件数
-  var ib=tierRate(wh.inbound.tiers, sc.kg);
-  cats.IB_F={amt:ib[2]*sc.qty, rating:'green', note:'入库费(一件代发) '+ib[2]+'/件('+(sc.kg<=3?'≤3kg 轻货':'>3kg 重货')+')×'+sc.qty+'件 ｜ '+wh.inbound.note};
-  // 转运上架费: $0.17/kg × 件重 × 件数
-  cats.SHELF={amt:wh.shelf_fee.rate*sc.kg*sc.qty, rating:'green', note:'转运上架 '+wh.shelf_fee.rate+'/kg×'+sc.kg+'kg×'+sc.qty+'件 ｜ '+wh.shelf_fee.note};
-  var st=wh.storage, pi=periodOf(sc.days);
-  var vi=volCapOf(st, sc.vol), vRate=st.vol_fee[vi][1][pi];
-  var wi=wtCapOf(st, wh_weight), wRate=st.wt_fee[wi][1][pi];
-  var stoAmt=vRate*sc.vol*sc.days + wRate*wh_weight*sc.days;
-  cats.STO={amt:stoAmt, rating:'green', note:'体积费(账单校准) '+vRate+'/CBM/天×'+sc.vol+'CBM ×'+sc.days+'天 + 重量费'+wRate+'/kg/天(≈0,已并入体积) ｜ 库龄'+st.periods[pi]+' ｜ '+st.note};
-  var bf=tierRate(wh.outbound.bff, sc.kg);
-  cats.BFF={amt:bf[2]*sc.qty, rating:'yellow', note:'出库订单处理费 '+bf[2]+'/件×'+sc.qty+'件 ｜ '+wh.outbound.note};
-  var t=tailXpUSPS(wh, sc);
-  cats.TAIL={amt:(t?t.price:0)*sc.qty, rating:'yellow', note:'USPS美西 Zone'+sc.zone+' '+(t?(t.bk.toFixed(3)+'kg'):'')+'｜ '+t.tnote+'（襄派另有UPS渠道→独立模型）'};
-  var ri=tierRate(wh.return_in.tiers, sc.kg); var riPer=Math.max(ri[2]*sc.kg, ri[3]);
-  cats.RETURN={amt:riPer*sc.qty, rating:'yellow', note:'退货处理费 '+ri[2]+'/KG×'+sc.kg+'kg/件，最低'+ri[3]+' ×'+sc.qty+'件 ｜ '+wh.return_in.note};
-  total=0; for(var k in cats){ if(cats[k].amt) total+=cats[k].amt; }
-  return {cats:cats, total:total};
-}
-// ---- 主计算 ----
-function calcOne(id, sc){
-  var wh=WH[id];
-  if(wh.xp){ return calcXpU(wh, sc); }
-  var cats={}; var total=0;
-  if(id==='goodcang'){
-    var w=sc.gcwh;
-    // 入库
-    var lc = (OV_GC.inbound.unload_lcl[w]||0)*0.9632*sc.vol;
-    cats.LC={amt:lc, rate:OV_GC.inbound.unload_lcl[w], rating:'green', note:'美国9仓固定6.8/CBM(牌价7.06×96.32%)，按实测体积；14单验证'};
-    var ibtf = (OV_GC.inbound.sort[w]||0)*0.70*sc.sku;
-    cats.IB_TF={amt:ibtf, rating:'green', note:'USEA 0.70/SKU×7折→0.49；去重SKU'+sc.sku};
-    var ibts = (OV_GC.inbound.mixed_sort[w]||0)*1.0*sc.mix;
-    cats.IB_TS={amt:ibts, rating:'green', note:'USEA 1.31/行(无折)；混装实收SKU行'+sc.mix};
-    var tier=wtTier(sc.kg);
-    var ibf = (OV_GC.inbound.shelf[tier][w]||0)*sc.qty;
-    cats.IB_F={amt:ibf, rating:'green', note:'重量段 '+tier+' ×'+sc.qty+'件；逐件实重判定(估算用均值)'};
-    var npif = 1.36*sc.newsku;
-    cats.NPIF={amt:npif, rating:'green', note:'1.36/SKU×'+sc.newsku};
-    // 仓储
-    var stoRate=(OV_GC.storage.std['XS/S']['X＞30'][w]||0);
-    var sto= stoRate*sc.vol*Math.max(0,sc.days-30);
-    cats.STO={amt:sto, rating:'green', note:'XS/S >30天 '+stoRate+'/CBM/天 ×'+sc.vol+'CBM ×'+(Math.max(0,sc.days-30))+'天(前30天免)'};
-    // 出库（谷仓出库操作费属账户操作费，适用≈70%账户折扣，与IB_TF同口径）
-    var bt=bffTier(sc.kg);
-    var bffList=(OV_GC.outbound.pick[bt][w]||0);
-    var bffDisc=0.70;
-    var bff=bffList*bffDisc*sc.qty;
-    cats.BFF={amt:bff, rating:'green', note:'出库操作费 挂牌 $'+fmt(bffList)+'/件('+bt+') × '+Math.round(bffDisc*100)+'% (账户操作费折扣) = $'+fmt(bffList*bffDisc)+'/件 ×'+sc.qty+'件'};
-    // 尾程（谷仓尾程=GC Parcel，适用≈88%账户尾程折扣）
-    var t=tailGoodcang(sc);
-    cats.TAIL={amt:t?t.price:0, rating:'green', note: t? ('GC Parcel Zone'+sc.zone+' 计费重'+t.bk.toFixed(3)+'kg('+t.tier+') ｜ 挂牌 $'+fmt(t.listPrice)+' × '+Math.round(t.disc*100)+'% (账户尾程折扣) = $'+fmt(t.price)) : 'GC Parcel 无该Zone报价'};
-    // 退件（谷仓退件出库操作费属账户操作费，适用≈70%账户折扣，与出库BFF同口径；4档重量段边界待目检sheet确认，暂未估算）
-    cats.RETURN={amt:0, rating:'yellow', note:'退件处理(退件出库操作费)属账户操作费，适用≈70%账户折扣(与出库BFF同口径)；本页暂未接入退件4档重量段费率表(档位边界待目检sheet确认)，故未估算。折扣口径已确认存在。'};
-  } else {
-    // 非谷仓：用 payload 内嵌费率
-    var ib=wh.inbound, ob=wh.outbound, st=wh.storage, rt=wh.return, tl=wh.tail;
-    // 入库 IB_F
-    if(ib.IB_F && ib.IB_F.price!=null){
-      cats.IB_F={amt:ib.IB_F.price*sc.qty, rating:ib.IB_F.rating, note:ib.IB_F.basis+(ib.IB_F.note?' ｜ '+ib.IB_F.note:'')};
-    } else if(ib.IB_F){
-      cats.IB_F={amt:0, rating:ib.IB_F.rating, note:ib.IB_F.note||'无'};
-    }
-    // LC / IB_TF / IB_TS / NPIF
-    ['LC','IB_TF','IB_TS','NPIF'].forEach(function(k){
-      if(ib[k] && ib[k].price!=null){ cats[k]={amt:ib[k].price*sc.qty, rating:ib[k].rating, note:(ib[k].basis||'')+(ib[k].note?' ｜ '+ib[k].note:'')}; }
-      else if(ib[k]){ cats[k]={amt:0, rating:ib[k].rating, note:ib[k].note||'无'}; }
-    });
-    // 仓储
-    if(st && st.type){
-      var sAmt=0, sNote='';
-      if(st.type==='per_cbm_day'){
-        var r=0; for(var i=0;i<st.tiers.length;i++){ if(sc.days<=st.tiers[i].max){ r=st.tiers[i].rate; break; } }
-        if(sc.days<= (st.freeDays||0)) { sAmt=0; sNote='前'+st.freeDays+'天免'; }
-        else { sAmt=r*sc.vol*Math.max(0,sc.days-(st.freeDays||0)); sNote=r+'/CBM/天 ×'+sc.vol+' ×'+(Math.max(0,sc.days-(st.freeDays||0)))+'天'; }
-      } else if(st.type==='per_cbm_day_month'){
-        var rm=0; for(var j=0;j<st.tiers.length;j++){ if(sc.days<=st.tiers[j].max){ rm=st.tiers[j].rate; break; } }
-        sAmt=rm*sc.vol*sc.days; sNote='按月档(小件) '+rm+'/CBM/天 ×'+sc.vol+' ×'+sc.days+'天';
-      } else if(st.price!=null){
-        sAmt=st.price*sc.qty*sc.days; sNote=st.basis||'';
-      }
-      cats.STO={amt:sAmt, rating:st.rating, note:sNote+(st.note?' ｜ '+st.note:'')};
-    } else if(st && st.price!=null){
-      cats.STO={amt:st.price*sc.qty*sc.days, rating:st.rating, note:(st.basis||'')+(st.note?' ｜ '+st.note:'')};
-    }
-    // 出库 BFF
-    if(ob.BFF && ob.BFF.price!=null){ cats.BFF={amt:ob.BFF.price*sc.qty, rating:ob.BFF.rating, note:(ob.BFF.basis||'')+(ob.BFF.note?' ｜ '+ob.BFF.note:'')}; }
-    else if(ob.BFF){ cats.BFF={amt:0, rating:ob.BFF.rating, note:ob.BFF.note||'无'}; }
-    // 尾程
-    var t=calcTail(wh, sc);
-    cats.TAIL={amt:t?t.price:0, rating:(wh.id==='winit'?'red':(tl.pricing==='结算'?'green':'yellow')), note:tl.carrier+' Zone'+sc.zone+' '+(t?(t.bk.toFixed(3)+'kg '+(t.unit||'')):'')+'｜ '+tl.pricing+'：'+tl.note};
-    // 退件
-    if(rt && rt.price!=null){ cats.RETURN={amt:rt.price*sc.qty, rating:rt.rating, note:(rt.basis||'')+(rt.note?' ｜ '+rt.note:'')}; }
-    else if(rt){ cats.RETURN={amt:0, rating:rt.rating, note:rt.note||'无'}; }
-  }
-  total=0; for(var k in cats){ if(cats[k].amt) total+=cats[k].amt; }
-  return {cats:cats, total:total};
-}
-function badge(r){ var m={'green':'🟢已验证','yellow':'🟡部分对齐','red':'🔴未对齐','na':'⚪无数据'}; var c={'green':'b-green','yellow':'b-yellow','red':'b-red','na':'b-na'}; return '<span class="badge '+c[r]+'">'+(m[r]||r)+'</span>'; }
-function fmt(x){ return (Math.round(x*100)/100).toFixed(2); }
-function esc(s){ return String(s).replace(/&/g,'&amp;amp;').replace(/</g,'&amp;lt;').replace(/>/g,'&amp;gt;'); }
-
-</script>
 <div id="ver" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:var(--mut2);opacity:0.8;cursor:pointer" title="强刷：Ctrl+Shift+R (Win) / Cmd+Shift+R (Mac)">build …</div>
 <script>
 (function(){
