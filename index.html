@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784676366";</script>
+<script>window.__BUILD__="1784678911";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -417,24 +417,27 @@ function syncTobFromRates(){
       if(WH2COUNTRY[k]) return WH2COUNTRY[k];
       return null;
     }).filter(Boolean);
-    // 美国三区（美西/美中/美东）统一视为 美国：避免资格校验和下拉把区域当国家
-    // ★ 必须从原始 dest 字符串判定 isUS3（映射后变成 null，会漏判导致美国渠道整体消失）
-    if(isUS3){
-      countries = countries.filter(x=> x && !['美西','美中','美东'].includes(x));
-      if(!countries.includes('US')) countries.push('US');
-    }
-    const first=Object.values(c.countries||{})[0]; if(!first) return null;
-    // 把 tiers 转为 weight_tiers 兼容老引擎
-    const weight_tiers=(first.tiers||[]).map(t=>({kg:t.min, rate:t.rate}));
+      // 美国三区（美西/美中/美东）统一视为 美国：避免资格校验和下拉把区域当国家
+      // ★ 必须从原始 dest 字符串判定 isUS3（映射后变成 null，会漏判导致美国渠道整体消失）
+      if(isUS3){
+        countries = countries.filter(x=> x && !['美西','美中','美东'].includes(x));
+        if(!countries.includes('US')) countries.push('US');
+      }
+      const first=Object.values(c.countries||{})[0]; if(!first) return null;
+      // 把 tiers 转为 weight_tiers 兼容老引擎
+      const weight_tiers=(first.tiers||[]).map(t=>({kg:t.min, rate:t.rate}));
+      // ★ 关键：保留原始 countries 对象（三区/仓库 → {region:{tiers,sur}}），ISO 数组另存在 isoCountries；否则 computeAll 读不到 sur/三区
     const inc=(c.incoterm==='DDU')?'DDU':'DDP';
     const declareFee = (c.sur && c.sur.declare) ? (typeof c.sur.declare==='object' ? c.sur.declare.base||0 : c.sur.declare) : 0;
     const minpc = (first.min_charge_weight) || (c.sur && c.sur.minpc) || 12;
     return {
       id: c.id,
+      cat: c.cat || 'b2b-air',   // ★ 必须带 cat，computeAll 据此路由到 B2B 三区分支；sync 只处理 b2b-air，故安全
       carrier: c.carrier || '中运通达',
       channel: c.name,
       audience: '2B',
-      countries,
+      countries: c.countries,   // 保留原始分区对象（美国三区/欧洲仓库）—— computeAll/isUS3 需要
+      isoCountries: countries,  // ISO 数组——资格校验/下拉/显示用
       max_weight: null,
       accepted: ['普货'],
       pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:c.currency||'CNY', divisor:c.volumetric_divisor||6000, charge_rule:'max', rounding:1, min_charge_weight:minpc, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
@@ -843,22 +846,24 @@ function combSkus(){
 
 /* ===================== 货运模块（小包/商业快递/toB）共用 ===================== */
 function rFreight(){
-  const M=S.modules[CUR];
-  const items=combSkus();   // S.items ∪ 谷仓字典（直接引用谷仓 SKU）
-  // 默认选第一个 SKU（演示自动带出）
-  let sel=items[0]||{sku:"",name:"",l:10,w:10,h:10,weight:1,decl:80,attr:"普货"};
-  // 模块化默认：按当前模块渠道真实的 audience 推导（兼容 audience 为字符串或数组）
-  const audSet = uniq([].concat(...M.carriers.map(c=>Array.isArray(c.audience)?c.audience:(c.audience?[c.audience]:[]))).filter(Boolean));
-  const defaultAud = audSet.length===1 ? audSet[0] : (audSet.includes('2C') ? '2C' : '2B');
-  const defaultUnits = 1;
-  // 目的国：内部用 ISO，界面显示中文；对 parcel（已从 RATES 同步为 ISO）做反向映射，其余模块保持原语言
-  // ★ 下拉跨「小包/快递/头程」全量并集，确保「所有渠道能发的国家」都列得上（不再因某模块无该渠道而漏掉）
-  const allFreightCarriers = [].concat(
-    (S.modules.small && S.modules.small.carriers)||[],
-    (S.modules.express && S.modules.express.carriers)||[],
-    (S.modules.tob && S.modules.tob.carriers)||[]
-  );
-  const isoCountries = uniq(allFreightCarriers.flatMap(c=>(c.countries||[]))).filter(Boolean);
+    const M=S.modules[CUR];
+    const items=combSkus();   // S.items ∪ 谷仓字典（直接引用谷仓 SKU）
+    // 默认选第一个 SKU（演示自动带出）
+    let sel=items[0]||{sku:"",name:"",l:10,w:10,h:10,weight:1,decl:80,attr:"普货"};
+    // 模块化默认：按当前模块渠道真实的 audience 推导（兼容 audience 为字符串或数组）
+    const audSet = uniq([].concat(...M.carriers.map(c=>Array.isArray(c.audience)?c.audience:(c.audience?[c.audience]:[]))).filter(Boolean));
+    const defaultAud = audSet.length===1 ? audSet[0] : (audSet.includes('2C') ? '2C' : '2B');
+    const defaultUnits = 1;
+    // 目的国：内部用 ISO，界面显示中文；对 parcel（已从 RATES 同步为 ISO）做反向映射，其余模块保持原语言
+    // ★ 下拉跨「小包/快递/头程」全量并集，确保「所有渠道能发的国家」都列得上（不再因某模块无该渠道而漏掉）
+    const allFreightCarriers = [].concat(
+      (S.modules.small && S.modules.small.carriers)||[],
+      (S.modules.express && S.modules.express.carriers)||[],
+      (S.modules.tob && S.modules.tob.carriers)||[]
+    );
+    // ★ 兼容两种 carriers 结构：旧版/小包 countries=ISO 数组；toB 同步后 countries=三区对象，ISO 数组在 isoCountries
+    const carrierIsoList = (c)=>(Array.isArray(c.isoCountries)?c.isoCountries:(Array.isArray(c.countries)?c.countries:[]));
+    const isoCountries = uniq(allFreightCarriers.flatMap(carrierIsoList)).filter(Boolean);
   const displayCountries = sortDestinations(isoCountries.map(isoToChinese));
   const isoOfDisplay = {};
   displayCountries.forEach(cn=>{ isoOfDisplay[cn] = (typeof CN2ISO==='object' && CN2ISO[cn]) || cn; });
@@ -896,7 +901,8 @@ function rFreight(){
     const b2bType = ($("#b2bType") && $("#b2bType").value) || "";
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
-      const reasons=qualify(ch, sku, units, aud, b2bType).concat( ch.countries.includes(destIso)?[]:[`目的国不符(${destCn})`] );
+      const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
+      const reasons=qualify(ch, sku, units, aud, b2bType).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
@@ -923,7 +929,13 @@ function rFreight(){
     const zip = (document.getElementById('acZip')?.value || '').trim();
     const detectedRegion = postcodeToRegion(zip);
     const usRegions=['美西','美中','美东'];
-    const isUS3=(ch)=> ch.countries && usRegions.every(r=>ch.countries[r] && ch.countries[r].tiers);
+    // ★ 兼容 syncTobFromRates 后的结构：三区对象可能在 ch.regions（原 countries）或 ch.countries；ISO 数组在 ch.isoCountries
+    const getUS3Map=(ch)=>{
+      if(ch.regions && typeof ch.regions==='object' && !Array.isArray(ch.regions) && usRegions.some(r=>ch.regions[r]&&ch.regions[r].tiers)) return ch.regions;
+      if(ch.countries && typeof ch.countries==='object' && !Array.isArray(ch.countries) && usRegions.some(r=>ch.countries[r]&&ch.countries[r].tiers)) return ch.countries;
+      return null;
+    };
+    const isUS3=(ch)=> !!getUS3Map(ch);
     const computeAll=(ch, regionOverride)=>{
       // ②③(非b2b):用统一引擎，但返回结构与 b2b 对齐（must/maybe），避免渲染侧歧义
       if(ch.cat!=='b2b-air'){
@@ -935,8 +947,8 @@ function rFreight(){
         };
       }
       // ④ 头程(B2B):独立计算,完整费用展开
-      // ★ rates.json 里 B2B 美国三区数据存在 ch.countries 下：countries={美西:{tiers},美中:{tiers},美东:{tiers}}
-      const us3Map = ch.countries || {};
+      // ★ 美国三区数据在 ch.regions（sync 后）或 ch.countries（原始 rates.json）
+      const us3Map = getUS3Map(ch) || {};
       const pickRegion=(reg)=> (reg && us3Map[reg]?.tiers) ? reg : (us3Map[destCn]?.tiers ? destCn : Object.keys(us3Map)[0] || destCn);
       const finalRegion = regionOverride || pickRegion(detectedRegion);
       const co = us3Map[finalRegion] || us3Map[destCn] || Object.values(us3Map)[0] || {};
@@ -1044,7 +1056,8 @@ function rFreight(){
     out+=`<h3>横向比价结果 · ${eligible.length} 个入围渠道（按到手总成本升序，绿色=最优）</h3>
       <div class="scroll-x"><table class="result-table"><thead><tr><th>#</th><th>物流商·渠道</th><th>可发国家</th><th>计费重</th>${headExtra}<th>时效</th><th>vs 最优</th></tr></thead><tbody>`;
     res.forEach((x,idx)=>{
-      const cnList=x.ch.countries.map(isoToChinese);
+      const isoList=Array.isArray(x.ch.isoCountries)?x.ch.isoCountries:(Array.isArray(x.ch.countries)?x.ch.countries:[]);
+      const cnList=isoList.map(isoToChinese);
       const cnShort=cnList.length>3?cnList.slice(0,3).join('、')+` 等${cnList.length}国`:cnList.join('、');
       const sw=(sku.weight*units).toFixed(2);
       const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(2);
@@ -1110,7 +1123,7 @@ function rRoute(){
   $("#app").innerHTML=h;
   const skuList=combSkus();
   const skuOpts=`<input id="rtSku" list="gcList" style="min-width:220px" value="${(skuList[0]||{}).sku||''}"><datalist id="gcList">${skuList.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>`;
-  const tobOpts=tob.carriers.filter(c=>c.countries.includes("DE")).map((c,i)=>`<option value="${i}">${c.carrier}·${c.channel}</option>`).join("");
+  const tobOpts=tob.carriers.filter(c=>(Array.isArray(c.isoCountries)?c.isoCountries:(Array.isArray(c.countries)?c.countries:[])).includes("DE")).map((c,i)=>`<option value="${i}">${c.carrier}·${c.channel}</option>`).join("");
   const ops=ov.ops.map(o=>`<label><input type="checkbox" class="rtop" data-k="${o.op}"> ${o.op}</label>`).join("");
   const body=`<h3>发货单（成本对象）</h3>
     SKU ${skuOpts}
@@ -1123,7 +1136,7 @@ function rRoute(){
   $("#rtOut").innerHTML=body;
   $("#rtCalc").onclick=()=>{
     const units=+$("#rtUnits").value, ti=+$("#rtTob").value;
-    const sku=combSkus().find(x=>x.sku===$("#rtSku").value); const ch=tob.carriers.filter(c=>c.countries.includes("DE"))[ti];
+    const sku=combSkus().find(x=>x.sku===$("#rtSku").value); const ch=tob.carriers.filter(c=>(Array.isArray(c.isoCountries)?c.isoCountries:(Array.isArray(c.countries)?c.countries:[])).includes("DE"))[ti];
     if(!sku){ $("#rtRes").innerHTML='<div class="err">未找到 SKU，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
     const fr=computeFreight(ch, sku, units);   // 头程段
     // 海外仓段
@@ -1153,11 +1166,12 @@ function rMom(){
     <button class="act" id="mRun" style="margin-left:8px">看环比</button>
     <div id="mOut"></div></div>`;
   $("#app").innerHTML=h;
-  const fillDest=()=>{ const M=S.modules[$("#mMod").value]; $("#mDest").innerHTML=uniq(M.carriers.flatMap(c=>c.countries)).map(c=>`<option>${c}</option>`).join(""); };
+  const fillDest=()=>{ const M=S.modules[$("#mMod").value]; $("#mDest").innerHTML=uniq(M.carriers.flatMap(c=>Array.isArray(c.isoCountries)?c.isoCountries:(Array.isArray(c.countries)?c.countries:[]))).map(c=>`<option>${c}</option>`).join(""); };
   $("#mMod").onchange=fillDest; fillDest();
   $("#mRun").onclick=()=>{
     const M=S.modules[$("#mMod").value], dest=$("#mDest").value;
-    const carriers=M.carriers.filter(c=>c.countries.includes(dest) && c.history && c.history.length>=2);
+    const isoList=(c)=>Array.isArray(c.isoCountries)?c.isoCountries:(Array.isArray(c.countries)?c.countries:[]);
+    const carriers=M.carriers.filter(c=>isoList(c).includes(dest) && c.history && c.history.length>=2);
     if(!carriers.length){ $("#mOut").innerHTML=`<div class="mut">该模块「${dest}」暂无可环比渠道（需 ≥2 期 history）。</div>`; return; }
     let out=`<h3>${M.name} · ${dest} · 环比（最新 vs 次新）</h3>`;
     carriers.forEach(ch=>{
