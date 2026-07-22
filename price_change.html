@@ -67,7 +67,7 @@ body.embed .banner{background:#1c2533;border-color:#30363d;color:#e6edf3}
 </style></head>
 <body><div class="wrap">
 <div class="tabs tabs-bar"></div>
-<div class="banner" id="bannerPos"><b>说明：</b>每个渠道报价分版本存档，可切换对比基准版本逐（国家×重量段）比对运费/kg，并按 4 业务域组织（小包专线 / 商业快递 / 2B头程 / 海外仓）| 生成于 2026-07-22 15:22</div>
+<div class="banner" id="bannerPos"><b>说明：</b>每个渠道报价分版本存档，可切换对比基准版本逐（国家×重量段）比对运费/kg，并按 4 业务域组织（小包专线 / 商业快递 / 2B头程 / 海外仓）| 生成于 2026-07-22 15:25</div>
 <div class="layout">
   <aside class="side" id="sidebar"></aside>
   <main class="detail" id="detail"></main>
@@ -179,7 +179,7 @@ function renderDetail(){
     if(ca !== cb) return ca < cb ? -1 : 1;
     return a < b ? -1 : 1;
   });
-  var u=d=e=a=r=0;
+  var u=dn=e=a=r=0;
   var trs = "";
   keys.forEach(function(k){
     var of = fb[k] ? fb[k].fr : null;
@@ -191,7 +191,7 @@ function renderDetail(){
       var pct = of ? Math.round(delta/of*1000)/10 : null;
       var dir = delta > 0 ? "涨" : (delta < 0 ? "跌" : "平");
       if(dir === "涨") u++;
-      else if(dir === "跌") d++;
+      else if(dir === "跌") dn++;
       else e++;
       if(dir === "平" && !state.showFlat[code]) return;
       var cls = dir === "涨" ? "up" : (dir === "跌" ? "down" : "eq");
@@ -217,7 +217,7 @@ function renderDetail(){
   }
 
   var sm = '对比基准 <b>'+base.eff+'</b> → 最新 <b>'+latest.eff+'</b>';
-  if(trs.indexOf("ch-empty") === -1) sm += ' ｜ 涨 <b class="up">'+u+'</b> ｜ 跌 <b class="down">'+d+'</b>';
+  if(trs.indexOf("ch-empty") === -1) sm += ' ｜ 涨 <b class="up">'+u+'</b> ｜ 跌 <b class="down">'+dn+'</b>';
 
   var html = '<div class="detail-card">';
   html += '<div class="dc-name">'+ch.name+'</div>';
