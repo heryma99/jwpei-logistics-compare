@@ -69,14 +69,66 @@ tr.down td.num.down, tr.down td.down{background:#e6f9ef}
 .foot{color:#9ca3af;font-size:12px;margin-top:20px;text-align:center}
 .placeholder{background:#fff;border-radius:14px;padding:60px 24px;text-align:center;color:#8a94a6;box-shadow:0 2px 12px rgba(0,0,0,.05)}
 .placeholder h3{color:#1f2d3d;margin:0 0 8px}
+/* ---- 嵌入主站深色主题适配 ---- */
+body.embed{background:transparent;color:#e6edf3}
+body.embed .wrap{background:transparent;padding:0;max-width:none}
 body.embed .hero,body.embed .foot{display:none}
-body.embed .wrap{padding:8px 12px 30px}
-body.embed .side{position:static;max-height:none}
+body.embed .tabs{margin-bottom:10px}
+body.embed .tab{background:#1c2330;color:#9aa7b4;border-color:#2a3340}
+body.embed .tab:hover{background:#232d3b}
+body.embed .tab.on{background:#3b82f6;color:#fff;border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,.25)}
+body.embed .layout{grid-template-columns:240px 1fr;gap:14px}
+body.embed .side{background:#161b22;border:1px solid #2a3340;box-shadow:none;position:static;max-height:none}
+body.embed .side h3{color:#9aa7b4}
+body.embed .cg-title{color:#e6edf3}
+body.embed .cn{color:#c9d4e0}
+body.embed .cn:hover{background:#1c2330;color:#60a5fa}
+body.embed .cn.on{background:linear-gradient(90deg,rgba(59,130,246,.18),transparent);color:#60a5fa;border-color:#3b82f6}
+body.embed .cn .badge-v{background:#232d3b;color:#9aa7b4}
+body.embed .cn.on .badge-v{background:#3b82f6;color:#fff}
+body.embed .cn-empty{background:#161b22;color:#9aa7b4}
+body.embed .detail-card{background:#161b22;border:1px solid #2a3340;box-shadow:none;color:#e6edf3}
+body.embed .dc-head{border-bottom-color:#2a3340}
+body.embed .dc-name{color:#e6edf3}
+body.embed .dc-tag{background:#232d3b;color:#9aa7b4}
+body.embed .dc-tag.t-small{background:rgba(59,130,246,.15);color:#60a5fa}
+body.embed .dc-tag.t-express{background:rgba(14,165,233,.15);color:#38bdf8}
+body.embed .dc-tag.t-b2b-air{background:rgba(249,115,22,.15);color:#fb923c}
+body.embed .dc-tag.t-overseas{background:rgba(234,179,8,.15);color:#facc15}
+body.embed .dc-base label{color:#9aa7b4}
+body.embed .base-sel{background:#0e1117;color:#e6edf3;border-color:#2a3340}
+body.embed .timeline{background:#0e1117}
+body.embed .tl-title{color:#9aa7b4}
+body.embed .tl-node:hover{background:#1c2330}
+body.embed .tl-dot{border-color:#161b22}
+body.embed .tl-node.cur .tl-dot{background:#3b82f6;box-shadow:0 0 0 1px #3b82f6,0 0 0 5px rgba(59,130,246,.2)}
+body.embed .tl-node.base .tl-dot{background:#fff;border-color:#3b82f6;box-shadow:0 0 0 1px #3b82f6}
+body.embed .tl-date{color:#9aa7b4}
+body.embed .tl-node.cur .tl-date{color:#60a5fa}
+body.embed .tl-arrow{color:#2a3340}
+body.embed .dc-sum{color:#9aa7b4;background:#0e1117}
+body.embed .dc-sum b.up{color:#f87171}
+body.embed .dc-sum b.down{color:#4ade80}
+body.embed table th{background:#1c2330;color:#9aa7b4;border-bottom-color:#2a3340}
+body.embed td{border-bottom-color:#2a3340}
+body.embed td.pl{color:#e6edf3}
+body.embed tr.up td.num.up,body.embed tr.up td.up{background:rgba(248,113,113,.12)}
+body.embed tr.down td.num.down,body.embed tr.down td.down{background:rgba(74,222,128,.12)}
+body.embed .up{color:#f87171}
+body.embed .down{color:#4ade80}
+body.embed .eq{color:#9aa7b4}
+body.embed .new{color:#60a5fa}
+body.embed .rm{color:#9aa7b4}
+body.embed .flat-toggle{background:rgba(59,130,246,.12);color:#60a5fa;border-color:rgba(59,130,246,.35)}
+body.embed .flat-toggle:hover{background:rgba(59,130,246,.2)}
+body.embed .ch-empty{color:#4ade80;background:rgba(74,222,128,.08)}
+body.embed .placeholder{background:#161b22;border:1px solid #2a3340;box-shadow:none;color:#9aa7b4}
+body.embed .placeholder h3{color:#e6edf3}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.side{position:static;max-height:none}}
 </style></head>
 <body><div class="wrap">
 <div class="hero"><h1>物流价格变动看板 · 按业务域环比</h1>
-<div class="sub">每个渠道报价分版本存档，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，并按 4 业务域组织 ｜ 生成于 2026-07-22 14:24</div></div>
+<div class="sub">每个渠道报价分版本存档，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，并按 4 业务域组织 ｜ 生成于 2026-07-22 14:32</div></div>
 <div class="tabs" id="tabs">
   <button class="tab on" data-cat="all">全部 <span class="cnt" id="cnt-all"></span></button>
   <button class="tab" data-cat="small">小包专线 <span class="cnt" id="cnt-small"></span></button>
