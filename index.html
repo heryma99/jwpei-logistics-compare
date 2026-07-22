@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784730000";</script>
+<script>window.__BUILD__="1784736000";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -159,6 +159,18 @@
   .fld{display:inline-block;margin:3px 12px 3px 0;vertical-align:top}
   .fld label{display:block;min-width:auto;font-size:11px;margin-bottom:2px}
   .inline-in{width:88px;display:inline-block;margin:0}
+
+
+  .ov-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0 4px}
+  .ov-lbl{font-weight:600;color:var(--mut)}
+  .ov-whmeta{font-size:12px;color:var(--mut);background:var(--panel2);padding:3px 9px;border-radius:6px;border:1px solid var(--line)}
+  .ov-cmp-chk{margin-left:auto;display:flex;align-items:center;gap:5px;font-weight:600;cursor:pointer;color:var(--fg)}
+  .ov-cmppanel{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 2px;padding:9px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}
+  .ov-cmpwh{display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
+  .cmp-scroll{overflow-x:auto;margin-top:4px}
+  .th-month{display:block;font-size:10px;color:var(--mut);font-weight:400;margin-top:2px}
+  .rmini{font-size:10.5px;white-space:nowrap;margin-left:4px}
+  .cmp-table td:first-child{white-space:nowrap}
 
 </style>
   <script>
@@ -1158,9 +1170,10 @@ function rOps(){
   if(!E){ $("#app").innerHTML='<div class="err">海外仓引擎未加载(OV_ENGINE)</div>'; return; }
   const WH=D.warehouses, GCID=window.OV_DATA.gc_D;
   const whIds=Object.keys(WH);
-  const catLabel={LC:'卸货费(LCL)',IB_TF:'分拣费',IB_TS:'理货费',IB_F:'入库操作费',SHELF:'转运上架费',NPIF:'新品查验',STO:'仓储费',BFF:'出库操作费',TAIL:'尾程运费',RETURN:'退件处理',HEAD:'头程运费'};
+  const catLabel={HEAD:'头程运费',LC:'卸货费',IB_TF:'分拣费',IB_TS:'理货费',IB_F:'入库操作费',SHELF:'转运上架费',NPIF:'新品查验',STO:'仓储费',BFF:'出库操作费',TAIL:'尾程运费',RETURN:'退件处理'};
+  const FEE_ORDER=['IB_F','LC','IB_TF','IB_TS','SHELF','NPIF','STO','BFF','TAIL','RETURN']; // 全费用科目（统一字典）
   const segLabels=['头程','入库','仓储','出库','尾程','退件'];
-  let st={wh:whIds[0], seg:0, compare:false};
+  let st={wh:whIds[0], seg:SEGS.length};
   const skuList=combSkus();
   const skuOpts='<input id="ovSku" list="ovGc" style="min-width:200px" value="'+((skuList[0]||{}).sku||'')+'"><datalist id="ovGc">'+skuList.map(it=>'<option value="'+it.sku+'">'+(it.name||'')+'</option>').join('')+'</datalist>';
   const zoneOpts=[1,2,3,4,5,6,7,8].map(z=>'<option value="'+z+'"'+(z===8?' selected':'')+'>Zone'+z+(z===8?'（美西）':'')+'</option>').join('');
@@ -1169,10 +1182,16 @@ function rOps(){
   const chOptsFor=(ck)=>{const c=HC.carriers[ck];return Object.keys(c.channels).map(ch=>'<option value="'+ch+'">'+c.channels[ch].label+'</option>').join('');};
   const regOptsFor=(ck,ch)=>{const c=HC.carriers[ck];return Object.keys(c.channels[ch].regions).map(r=>'<option value="'+r+'">'+((HC.meta.regions[r])||r)+'</option>').join('');};
 
-  let h='<div class="card"><h2>⑤ 海外仓价格预估　<span class="pill">真实账单校验引擎 · 5 仓横向可比</span></h2>'
-    +'<div class="note">5 家海外仓统一费用科目、同场景测算：<b>谷仓 GoodCang / 跨境在线 / VIP华人行 / 万邑通 / 襄派</b>。每个科目带<b>可验证性评级</b>（🟢已验证 / 🟡部分对齐 / 🔴未对齐 / ⚪无数据）。<b>范围感知</b>：每仓只比它「提供」的科目，未提供的标 N/A，绝不误判「更贵」。<br><b>费率来源</b>：模型内置研究报价（非实时 API 拉取），以各仓卡片标注的「费率生效月」为准；头程物流商为中运通达/亚丰等真实报价。如需更新或接入美森CLX/云途等，把报价表发我即可在配置中心接入（不会凭空编造费率）。</div>'
-    +'<div class="wh-cards" id="ovCards"></div>'
-    +'<div class="card" style="background:var(--panel2)"><h3 style="margin-top:0">测算场景（同一批货，5 仓同口径）</h3>'
+  let h='<div class="card"><h2>⑤ 海外仓价格预估　<span class="pill">真实账单校验引擎</span></h2>'
+    +'<div class="note">统一费用科目、同场景测算：<b>谷仓 GoodCang / 跨境在线 / VIP华人行 / 万邑通 / 襄派</b>。每个科目带<b>可验证性评级</b>（🟢已验证 / 🟡部分对齐 / 🔴未对齐 / ⚪无数据）。<br><b>怎么用</b>：默认看「某一个」海外仓的明细；想几仓一起比，勾右上「横向对比」并多选。<b>范围感知</b>：某仓未提供的科目标「—」、未对齐/无数据标「N/A」，二者均不参与该科目最低/最高判定，绝不误判谁更贵。<b>费率来源</b>：模型内置研究报价（非实时 API），以各仓「费率生效月」为准；头程为中运通达/亚丰等真实报价。要接美森CLX/云途等，把报价表发我即可（不凭空编费率）。</div>'
+    +'<div class="ov-toolbar">'
+      +'<label class="ov-lbl">看哪个海外仓</label>'
+      +'<select id="ovWh" class="inline-in" style="min-width:230px">'+whIds.map(id=>'<option value="'+id+'"'+(id===st.wh?' selected':'')+'>'+E.esc(WH[id].name)+'</option>').join('')+'</select>'
+      +'<span id="ovWhMeta" class="ov-whmeta"></span>'
+      +'<label class="ov-cmp-chk"><input type="checkbox" id="ovCmp"> 横向对比（多选）</label>'
+    +'</div>'
+    +'<div id="ovCmpPanel" class="ov-cmppanel" style="display:none">勾选要同屏对比的仓： '+whIds.map(id=>'<label class="ov-cmpwh"><input type="checkbox" class="ovCmpWh" value="'+id+'" checked>'+E.esc(WH[id].name)+'</label>').join('')+'</div>'
+    +'<div class="card" style="background:var(--panel2)"><h3 style="margin-top:0">测算场景（同一批货，各仓同口径）</h3>'
     +'<div class="fld"><label>SKU（自动带出尺寸/实重）</label>'+skuOpts+'</div>'
     +'<div class="fld"><label>件数</label><input type="number" id="ovQty" class="inline-in" value="100"></div>'
     +'<div class="fld"><label>单件实重kg</label><input type="number" step="0.01" id="ovKg" class="inline-in" value="0.728"></div>'
@@ -1197,31 +1216,23 @@ function rOps(){
     +'<div class="fld"><label>地址</label><select id="ovHaddr" class="inline-in"><option value="commercial">商业</option><option value="residential">住宅</option></select></div>'
     +'<div class="fld" id="ovHcashFld" style="display:none"><label>手填¥</label><input type="number" id="ovHcash" class="inline-in" value="0"></div>'
     +'</div>'
-    +'<div style="margin-top:8px"><button class="act" id="ovRun">测算</button> <label style="min-width:auto"><input type="checkbox" id="ovCmp" checked> 横向对比 5 仓</label> <span class="mut" id="ovVerdict"></span></div>'
+    +'<div style="margin-top:8px"><button class="act" id="ovRun">测算</button> <span class="mut" id="ovVerdict"></span></div>'
     +'</div>'
-    +'<div class="seg-nav" id="ovSeg"></div>'
-    +'<div id="ovRes"></div>'
-    +'<div id="ovCmpRes"></div>'
+    +'<div class="seg-nav" id="ovSeg" style="display:none"></div>'
+    +'<div id="ovDetail"></div>'
+    +'<div id="ovCmpRes" style="display:none"></div>'
     +'</div>';
   $("#app").innerHTML=h;
 
   function fillHch(){ const ck=$("#ovHc").value; if(ck==='manual'){ $("#ovHch").innerHTML='<option>—</option>'; $("#ovHr").innerHTML='<option>—</option>'; $("#ovHcashFld").style.display=''; return;} $("#ovHcashFld").style.display='none'; $("#ovHch").innerHTML=chOptsFor(ck); fillHr(); }
   function fillHr(){ const ck=$("#ovHc").value; if(ck==='manual'){return;} $("#ovHr").innerHTML=regOptsFor(ck,$("#ovHch").value); }
-  $("#ovHc").onchange=fillHch; $("#ovHch").onchange=fillHr; fillHch();
-  $("#ovHeadMode").onchange=function(){ const on=this.value==='include'; const box=document.getElementById('ovHeadBox'); if(box) box.style.display=on?'':'none'; draw(); };
+  function updateMeta(){ const w=WH[st.wh]; const m=[]; if(w.region)m.push(E.esc(w.region)); if(w.scope)m.push(E.esc(w.scope)); if(w.bill_month)m.push('费率生效月 '+E.esc(w.bill_month)); $("#ovWhMeta").innerHTML=m.join(' · '); }
 
-  $("#ovSku").oninput=function(){ const g=GC[this.value]; if(!g) return; const f=v=>(+v||0); $("#ovKg").value=f(g.weight); $("#ovL").value=f(g.l); $("#ovW").value=f(g.w); $("#ovH").value=f(g.h); };
-  $("#ovQty").oninput=function(){ const q=+$("#ovQty").value||0,L=+$("#ovL").value||0,W=+$("#ovW").value||0,H=+$("#ovH").value||0; $("#ovVol").value=((L*W*H/1e6)*q).toFixed(4); };
-
-  function renderCards(){
-    $("#ovCards").innerHTML=whIds.map(id=>{ const w=WH[id]; const sel=st.wh===id?' on':''; return '<div class="wh-card'+sel+'" data-id="'+id+'"><div class="wn">'+E.esc(w.name)+'</div><div class="wr">'+E.esc(w.region||'')+'</div><span class="ws">'+E.esc(w.scope||'')+'</span>'+(w.bill_month?'<div style="font-size:11px;color:var(--mut);margin:2px 0">费率生效月 '+E.esc(w.bill_month)+'</div>':'')+'<div class="wsum" id="wsum_'+id+'"></div></div>'; }).join('');
-    whIds.forEach(id=>{ const el=document.querySelector('.wh-card[data-id="'+id+'"]'); if(el) el.onclick=()=>{ st.wh=id; renderCards(); draw(); }; });
-  }
   function renderSeg(){
     let btns=SEGS.map((s,i)=>'<button class="seg-btn'+(st.seg===i?' on':'')+'" data-seg="'+i+'">'+segLabels[i]+'</button>').join('');
     btns+='<button class="seg-btn'+(st.seg===SEGS.length?' on':'')+'" data-seg="all">全链路汇总</button>';
     $("#ovSeg").innerHTML=btns;
-    $("#ovSeg").querySelectorAll('.seg-btn').forEach(b=> b.onclick=()=>{ st.seg=(b.dataset.seg==='all')?SEGS.length:+b.dataset.seg; renderSeg(); draw(); });
+    $("#ovSeg").querySelectorAll('.seg-btn').forEach(b=> b.onclick=()=>{ st.seg=(b.dataset.seg==='all')?SEGS.length:+b.dataset.seg; renderSeg(); drawDetail(); });
   }
 
   function buildSc(){
@@ -1232,25 +1243,22 @@ function rOps(){
     const f=(id)=> (document.getElementById(id).value);
     return { hc:f('ovHc'), hcash:+f('ovHcash')||0, hch:f('ovHch'), hr:f('ovHr'), kg:+f('ovKg')||0, L:+f('ovL')||0, W:+f('ovW')||0, H:+f('ovH')||0, qty:+f('ovQty')||0, hremote:f('ovHremote'), haddr:f('ovHaddr'), hprod:'', hsku:1, hcustoms:'no', hmagnet:'no', hbamboo:'no', hwt:((+f('ovKg')||0)*(+f('ovQty')||0)) };
   }
+  function headOn(){ return $("#ovHeadMode")?($("#ovHeadMode").value==='include'):true; }
+  function getHead(hd){ return headOn() ? E.calcHead(hd) : {amt:0, rating:'na', note:'已跳过头程（仅估海外仓操作费）'}; }
+  function fxVal(){ return +$("#ovFx").value||7.2; }
 
   function catRows(cats, keys){
     let rows='';
-    keys.forEach(k=>{ const c=cats[k]; if(!c) return; rows+='<tr><td>'+catLabel[k]+'</td><td class="rate-cell">$'+E.fmt(c.amt)+'</td><td>'+E.badge(c.rating)+'</td><td class="note-cell">'+(c.note?E.esc(c.note):'')+'</td></tr>'; });
-    if(!rows) rows='<tr><td colspan=4 class="mut">该仓未提供此段（N/A）</td></tr>';
+    keys.forEach(k=>{ const c=cats[k]; if(!c) return; rows+='<tr><td>'+catLabel[k]+'</td><td class="rate-cell">$'+(c.amt?E.fmt(c.amt):'0.00')+'</td><td>'+E.badge(c.rating)+'</td><td class="note-cell">'+(c.note?E.esc(c.note):'')+'</td></tr>'; });
+    if(!rows) rows='<tr><td colspan=4 class="mut">该仓未提供此段（—）</td></tr>';
     return rows;
   }
 
-  function draw(){
-    const sc=buildSc(), hd=buildHead();
-    const wh=st.wh;
-    const res=E.calcOne(wh, sc);
-    const cats=res.cats;
-    whIds.forEach(id=>{ const r=E.calcOne(id, sc); let g=0,y=0,r0=0,n=0; for(const k in r.cats){ const rt=r.cats[k].rating; if(rt==='green')g++;else if(rt==='yellow')y++;else if(rt==='red')r0++;else n++; } const el=document.getElementById('wsum_'+id); if(el) el.innerHTML='<span style="color:var(--green)">🟢'+g+'</span> <span style="color:var(--warn)">🟡'+y+'</span> <span style="color:var(--err)">🔴'+r0+'</span> <span style="color:var(--mut)">⚪'+n+'</span>'; });
+  function drawDetail(){
+    const sc=buildSc(), hd=buildHead(), fx=fxVal();
+    const wh=st.wh, res=E.calcOne(wh, sc), cats=res.cats;
     let opSub=0; for(const k in cats) opSub+=cats[k].amt;
-    const headOn=()=> ($("#ovHeadMode")?($("#ovHeadMode").value==='include'):true);
-    const getHead=()=> headOn() ? E.calcHead(hd) : {amt:0, rating:'na', note:'已跳过头程（仅估海外仓操作费）'};
-    const headR=getHead();
-    const fx=+$("#ovFx").value||7.2;
+    const headR=getHead(hd);
     let segHtml='';
     if(st.seg===SEGS.length){
       let all='';
@@ -1270,65 +1278,82 @@ function rOps(){
           +'<tr><td>'+catLabel.HEAD+'</td><td class="rate-cell">¥'+E.fmt(headR.amt)+'</td><td>'+E.badge(headR.rating)+'</td><td class="note-cell">'+E.esc(headR.note||'')+'</td></tr></tbody></table>'
           +'<div class="kpi-sub">头程 ¥'+E.fmt(headR.amt)+' ｜ 海外仓操作合计 $'+E.fmt(opSub)+'</div>';
       } else {
-        segHtml='<h3>头程（中国→海外仓）</h3><div class="mut">已跳过头程 —— 当前只估海外仓操作费。把「模式」切回「含头程」即可看到头程报价。</div><div class="kpi-sub">海外仓操作合计 $'+E.fmt(opSub)+'</div>';
+        segHtml='<h3>头程（中国→海外仓）</h3><div class="mut">已跳过头程 —— 当前只估海外仓操作费。</div><div class="kpi-sub">海外仓操作合计 $'+E.fmt(opSub)+'</div>';
       }
     } else {
       const s=SEGS[st.seg];
       segHtml='<h3>'+segLabels[st.seg]+'</h3><table class="result-table"><thead><tr><th>科目</th><th>金额($)</th><th>可验证性</th><th>计费依据</th></tr></thead><tbody>'+catRows(cats,s.cats)+'</tbody></table>'
         +'<div class="kpi-sub">本段小计 $'+E.fmt(opSub)+' ｜ 海外仓操作合计 $'+E.fmt(opSub)+' ｜ '+(headOn()?('头程 ¥'+E.fmt(headR.amt)):'头程：已跳过')+'</div>';
     }
+    updateMeta();
     $("#ovGcwhFld").style.display=(wh==='goodcang')?'':'none';
-    $("#ovRes").innerHTML=segHtml;
-    if($("#ovCmp").checked) drawCompare(sc, hd, fx); else $("#ovCmpRes").innerHTML='';
+    $("#ovDetail").innerHTML=segHtml;
+    $("#ovVerdict").textContent='';
   }
 
-  function drawCompare(sc, hd, fx){
-    const headOn= ($("#ovHeadMode")?($("#ovHeadMode").value==='include'):true);
-    const headR= headOn ? E.calcHead(hd) : {amt:0};
-    const coreCats=['IB_F','STO','BFF','TAIL'];
-    const fullOf=(id)=>{ const r=E.calcOne(id,sc); const have=coreCats.filter(k=>{ const c=r.cats[k]; return c && c.amt; }).length; return have>=3; };
-    const fullIds=whIds.filter(fullOf);
-    const seen={}; const allCats=[];
-    whIds.forEach(id=>{ const r=E.calcOne(id,sc); for(const k in r.cats){ if(!seen[k]){seen[k]=1; allCats.push(k);} } });
+  function getCmpIds(){
+    const chk=Array.from(document.querySelectorAll('.ovCmpWh:checked')).map(c=>c.value);
+    return chk.length?chk:whIds.slice();
+  }
+
+  function drawCompare(){
+    const sc=buildSc(), hd=buildHead(), fx=fxVal();
+    const headR=getHead(hd);
+    const ids=getCmpIds();
+    const R={}; ids.forEach(id=> R[id]=E.calcOne(id,sc));
+    const mini=t=>'<span class="rmini">'+(t.g?('🟢'+t.g):'')+(t.y?(' 🟡'+t.y):'')+(t.r0?(' 🔴'+t.r0):'')+(t.n?(' ⚪'+t.n):'')+'</span>';
+    function tally(k){ let g=0,y=0,r0=0,n=0; ids.forEach(id=>{ const c=R[id].cats[k]; if(!c||!c.amt){n++;return;} const rt=c.rating; if(rt==='green')g++;else if(rt==='yellow')y++;else if(rt==='red')r0++;else n++; }); return {g,y,r0,n}; }
     let rows='';
-    allCats.forEach(k=>{
-      const cell={}; let minV=Infinity,maxV=-Infinity,haveComp=false;
-      whIds.forEach(id=>{ const r=E.calcOne(id,sc); const c=r.cats[k]; cell[id]=c; if(c && c.amt && c.rating!=='red' && c.rating!=='na'){ if(c.amt<minV)minV=c.amt; if(c.amt>maxV)maxV=c.amt; haveComp=true; } });
-      let tds=whIds.map(id=>{ const c=cell[id]; if(!c) return '<td class="na">—</td>'; if(!c.amt||c.rating==='red'||c.rating==='na') return '<td class="na">N/A</td>'; let cls=''; if(haveComp){ if(Math.abs(c.amt-minV)<1e-9)cls=' min'; else if(Math.abs(c.amt-maxV)<1e-9)cls=' max'; } return '<td class="'+cls+'">$'+E.fmt(c.amt)+'</td>'; }).join('');
-      rows+='<tr><td>'+catLabel[k]+'</td>'+tds+'</tr>';
+    FEE_ORDER.forEach(k=>{
+      let minV=Infinity,maxV=-Infinity,have=false;
+      ids.forEach(id=>{ const c=R[id].cats[k]; if(c&&c.amt&&c.rating!=='red'&&c.rating!=='na'){ if(c.amt<minV)minV=c.amt; if(c.amt>maxV)maxV=c.amt; have=true; } });
+      let tds=ids.map(id=>{ const c=R[id].cats[k]; if(!c||!c.amt) return '<td class="na">—</td>'; if(c.rating==='red'||c.rating==='na') return '<td class="na" title="'+(E.esc(c.note||'未对齐/无数据'))+'">N/A</td>'; let cls=''; if(have){ if(Math.abs(c.amt-minV)<1e-9)cls=' min'; else if(Math.abs(c.amt-maxV)<1e-9)cls=' max'; } return '<td class="'+cls+'">$'+E.fmt(c.amt)+'</td>'; }).join('');
+      rows+='<tr><td>'+catLabel[k]+' '+mini(tally(k))+'</td>'+tds+'</tr>';
     });
-    const subs=whIds.map(id=>{ const r=E.calcOne(id,sc); let s=0; for(const k in r.cats)s+=r.cats[k].amt; return s; });
-    let minS=Infinity,maxS=-Infinity;
-    whIds.forEach((id,i)=>{ if(fullIds.indexOf(id)>=0){ if(subs[i]<minS)minS=subs[i]; if(subs[i]>maxS)maxS=subs[i]; } });
-    let subTds=whIds.map((id,i)=>{ if(fullIds.indexOf(id)<0) return '<td class="na" title="仅部分服务，总预算不可比">部分</td>'; let cls=''; if(Math.abs(subs[i]-minS)<1e-9)cls=' min'; else if(Math.abs(subs[i]-maxS)<1e-9)cls=' max'; return '<td class="'+cls+'">$'+E.fmt(subs[i])+'</td>'; }).join('');
+    const subs=ids.map(id=>{ let s=0; for(const k in R[id].cats) s+=R[id].cats[k].amt; return s; });
+    let minS=Infinity,maxS=-Infinity; ids.forEach((id,i)=>{ if(subs[i]<minS)minS=subs[i]; if(subs[i]>maxS)maxS=subs[i]; });
+    let subTds=ids.map((id,i)=>{ let cls=''; if(ids.length>1){ if(Math.abs(subs[i]-minS)<1e-9)cls=' min'; else if(Math.abs(subs[i]-maxS)<1e-9)cls=' max'; } return '<td class="'+cls+'">$'+E.fmt(subs[i])+'</td>'; }).join('');
     rows+='<tr class="best"><td>操作小计($)</td>'+subTds+'</tr>';
+    let headTds=ids.map(()=> headOn()?('¥'+E.fmt(headR.amt)):'<span class="na">跳过</span>').join('');
+    rows+='<tr><td>头程（中国→仓，¥）'+(headOn?(' '+E.badge(headR.rating)):'')+'</td>'+headTds+'</tr>';
     const tots=subs.map(s=> headR.amt + s*fx);
-    let minT=Infinity,maxT=-Infinity;
-    whIds.forEach((id,i)=>{ if(fullIds.indexOf(id)>=0){ if(tots[i]<minT)minT=tots[i]; if(tots[i]>maxT)maxT=tots[i]; } });
-    let totTds=whIds.map((id,i)=>{ if(fullIds.indexOf(id)<0) return '<td class="na">部分</td>'; let cls=''; if(Math.abs(tots[i]-minT)<1e-9)cls=' min'; else if(Math.abs(tots[i]-maxT)<1e-9)cls=' max'; return '<td class="'+cls+'">¥'+E.fmt(tots[i])+'</td>'; }).join('');
-    rows+='<tr class="best"><td>'+(headOn?('含头程(¥,FX'+fx+')'):('仅海外仓(¥,FX'+fx+')'))+'</td>'+totTds+'</tr>';
-    let verdict='';
-    if(fullIds.length){
-      let minId=fullIds[0]; fullIds.forEach(id=>{ const ti=subs[whIds.indexOf(id)]*fx+(headOn?headR.amt:0); const tm=subs[whIds.indexOf(minId)]*fx+(headOn?headR.amt:0); if(ti<tm) minId=id; });
-      const minR=E.calcOne(minId,sc); const hasRed=Object.keys(minR.cats).some(k=>minR.cats[k].rating==='red');
-      const zeroCore=coreCats.filter(k=>!(minR.cats[k]&&minR.cats[k].amt));
-      verdict='综合最低（'+(headOn?'含头程':'仅海外仓')+'）：'+E.esc(WH[minId].name)+' ¥'+E.fmt(subs[whIds.indexOf(minId)]*fx+(headOn?headR.amt:0));
-      if(whIds.length!==fullIds.length) verdict+='　·　仅比全案仓（'+fullIds.length+'/'+whIds.length+'），其余仓仅部分服务不参与总预算最值';
-      if(zeroCore.length) verdict+='　·　⚠️最低仓「'+zeroCore.join('/')+'」为 0（可能免租/包干），结果仅供参考';
-      if(hasRed) verdict+='　·　⚠️最低仓含🔴未对齐科目，结果仅供参考';
-    } else { verdict='当前场景下无可比全案仓'; }
-    const head='<table class="result-table cmp-table"><thead><tr><th>费用科目 / 海外仓</th>'+whIds.map(id=>'<th>'+E.esc(WH[id].name)+'</th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table>'
+    let minT=Infinity,maxT=-Infinity; ids.forEach((id,i)=>{ if(tots[i]<minT)minT=tots[i]; if(tots[i]>maxT)maxT=tots[i]; });
+    let totTds=ids.map((id,i)=>{ let cls=''; if(ids.length>1){ if(Math.abs(tots[i]-minT)<1e-9)cls=' min'; else if(Math.abs(tots[i]-maxT)<1e-9)cls=' max'; } return '<td class="'+cls+'">¥'+E.fmt(tots[i])+'</td>'; }).join('');
+    rows+='<tr class="best"><td>含头程总预算(¥)</td>'+totTds+'</tr>';
+    let bestIdx=0; ids.forEach((id,i)=>{ if(tots[i]<tots[bestIdx]) bestIdx=i; });
+    const minId=ids[bestIdx], minR=R[minId];
+    const hasRed=Object.keys(minR.cats).some(k=>minR.cats[k].rating==='red');
+    const zeroCore=['IB_F','STO','BFF','TAIL'].filter(k=>!(minR.cats[k]&&minR.cats[k].amt));
+    let verdict='综合最低（'+(headOn()?'含头程':'仅海外仓')+'）：'+E.esc(WH[minId].name)+' ¥'+E.fmt(tots[bestIdx]);
+    if(zeroCore.length) verdict+='　·　⚠️最低仓「'+zeroCore.map(k=>catLabel[k]).join('/')+'」为 0（免租/包干），结果仅供参考';
+    if(hasRed) verdict+='　·　⚠️最低仓含🔴未对齐科目';
+    const head='<div class="cmp-scroll"><table class="result-table cmp-table"><thead><tr><th>费用科目 \\ 海外仓</th>'+ids.map(id=>'<th>'+E.esc(WH[id].name)+(WH[id].bill_month?('<span class="th-month">'+E.esc(WH[id].bill_month)+'</span>'):'')+'</th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>'
       +'<div class="ok" style="margin:6px 0;font-weight:600">'+verdict+'</div>'
-      +'<div class="mut">绿=该科目最低（仅比🟢/🟡可比科目，🔴未对齐/⚪无数据标 N/A 不参与最值）。各仓只比它「提供」的科目；总预算对提供 ≥3 项核心服务（入库/仓储/出库/尾程）的仓取最值，仅单项服务的仓标「部分」不参与总预算最值，绝不误判「更贵」。</div>';
-    $("#ovCmpRes").innerHTML='<h3>横向对比（同场景 5 仓）</h3>'+head;
+      +'<div class="mut">每一行列出该费用科目下各仓金额；某仓<b>未提供</b>该项显示「—」、<b>未对齐/无数据</b>显示「N/A」，二者均不参与该科目最低/最高判定。表头右侧小图标 = 该科目在各仓的可验证性分布（🟢已验证/🟡部分对齐/🔴未对齐/⚪无数据）。绿=最低，红=最高（仅对可比科目）。</div>';
+    $("#ovCmpRes").innerHTML='<h3>横向对比（同场景 '+ids.length+' 仓）</h3>'+head;
     const vEl=document.getElementById('ovVerdict'); if(vEl) vEl.textContent=verdict;
   }
 
-  $("#ovRun").onclick=draw; $("#ovCmp").onchange=draw;
-  renderCards(); renderSeg(); draw();
+  function draw(){
+    const cmpOn=$("#ovCmp").checked;
+    $("#ovCmpPanel").style.display=cmpOn?'':'none';
+    $("#ovSeg").style.display=cmpOn?'none':'';
+    $("#ovDetail").style.display=cmpOn?'none':'';
+    $("#ovCmpRes").style.display=cmpOn?'':'none';
+    if(cmpOn){ drawCompare(); } else { renderSeg(); drawDetail(); }
+  }
+
+  $("#ovHc").onchange=fillHch; $("#ovHch").onchange=fillHr; fillHch();
+  $("#ovHeadMode").onchange=function(){ const on=this.value==='include'; const box=document.getElementById('ovHeadBox'); if(box) box.style.display=on?'':'none'; draw(); };
+  $("#ovWh").onchange=function(){ st.wh=this.value; if(!$("#ovCmp").checked){ renderSeg(); } drawDetail(); };
+  $("#ovCmp").onchange=draw;
+  document.querySelectorAll('.ovCmpWh').forEach(c=> c.onchange=()=>{ if($("#ovCmp").checked) drawCompare(); });
+  $("#ovSku").oninput=function(){ const g=GC[this.value]; if(!g) return; const f=v=>(+v||0); $("#ovKg").value=f(g.weight); $("#ovL").value=f(g.l); $("#ovW").value=f(g.w); $("#ovH").value=f(g.h); };
+  $("#ovQty").oninput=function(){ const q=+$("#ovQty").value||0,L=+$("#ovL").value||0,W=+$("#ovW").value||0,H=+$("#ovH").value||0; $("#ovVol").value=((L*W*H/1e6)*q).toFixed(4); };
+  $("#ovRun").onclick=draw;
+  updateMeta(); draw();
 }
 
-/* ===================== ⑥ 全链路路由（P0-1 串联） ===================== */
 function rRoute(){
   const E=window.OV_ENGINE, D=window.OV_DATA, HC=window.OV_HC;
   if(!E){ $("#app").innerHTML='<div class="err">海外仓引擎未加载</div>'; return; }
