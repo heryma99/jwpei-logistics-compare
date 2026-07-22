@@ -67,7 +67,7 @@ body.embed .banner{background:#1c2533;border-color:#30363d;color:#e6edf3}
 </style></head>
 <body><div class="wrap">
 <div class="tabs tabs-bar"></div>
-<div class="banner" id="bannerPos"><b>说明：</b>每个渠道报价分版本存档，可切换对比基准版本逐（国家×重量段）比对运费/kg，并按 4 业务域组织（小包专线 / 商业快递 / 2B头程 / 海外仓）| 生成于 2026-07-22 15:25</div>
+<div class="banner" id="bannerPos"><b>说明：</b>每个渠道报价分版本存档，可切换对比基准版本逐（国家×重量段）比对运费/kg，并按 4 业务域组织（小包专线 / 商业快递 / 2B头程 / 海外仓）| 生成于 2026-07-22 15:32</div>
 <div class="layout">
   <aside class="side" id="sidebar"></aside>
   <main class="detail" id="detail"></main>
@@ -239,9 +239,9 @@ function renderDetail(){
   d.querySelectorAll(".tl-node").forEach(function(el){
     el.onclick = function(){ state.baseIdx = parseInt(this.getAttribute("data-idx")); renderDetail(); };
   });
-  var sel = d.getElementById("baseSel");
+  var sel = document.getElementById("baseSel");
   if(sel) sel.onchange = function(){ state.baseIdx = parseInt(this.value); renderDetail(); };
-  var ft = d.getElementById("flatToggle");
+  var ft = document.getElementById("flatToggle");
   if(ft) ft.onclick = function(){ state.showFlat[code] = !state.showFlat[code]; renderDetail(); };
   } catch(err) {
     document.getElementById("detail").innerHTML = '<div class="placeholder" style="background:#fde2e2;border-color:#c0392b"><h3 style="color:#c0392b">渲染出错</h3><p>'+err.message+'</p><pre style="text-align:left;font-size:11px;color:#666">'+err.stack+'</pre></div>';
