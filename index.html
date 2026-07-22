@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784678911";</script>
+<script>window.__BUILD__="1784680696";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -948,10 +948,18 @@ function rFreight(){
       }
       // ④ 头程(B2B):独立计算,完整费用展开
       // ★ 美国三区数据在 ch.regions（sync 后）或 ch.countries（原始 rates.json）
-      const us3Map = getUS3Map(ch) || {};
-      const pickRegion=(reg)=> (reg && us3Map[reg]?.tiers) ? reg : (us3Map[destCn]?.tiers ? destCn : Object.keys(us3Map)[0] || destCn);
-      const finalRegion = regionOverride || pickRegion(detectedRegion);
-      const co = us3Map[finalRegion] || us3Map[destCn] || Object.values(us3Map)[0] || {};
+      const us3Map = getUS3Map(ch);
+      let co, finalRegion;
+      if(us3Map){
+        // ★ 美国三区渠道：美西/美中/美东 各有独立 tiers/sur
+        const pickRegion=(reg)=> (reg && us3Map[reg]?.tiers) ? reg : (us3Map[destCn]?.tiers ? destCn : Object.keys(us3Map)[0] || destCn);
+        finalRegion = regionOverride || pickRegion(detectedRegion);
+        co = us3Map[finalRegion] || us3Map[destCn] || Object.values(us3Map)[0] || {};
+      } else {
+        // ★ 非美国（欧洲/英国/加拿大/澳洲/日本…）单国渠道：直接按目的国取 {tiers, sur}
+        co = (ch.countries && ch.countries[destCn]) || (ch.regions && ch.regions[destCn]) || {};
+        finalRegion = destCn;
+      }
       const divisor = ch.volumetric_divisor || co.volumetric_divisor || 6000;
       const sw=sku.weight*units, vw=volumeWeight(sku.l,sku.w,sku.h,divisor)*units;
       const bw=Math.max(sw,vw);
