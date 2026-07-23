@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784806333";</script>
+<script>window.__BUILD__="1784846479";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -943,6 +943,9 @@ var ORDER_LINES = [];
 var _limitsSeeded = false;
 function loadOrder(){ try{ const a=JSON.parse(localStorage.getItem('jwpei_order_lines')||'[]'); ORDER_LINES=Array.isArray(a)?a:[]; }catch(e){ ORDER_LINES=[]; } if(!Array.isArray(ORDER_LINES)) ORDER_LINES=[]; }
 function saveOrder(){ try{ localStorage.setItem('jwpei_order_lines', JSON.stringify(ORDER_LINES)); }catch(e){} }
+var SKU_PRESETS = {};
+function loadPresets(){ try{ SKU_PRESETS=JSON.parse(localStorage.getItem('jwpei_sku_presets')||'{}'); }catch(e){ SKU_PRESETS={}; } if(typeof SKU_PRESETS!=='object'||!SKU_PRESETS) SKU_PRESETS={}; }
+function savePresets(){ try{ localStorage.setItem('jwpei_sku_presets', JSON.stringify(SKU_PRESETS)); }catch(e){} }
 function seedChannelLimits(){
   if(_limitsSeeded) return; _limitsSeeded=true;
   (S.modules.small&&S.modules.small.carriers||[]).forEach(c=>{
@@ -1116,7 +1119,7 @@ function combSkus(){
 
 /* ===================== 货运模块（小包/商业快递/toB）共用 ===================== */
 function rFreight(){
-    seedChannelLimits(); loadOrder();
+    seedChannelLimits(); loadOrder(); loadPresets();
     const M=S.modules[CUR];
     const items=combSkus();   // S.items ∪ 谷仓字典（直接引用谷仓 SKU）
     // 默认选第一个 SKU（演示自动带出）
@@ -1125,6 +1128,7 @@ function rFreight(){
     const audSet = uniq([].concat(...M.carriers.map(c=>Array.isArray(c.audience)?c.audience:(c.audience?[c.audience]:[]))).filter(Boolean));
     const defaultAud = audSet.length===1 ? audSet[0] : (audSet.includes('2C') ? '2C' : '2B');
     const defaultUnits = 1;
+    if(!ORDER_LINES.length){ ORDER_LINES=[{sku:(items[0]||{}).sku||'', qty:defaultUnits}]; saveOrder(); }
     // 目的国：内部用 ISO，界面显示中文；对 parcel（已从 RATES 同步为 ISO）做反向映射，其余模块保持原语言
     // ★ 下拉跨「小包/快递/头程」全量并集，确保「所有渠道能发的国家」都列得上（不再因某模块无该渠道而漏掉）
     const allFreightCarriers = [].concat(
@@ -1190,23 +1194,21 @@ function rFreight(){
   }
   let h=`<div class="card"><h2>${M.name}　<span class="pill">货运引擎 · 4 支柱归一</span></h2>
     <div class="note">录入方式（你要的「越简单越好」）：<span class="kbd">① 选 SKU 自动带出</span> <span class="kbd">② 批量 ToB 自动算体积（接主数据）</span> <span class="kbd">③ 模板导入/手动</span>。三者都产出同一「发货规格」喂给引擎。</div>
-    <div style="display:flex;gap:18px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
-      <span class="mut" style="font-size:12px">录入方式</span>
-      <label style="display:inline-flex;gap:5px;align-items:center;cursor:pointer"><input type="radio" name="entryMode" value="single" checked> 单件（1 SKU × N 件）</label>
-      <label style="display:inline-flex;gap:5px;align-items:center;cursor:pointer"><input type="radio" name="entryMode" value="order"> 订单（多 SKU 多件）</label>
+    <h3>发货规格 <span class="mut" style="font-size:11px">（1 行 = 单件多件 · 多行 = 多 SKU 多件）</span></h3>
+    <div id="shipLines"></div>
+    <span id="skuVol" class="mut" style="margin-left:2px"></span>
+    <div style="margin:4px 0">
+      <button class="ghost" id="addLine">+ 添加 SKU</button>
+      <span style="margin-left:10px">外箱尺寸（选填，留空按内容物估算）：<input id="orderL" type="number" placeholder="长" style="width:50px">×<input id="orderW" type="number" placeholder="宽" style="width:50px">×<input id="orderH" type="number" placeholder="高" style="width:50px"> cm <span class="mut">填了用真实外箱，不填用 Σ体积×1.3 估算</span></span>
     </div>
-    <h3>发货规格</h3>
-    <span id="singleBlock">
-      <label>选择 SKU</label><input id="skuSel" list="gcList" style="min-width:220px" value="${(items[0]||{}).sku||''}"><datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
-      件数 <input type="number" id="units" value="${defaultUnits}">
-      <span id="skuVol" class="mut" style="margin-left:6px"></span>
-    </span>
-    <div id="orderBlock" style="display:none">
-      <div class="note">订单模式：一个客户订单含多个 SKU 多件。系统自动合成复合包裹→走现有引擎比价；超尺寸/重量则只显示能发的渠道，全不可发则给出拆包方案。</div>
-      <div id="orderLines"></div>
-      <button class="ghost" id="addLine" style="margin:4px 0">+ 添加 SKU</button>
-      <div style="margin-top:4px">外箱尺寸（选填，留空按内容物估算）：<input id="orderL" type="number" placeholder="长" style="width:50px">×<input id="orderW" type="number" placeholder="宽" style="width:50px">×<input id="orderH" type="number" placeholder="高" style="width:50px"> cm <span class="mut">填了用真实外箱，不填用 Σ体积×1.3 估算</span></div>
+    <div style="margin:4px 0">
+      <span class="mut" style="font-size:12px">预设组合：</span>
+      <select id="presetSel" style="min-width:160px"><option value="">— 选择/保存 —</option></select>
+      <button class="ghost" id="savePreset" style="margin-left:6px">保存当前为预设</button>
+      <button class="ghost" id="delPreset" style="margin-left:4px">删除预设</button>
+      <span class="mut" style="font-size:11px">（预设 = 把当前 SKU 行存成可复用组合，下次一键载入）</span>
     </div>
+    <datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
     目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
     收货类型 <select id="b2bType"><option value="">不限（2C 个人）</option><option value="FBA">2B · FBA 仓</option><option value="非FBA">2B · 非FBA（商业/住宅）</option></select>
     <span class="mut" style="font-size:11px">·发 2C 个人选「不限」；发 2B 商业选 FBA/非FBA，渠道在 FBA 仓地址有特殊附加、非FBA 按 非FBA附加/kg 算</span>
@@ -1224,22 +1226,15 @@ function rFreight(){
     <div id="fOut"></div></div>`;
   $("#app").innerHTML=h;
   const draw=()=>{
-    const skuStr=$("#skuSel").value, destCn=$("#dest").value, aud=defaultAud;
+    const destCn=$("#dest").value, aud=defaultAud;
     const destIso = isoOfDisplay[destCn] || chineseToIso(destCn) || destCn;
-    const entryMode = (document.querySelector('input[name=entryMode]:checked')||{}).value || 'single';
     const mode=$('input[name=mode]:checked').value;
-    let sku, units;
-    if(entryMode==='order'){
-      const ol = ORDER_LINES.filter(l=>l.sku && (+l.qty>0));
-      const comp = buildComposite(ol, items, destCn);
-      if(!comp){ $("#fOut").innerHTML='<div class="err">订单模式请先添加有效 SKU（自动带出谷仓主数据重量/尺寸）</div>'; return; }
-      sku=comp; units=1;
-      const sv=document.getElementById('skuVol'); if(sv){ sv.textContent=`复合包裹: ${comp.weight.toFixed(2)}kg · 容积${(comp.l*comp.w*comp.h).toFixed(0)}cm³${comp._estimated?'（外箱为估算,可在订单区手填真实尺寸）':''}`; }
-    } else {
-      sku = items.find(x=>x.sku===skuStr); units=+$("#units").value;
-      if(!sku){ $("#fOut").innerHTML='<div class="err">未找到 SKU「'+skuStr+'」，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
-      const sv=document.getElementById('skuVol'); if(sv){ const v=sku.l*sku.w*sku.h; sv.textContent=`体积: ${v}cm³ × ${units}件 = ${(v*units).toFixed(1)}cm³`; }
-    }
+    const ol = ORDER_LINES.filter(l=>l.sku && (+l.qty>0));
+    if(!ol.length){ $("#fOut").innerHTML='<div class="err">请先在「发货规格」添加有效 SKU（自动带出谷仓主数据重量/尺寸）</div>'; return; }
+    const comp = buildComposite(ol, items, destCn);
+    if(!comp){ $("#fOut").innerHTML='<div class="err">未找到 SKU，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
+    const sku=comp, units=1;
+    const sv=document.getElementById('skuVol'); if(sv){ sv.textContent=`复合包裹: ${comp.weight.toFixed(2)}kg · 容积${(comp.l*comp.w*comp.h).toFixed(0)}cm³${comp._estimated?'（外箱为估算,可在发货区手填真实尺寸）':''}`; }
     // P2 资格校验
     const b2bType = ($("#b2bType") && $("#b2bType").value) || "";
     let eligible=[], rejected=[];
@@ -1257,7 +1252,7 @@ function rFreight(){
       const eurFx=parseFloat($("#euFx")?.value)||7.8;
       const conservative=$("#conservativeMode")?.checked;
       const cargoType=(document.getElementById('cargoType')?.value)||'箱包皮革';
-      const orderLines = entryMode==='order' ? ORDER_LINES.filter(l=>l.sku && (+l.qty>0)) : [{sku:skuStr, qty:units}];
+      const orderLines = ORDER_LINES.filter(l=>l.sku && (+l.qty>0));
       const split = renderSplitSuggestion(orderLines, destCn, aud, b2bType, {destIso, eurFx, cargoType, conservative});
       $("#fOut").innerHTML = out + split;
       return;
@@ -1438,27 +1433,26 @@ function rFreight(){
     out+=`</tbody></table></div><div class="mut">* 计费重=MAX(实重,体积重)后进位；${isUSTob?'美国头程按邮编自动识别美西/美中/美东三区，每列显示该区「运费+附加费」总价；':''}DDP vs DDU、divisor 不同者口径仅供参考。</div>`;
     $("#fOut").innerHTML=out;
   };
-  $("#skuSel").onchange=draw; $("#units").onchange=draw; $("#b2bType").onchange=draw; $("#acZip").oninput=draw; $("#cargoType").onchange=draw; $("#euFx").onchange=draw;
+  $("#b2bType").onchange=draw; $("#acZip").oninput=draw; $("#cargoType").onchange=draw; $("#euFx").onchange=draw;
   document.querySelectorAll('input[name=mode]').forEach(r=> r.onchange=draw);
   $("#run").onclick=draw;
   bindCombo($("#dest"), $("#destList"), displayCountries, draw);
-  // 订单模式：录入方式切换 + SKU 行管理
-  document.querySelectorAll('input[name=entryMode]').forEach(r=> r.onchange=()=>{
-    const m=document.querySelector('input[name=entryMode]:checked').value;
-    const sb=$("#singleBlock"), ob=$("#orderBlock");
-    if(sb) sb.style.display = m==='order'?'none':'';
-    if(ob) ob.style.display = m==='order'?'':'none';
-    if(m==='order') renderOrderLines();
-  });
-  function renderOrderLines(){
-    const box=$("#orderLines"); if(!box) return;
-    box.innerHTML = ORDER_LINES.map((l,i)=>`<div class="ol-row"><input class="ol-sku" list="gcList" data-i="${i}" value="${esc(l.sku||'')}" placeholder="SKU" style="min-width:160px"> <input class="ol-qty" data-i="${i}" type="number" min="1" value="${l.qty||1}" style="width:54px"> 件 <button class="ol-del" data-i="${i}" title="删除">✕</button></div>`).join('');
+  // 统一 SKU 行构建器（单一录入：1 行=单件多件 / 多行=多SKU多件），引擎零改动
+  function renderShipLines(){
+    const box=$("#shipLines"); if(!box) return;
+    box.innerHTML = ORDER_LINES.map((l,i)=>`<div class="ol-row" style="margin:3px 0"><input class="ol-sku" list="gcList" data-i="${i}" value="${esc(l.sku||'')}" placeholder="SKU" style="min-width:170px"> × <input class="ol-qty" data-i="${i}" type="number" min="1" value="${l.qty||1}" style="width:54px"> 件 <button class="ol-del" data-i="${i}" title="删除">✕</button></div>`).join('');
     box.querySelectorAll('.ol-sku').forEach(inp=> inp.oninput=()=>{ ORDER_LINES[+inp.dataset.i].sku=inp.value; saveOrder(); });
     box.querySelectorAll('.ol-qty').forEach(inp=> inp.oninput=()=>{ ORDER_LINES[+inp.dataset.i].qty=Math.max(1,parseInt(inp.value)||1); saveOrder(); });
-    box.querySelectorAll('.ol-del').forEach(b=> b.onclick=()=>{ ORDER_LINES.splice(+b.dataset.i,1); saveOrder(); renderOrderLines(); });
+    box.querySelectorAll('.ol-del').forEach(b=> b.onclick=()=>{ ORDER_LINES.splice(+b.dataset.i,1); if(!ORDER_LINES.length) ORDER_LINES.push({sku:(items[0]||{}).sku||'', qty:1}); saveOrder(); renderShipLines(); });
   }
-  $("#addLine").onclick=()=>{ ORDER_LINES.push({sku:'',qty:1}); saveOrder(); renderOrderLines(); };
-  if((document.querySelector('input[name=entryMode]:checked')||{}).value==='order') renderOrderLines();
+  $("#addLine").onclick=()=>{ ORDER_LINES.push({sku:'',qty:1}); saveOrder(); renderShipLines(); };
+  // 预设组合：保存 / 载入 / 删除
+  function renderPresetOptions(){ const sel=$("#presetSel"); if(!sel) return; const keys=Object.keys(SKU_PRESETS); sel.innerHTML='<option value="">— 选择/保存 —</option>'+keys.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join(''); }
+  renderPresetOptions();
+  $("#presetSel").onchange=()=>{ const n=$("#presetSel").value; if(!n||!SKU_PRESETS[n]) return; ORDER_LINES=SKU_PRESETS[n].map(l=>({sku:l.sku, qty:l.qty})); saveOrder(); renderShipLines(); draw(); };
+  $("#savePreset").onclick=()=>{ const n=prompt('预设组合名称（如「圣诞套装A」）：','组合'+(Object.keys(SKU_PRESETS).length+1)); if(!n) return; SKU_PRESETS[n]=ORDER_LINES.filter(l=>l.sku).map(l=>({sku:l.sku, qty:l.qty})); savePresets(); renderPresetOptions(); $("#presetSel").value=n; };
+  $("#delPreset").onclick=()=>{ const n=$("#presetSel").value; if(!n) return; if(!confirm('删除预设「'+n+'」?')) return; delete SKU_PRESETS[n]; savePresets(); renderPresetOptions(); };
+  renderShipLines();
   draw();
 }
 
