@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784777389";</script>
+<script>window.__BUILD__="1784785016";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -479,14 +479,57 @@ let S = loadState();
 /* 谷仓(Goodcang) SKU 字典镜像：随页面自动挂载（sku_master.js），无需手动导入即可在 SKU 列直接引用 */
 const GC = {};
 try{ (window.GC_SKUS||[]).forEach(s=>{ if(s && s.sku) GC[s.sku]=s; }); }catch(e){}
+/* ===== 飞书申报数据 overlay：申报金额 + 海关编码（feishu_decl.json，43946 SKU）。只填空、不覆盖用户已改值 ===== */
+window.FEISHU_DECL = null;          // sku -> [申报金额, 海关编码]
+let FEISHU_STAT = "";
+function fsLookup(sku){ return (window.FEISHU_DECL && window.FEISHU_DECL[sku]) || null; }
+function applyFeishuDecl(){
+  if(!window.FEISHU_DECL) return 0;
+  let filled=0;
+  S.items.forEach(it=>{
+    const fs=fsLookup(it.sku); if(!fs) return;
+    let ch=false;
+    if((!it.decl || +it.decl===0) && +fs[0]>0){ it.decl=+fs[0]; ch=true; }
+    if(!it.hs && fs[1]){ it.hs=String(fs[1]); ch=true; }
+    if(ch) filled++;
+  });
+  if(filled>0) saveState();
+  return filled;
+}
+function loadFeishuDecl(cb){
+  if(window.FEISHU_DECL){ if(cb) cb(applyFeishuDecl()); return; }
+  fetch("feishu_decl.json?_="+Date.now(),{cache:"no-store"})
+    .then(r=> r.ok ? r.json() : null)
+    .then(j=>{
+      if(j && j.m){
+        window.FEISHU_DECL = j.m;
+        const n = applyFeishuDecl();
+        FEISHU_STAT = '✓ 飞书申报库已加载（'+Object.keys(j.m).length+' SKU'+(j.v?'，版本 '+j.v:'')+'），本次补全 <b>'+n+'</b> 条缺失的申报值/HS';
+        const st=document.getElementById("fsStat"); if(st) st.innerHTML='<span class="ok">'+FEISHU_STAT+'</span>';
+        if(n>0 && typeof CUR!=="undefined" && CUR==="items" && typeof rItems==="function") rItems();
+        if(cb) cb(n);
+      }else{
+        FEISHU_STAT='飞书申报库加载失败（feishu_decl.json 缺失）';
+        const st=document.getElementById("fsStat"); if(st) st.innerHTML='<span class="err">'+FEISHU_STAT+'</span>';
+        if(cb) cb(-1);
+      }
+    })
+    .catch(()=>{
+      FEISHU_STAT='飞书申报库加载失败（网络错误）';
+      const st=document.getElementById("fsStat"); if(st) st.innerHTML='<span class="err">'+FEISHU_STAT+'</span>';
+      if(cb) cb(-1);
+    });
+}
 /* 物料主数据按谷仓自动补全：首次直接用谷仓 2317 条；之后打开则把缺失的谷仓 SKU 并入（不覆盖你改过的）。真正「不用一个个加」 */
-function gcToItem(g){ return {sku:g.sku, name:g.name||g.en_name||g.sku, l:+g.l||0, w:+g.w||0, h:+g.h||0, weight:+g.weight||0, decl:0, hs:g.hs||"", attr:(+g.battery)?"带电":"普货"}; }
+function gcToItem(g){ const fs=fsLookup(g.sku); return {sku:g.sku, name:g.name||g.en_name||g.sku, l:+g.l||0, w:+g.w||0, h:+g.h||0, weight:+g.weight||0, decl:(fs&&+fs[0])||0, hs:g.hs||(fs&&fs[1])||"", attr:(+g.battery)?"带电":"普货"}; }
 if(!localStorage.getItem(LS_KEY)){
   S.items = Object.values(GC).map(gcToItem);
 }else{
   Object.values(GC).forEach(g=>{ if(!S.items.find(x=>x.sku===g.sku)) S.items.push(gcToItem(g)); });
 }
 saveState();
+/* 页面空闲后后台拉取飞书申报库并自动补全（不阻塞首屏；补全只填空不覆盖） */
+setTimeout(function(){ loadFeishuDecl(); }, 800);
 /* ② 小包专线：直接复用 RATES 小包真实渠道（云途/飞特/亚丰/捷邮…），与 ⑨ 全渠道比价同源，避免「写死 2 条」的脱节 */
 function syncParcelFromRates(){
   if(!window.RATES||!window.RATES.channels) return;
@@ -945,8 +988,10 @@ function rItems(){
       <button class="act" id="addItem">+ 新增 SKU</button>
       <button class="ghost" id="impSku">导入谷仓 SKU 字典(.json)</button>
       <input type="file" id="impSkuFile" accept=".json" style="display:none">
+      <button class="ghost" id="fsFill">☁ 飞书补全申报值/HS</button>
       <span id="skuStat" class="mut"></span>
     </div>
+    <div style="margin-top:6px"><span id="fsStat" class="mut">${FEISHU_STAT ? '<span class="ok">'+FEISHU_STAT+'</span>' : '飞书申报库后台加载中…（申报金额/海关编码自动补全，只填空不覆盖）'}</span></div>
     <div class="note" style="margin-top:8px">📦 谷仓(Goodcang) 真实 SKU 主数据 <b>2317 条</b>已随页面自动挂载（<span class="kbd">sku_master.js</span>），首屏即全部补全。用上方<b>搜索框</b>按 SKU/名称快速定位；每页 ${PS} 条，避免一次渲染全部导致卡顿。「SKU」列可直接下拉/输入引用谷仓编码即自动带出尺寸。改动自动存本地（localStorage），刷新不丢。</div></div>`;
   $("#app").innerHTML=h;
   const sb=$("#itemSearch");
@@ -962,6 +1007,12 @@ function rItems(){
   });
   $("#app").querySelectorAll("[data-del]").forEach(b=> b.onclick=()=>{ S.items.splice(+b.dataset.del,1); saveState(); rItems(); });
   $("#addItem").onclick=()=>{ S.items.unshift({sku:"SKU-"+(S.items.length+1),name:"新SKU",l:10,w:10,h:10,weight:0.5,decl:50,hs:"",attr:"普货"}); ITEM_Q=""; ITEM_PAGE=1; saveState(); rItems(); };
+  $("#fsFill").onclick=()=>{
+    const st=$("#fsStat"); if(st) st.innerHTML='飞书申报库加载中…';
+    loadFeishuDecl(function(n){
+      if(n>=0){ const s2=$("#fsStat"); if(s2) s2.innerHTML='<span class="ok">'+(FEISHU_STAT||('✓ 本次补全 '+n+' 条'))+'</span>'; rItems(); }
+    });
+  };
   $("#impSku").onclick=()=> $("#impSkuFile").click();
   $("#impSkuFile").onchange=e=>{
     const f=e.target.files[0]; if(!f) return;
@@ -973,9 +1024,10 @@ function rItems(){
         let added=0;
         arr.forEach(s=>{
           if(!s.sku) return;
+          const fs=fsLookup(s.sku);
           const item={ sku:s.sku, name:s.name||s.en_name||s.sku,
             l:+s.l||0, w:+s.w||0, h:+s.h||0, weight:+s.weight||0,
-            decl:0, hs:s.hs_code||s.hs||"", attr:(+s.battery)?"带电":"普货" };
+            decl:(fs&&+fs[0])||0, hs:s.hs_code||s.hs||(fs&&fs[1])||"", attr:(+s.battery)?"带电":"普货" };
           const ex=S.items.findIndex(x=>x.sku===item.sku);
           if(ex>=0) S.items[ex]=item; else S.items.push(item);
           added++;
@@ -993,13 +1045,15 @@ function rItems(){
 function autoFillSku(i, sku){
   const g=GC[sku]; if(!g) return;
   const it=S.items[i]; if(!it) return;
-  it.name=g.name||g.en_name||sku; it.l=+g.l||0; it.w=+g.w||0; it.h=+g.h||0; it.weight=+g.weight||0; it.attr=(+g.battery)?"带电":"普货"; it.hs=g.hs||"";
+  const fs=fsLookup(sku);
+  it.name=g.name||g.en_name||sku; it.l=+g.l||0; it.w=+g.w||0; it.h=+g.h||0; it.weight=+g.weight||0; it.attr=(+g.battery)?"带电":"普货"; it.hs=g.hs||(fs&&fs[1])||"";
+  if((!it.decl || +it.decl===0) && fs && +fs[0]>0) it.decl=+fs[0];
   rItems(); // 重渲染以显示带出值
 }
 /* S.items ∪ 谷仓字典（取并集，谷仓 SKU 可直接在货运/路由页选用） */
 function combSkus(){
   const gcOnly=Object.values(GC).filter(g=> !S.items.find(x=>x.sku===g.sku));
-  const extra=gcOnly.map(g=>({sku:g.sku,name:g.name||g.en_name||g.sku,l:+g.l||0,w:+g.w||0,h:+g.h||0,weight:+g.weight||0,decl:0,hs:g.hs||"",attr:(+g.battery)?"带电":"普货"}));
+  const extra=gcOnly.map(gcToItem);   // 与种子逻辑同源（含飞书申报 overlay）
   return S.items.concat(extra);
 }
 
