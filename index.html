@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784785016";</script>
+<script>window.__BUILD__="1784791569";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -221,6 +221,17 @@
   .mc-infobar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:6px 0;padding:6px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;font-size:12px}
   .mc-infobar .mut{color:var(--mut)}
   .mc-infobar b{color:var(--fg)}
+  .mc-mix{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0;padding:8px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;font-size:12px}
+  .mc-mix .mut{color:var(--mut)}
+  .mc-switch{display:inline-flex;align-items:center;gap:5px;font-weight:600;cursor:pointer}
+  .mc-mix input[type=number]{width:56px}
+  .mc-adv{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%;padding-top:6px;margin-top:2px;border-top:1px dashed var(--line)}
+  .ps-tag.mix{background:rgba(168,85,247,.18);color:var(--purple,#a855f7);border:1px solid rgba(168,85,247,.4)}
+  .row-mix{background:rgba(168,85,247,.07)}
+  .mix-title{font-weight:700;color:var(--purple,#a855f7)}
+  .mix-chips{font-size:11px;color:var(--mut);margin-top:2px;line-height:1.3}
+  .mix-chips b{color:var(--fg)}
+  td .mc-chk{display:inline-flex;align-items:center}
 
 </style>
   <script src="sku_master.js"></script>
@@ -2549,10 +2560,100 @@ function _rPackSpec(){
 }
 
 /* ===================== 11 装箱清单 ===================== */
-var MANIFEST = [];
+// 输入清单（用户录入的原始行，持久化到 S.manifest）。混装是「计算层」的事，不污染源数据。
+var MANIFEST = (S.manifest && S.manifest.length) ? S.manifest : [];
+var MANI_MANUAL_MIXES = S.manualMixes || [];   // 手动混装箱（高级自定义）
+var MANI_AUTOMIX = (S.maniAutoMix == null) ? true : !!S.maniAutoMix;  // 自动混装余数：默认开
+var MANI_MIX_DIMS = S.maniMixDims || null;     // 混装箱外箱(cm)，null=自动取余数SKU最大箱型
+var MANI_MIX_TARE = 0.5;   // 混装箱皮重(kg)
+var MANI_VIEW = [];        // 计算后的有效清单（满箱行 + 自动混装 + 手动混装）
 var MANI_DIVISOR = 6000;
 var MANI_TOTAL_BOXES = 0, MANI_TOTAL_GW = 0, MANI_TOTAL_CBM = 0, MANI_TOTAL_VW = 0, MANI_TOTAL_CW = 0, MANI_MIN_BOX_TRIGGERED = 0;
 var MANI_MIN_BOX_KG = 12;   // 尾程快递单箱计费重最低标准(kg)
+
+function maniSave(){ try{ S.manifest=MANIFEST; S.manualMixes=MANI_MANUAL_MIXES; S.maniAutoMix=MANI_AUTOMIX; S.maniMixDims=MANI_MIX_DIMS; saveState(); }catch(e){} }
+
+/* —— 混装箱核心：整箱保留 + 余数自动混装（FFD 装箱）。底层 calcManifest 零改动，只是多一种 isMixed 行 —— */
+function manUnitW(r){ return r.qty>0 ? r.gw/r.qty : 0; }
+function manUnitVol(r){ return r.qpb>0 ? (r.box_l*r.box_w*r.box_h)/1000000/r.qpb : 0; }
+// 余数池：每个 SKU 装满整箱后剩下的件数
+function manPool(){
+  var pool=[];
+  MANIFEST.forEach(function(r){
+    if(!r.qpb||r.qpb<=0) return;
+    var full=Math.floor(r.qty/r.qpb), rem=r.qty-full*r.qpb;
+    if(rem>0) pool.push({sku:r.sku,name:r.name,qty:rem,unitW:manUnitW(r),unitVol:manUnitVol(r),dims:[r.box_l,r.box_w,r.box_h]});
+  });
+  return pool;
+}
+// 混装箱默认外箱 = 余数 SKU 里最大的箱型（B 预填，省事不逼填）
+function manDefaultDims(pool){
+  var L=0,W=0,H=0;
+  pool.forEach(function(p){ L=Math.max(L,p.dims[0]||0); W=Math.max(W,p.dims[1]||0); H=Math.max(H,p.dims[2]||0); });
+  return {l:L||30,w:W||20,h:H||15};
+}
+function manDims(pool){ return (MANI_MIX_DIMS&&MANI_MIX_DIMS.l)?MANI_MIX_DIMS:manDefaultDims(pool); }
+// FFD 装箱：把余数件数按体积优先塞进混装箱，装不下自动拆多箱
+function manPack(pool, dims){
+  var cap=(dims.l*dims.w*dims.h)/1000000;
+  var pieces=[];
+  pool.forEach(function(p){ for(var i=0;i<p.qty;i++) pieces.push({sku:p.sku,vol:p.unitVol,w:p.unitW}); });
+  pieces.sort(function(a,b){ return b.vol-a.vol; });
+  var bins=[];
+  pieces.forEach(function(pc){
+    for(var b=0;b<bins.length;b++){
+      if(bins[b].vol+pc.vol<=cap){ bins[b].vol+=pc.vol; bins[b].items[pc.sku]=(bins[b].items[pc.sku]||0)+1; bins[b].w+=pc.w; return; }
+    }
+    var nb={vol:pc.vol,items:{},w:pc.w}; nb.items[pc.sku]=1; bins.push(nb);
+  });
+  return bins;
+}
+function manRow(mix, dims, kind, idx){
+  var tq=0,tw=0,vol=0;
+  mix.forEach(function(m){ tq+=m.qty; tw+=m.unitW*m.qty; vol+=m.unitVol*m.qty; });
+  tw+=MANI_MIX_TARE;
+  var cv=(dims.l*dims.w*dims.h)/1000000;
+  var occ=cv>0?(vol/cv*100):100;
+  return {kind:kind,mixIdx:idx,mix:mix,box_l:dims.l,box_w:dims.w,box_h:dims.h,
+    qpb:tq,qty:tq,boxes:1,gw:tw,cbm:cv,occupancy:occ,isMixed:true,source:"mixed",
+    name:"混装箱",sku:mix.map(function(m){return m.sku;}).join("+")};
+}
+// 计算有效清单：自动混装模式=满箱行+余数混装；关闭=源行满数量展示；最后附手动混装
+function buildManView(){
+  var view=[];
+  if(MANI_AUTOMIX){
+    MANIFEST.forEach(function(r,idx){
+      if(!r.qpb||r.qpb<=0) return;
+      var full=Math.floor(r.qty/r.qpb);
+      if(full>0){
+        view.push({kind:"single",srcIdx:idx,sku:r.sku,name:r.name,spec:r.spec,
+          box_l:r.box_l,box_w:r.box_w,box_h:r.box_h,qpb:r.qpb,qty:full*r.qpb,boxes:full,
+          gw:(r.gw/r.qty)*full*r.qpb,cbm:r.cbm*(full*r.qpb/r.qty),source:r.source,isMixed:false});
+      }
+    });
+    var pool=manPool();
+    if(pool.length>0){
+      var dims=manDims(pool);
+      manPack(pool,dims).forEach(function(bin,i){
+        var mix=[];
+        Object.keys(bin.items).forEach(function(sku){
+          var p=pool.find(function(x){return x.sku===sku;});
+          mix.push({sku:sku,name:p.name,qty:bin.items[sku],unitW:p.unitW,unitVol:p.unitVol});
+        });
+        view.push(manRow(mix,dims,"mixed-auto",i));
+      });
+    }
+  } else {
+    MANIFEST.forEach(function(r,idx){
+      if(!r.qpb||r.qpb<=0) return;
+      view.push({kind:"single",srcIdx:idx,sku:r.sku,name:r.name,spec:r.spec,
+        box_l:r.box_l,box_w:r.box_w,box_h:r.box_h,qpb:r.qpb,qty:r.qty,
+        boxes:Math.ceil(r.qty/r.qpb),gw:r.gw,cbm:r.cbm,source:r.source,isMixed:false});
+    });
+  }
+  MANI_MANUAL_MIXES.forEach(function(m,idx){ view.push(manRow(m.mix,{l:m.box_l,w:m.box_w,h:m.box_h},"mixed-manual",idx)); });
+  return view;
+}
 
 function rPackCalc(){
   if(PACK_LOADED){ _rPackCalc(); return; }
@@ -2611,25 +2712,54 @@ function _rPackCalc(){
   h += '<button class="ghost" id="mcFeedRoute">Feed to Tab 6 Route</button>';
   h += '</div></div>';
 
-  // D. Manifest table
-  h += '<h3>C. Manifest <span class="mut">('+MANIFEST.length+' items)</span></h3>';
-  if(MANIFEST.length>0){
+  // D. 混装 Mixed Carton
+  h += '<h3>D. 混装 Mixed Carton <span class="mut">（整箱保留 + 余数自动混装，不逼勾选）</span></h3><div class="mc-mix">';
+  h += '<label class="mc-switch"><input type="checkbox" id="mcAutoMix"'+(MANI_AUTOMIX?' checked':'')+'> 自动混装余数</label>';
+  var _pool=manPool(), _dd=manDims(_pool);
+  h += '<span class="mut">混装箱外箱(cm)：</span>';
+  h += '<input type="number" id="mcMixL" value="'+_dd.l+'" style="width:56px" min="1">×';
+  h += '<input type="number" id="mcMixW" value="'+_dd.w+'" style="width:56px" min="1">×';
+  h += '<input type="number" id="mcMixH" value="'+_dd.h+'" style="width:56px" min="1">';
+  h += '<button class="ghost" id="mcMixReset">重置为自动</button>';
+  h += '<div class="mc-adv">';
+  h += '<button class="ghost" id="mcMerge">⊕ 合并选中为混装箱</button>';
+  h += '<span class="mut" id="mcMergeHint">勾选左侧清单中的 SKU 行后合并（高级自定义：强制某些 SKU 同箱）</span>';
+  h += '</div></div>';
+
+  // C. Manifest table
+  h += '<h3>C. Manifest <span class="mut">('+MANI_VIEW.length+' rows · 源 SKU '+MANIFEST.length+')</span></h3>';
+  if(MANI_VIEW.length>0){
     h += '<div style="overflow-x:auto"><table><thead><tr>';
-    h += '<th>SKU</th><th>Name</th><th>Box Size</th><th>pcs/box</th><th>Qty</th><th>Boxes</th><th>GW kg</th><th>CBM</th><th>VW</th><th>计费重/箱</th><th>Source</th><th></th>';
+    h += '<th></th><th>SKU</th><th>Name</th><th>Box Size</th><th>pcs/box</th><th>Qty</th><th>Boxes</th><th>GW kg</th><th>CBM</th><th>VW</th><th>计费重/箱</th><th>占容</th><th>Source</th><th></th>';
     h += '</tr></thead><tbody>';
-    MANIFEST.forEach(function(row,i){
-      var src = row.source==="est"?'<span class="ps-tag est">Est</span>':'<span class="ps-tag on">OK</span>';
+    MANI_VIEW.forEach(function(row,i){
+      var isMix=!!row.isMixed;
+      var src = isMix ? (row.kind==='mixed-manual'?'<span class="ps-tag mix">MIX*</span>':'<span class="ps-tag mix">MIX</span>')
+                      : (row.source==="est"?'<span class="ps-tag est">Est</span>':'<span class="ps-tag on">OK</span>');
       var vw = (row.box_l*row.box_w*row.box_h*row.boxes)/MANI_DIVISOR;
       var vwBox=(row.box_l*row.box_w*row.box_h)/MANI_DIVISOR;
       var gwBox=row.gw/(row.boxes||1);
       var cwBox=Math.max(gwBox, vwBox);
       var cwMinFlag = cwBox < MANI_MIN_BOX_KG;
       if(cwMinFlag) cwBox = MANI_MIN_BOX_KG;
-      h += '<tr><td><b>'+esc(row.sku)+'</b></td><td>'+esc(row.name)+'</td><td>'+row.spec+'</td>';
+      var occHtml = isMix ? ('<span class="'+(row.occupancy<=100?'ok':'err')+'">'+(row.occupancy<=100?'占容 '+Math.round(row.occupancy)+'% ✓':'⚠'+Math.round(row.occupancy)+'%')+'</span>') : '<span class="mut">—</span>';
+      var chk = !isMix ? '<input type="checkbox" data-mchk="'+row.srcIdx+'" title="勾选后合并为混装箱">' : '';
+      var skuCell, nameCell;
+      if(isMix){
+        var chips=row.mix.map(function(m){return esc(m.sku)+' <b>×'+m.qty+'</b>';}).join(' · ');
+        skuCell='<span class="mix-title">混装箱 #'+(row.kind==='mixed-manual'?'M':'A')+(row.mixIdx+1)+'</span><div class="mix-chips">'+chips+'</div>';
+        nameCell='混装';
+      }else{ skuCell='<b>'+esc(row.sku)+'</b>'; nameCell=esc(row.name); }
+      var delBtn = isMix
+        ? (row.kind==='mixed-manual'?'<button class="ghost" data-mdelm="'+row.mixIdx+'" style="padding:2px 6px;font-size:11px">X</button>':'<span class="mut">—</span>')
+        : '<button class="ghost" data-mdel="'+row.srcIdx+'" style="padding:2px 6px;font-size:11px">X</button>';
+      h += '<tr'+(isMix?' class="row-mix"':'')+'>';
+      h += '<td>'+chk+'</td>';
+      h += '<td>'+skuCell+'</td><td>'+nameCell+'</td><td>'+(isMix?(row.box_l+'x'+row.box_w+'x'+row.box_h+'cm'):row.spec)+'</td>';
       h += '<td>'+row.qpb+'</td><td>'+row.qty+'</td><td>'+row.boxes+'</td>';
       h += '<td>'+fmt(row.gw)+'</td><td>'+fmt(row.cbm)+'</td><td>'+fmt(vw)+'</td>';
       h += '<td'+(cwMinFlag?' class="s-charge" title="单箱计费重<'+MANI_MIN_BOX_KG+'kg，按尾程最低 '+MANI_MIN_BOX_KG+'kg/箱计"':'')+'>'+fmt(cwBox)+(cwMinFlag?' ⚠':'')+'</td>';
-      h += '<td>'+src+'</td><td><button class="ghost" data-mdel="'+i+'" style="padding:2px 6px;font-size:11px">X</button></td></tr>';
+      h += '<td>'+occHtml+'</td><td>'+src+'</td><td>'+delBtn+'</td></tr>';
     });
     h += '</tbody></table></div>';
     h += '<div class="ps-summary">';
@@ -2682,7 +2812,7 @@ function _rPackCalc(){
       added++;
     });
     document.getElementById("mcStat").innerHTML='<span class="ok">v Recognized '+added+' items'+(estCount>0?', '+estCount+' estimated':'')+(missCount>0?', '+missCount+' unmatched':'')+'</span>';
-    _rPackCalc();
+    maniSave(); _rPackCalc();
   };
 
   document.getElementById("mcAdd").onclick = function(){
@@ -2699,17 +2829,43 @@ function _rPackCalc(){
       box_l:spec.box_l,box_w:spec.box_w,box_h:spec.box_h,qpb:spec.qty_per_box,qty:qty,
       boxes:boxes,gw:gw,cbm:cbm,source:spec.source||"manual"});
     document.getElementById("mcStat").innerHTML='<span class="ok">v Added '+sku+'</span>';
-    _rPackCalc();
+    maniSave(); _rPackCalc();
   };
 
   document.querySelectorAll("[data-mdel]").forEach(function(b){
-    b.onclick=function(){ MANIFEST.splice(parseInt(this.dataset.mdel),1); _rPackCalc(); };
+    b.onclick=function(){ MANIFEST.splice(parseInt(this.dataset.mdel),1); maniSave(); _rPackCalc(); };
+  });
+  document.querySelectorAll("[data-mdelm]").forEach(function(b){
+    b.onclick=function(){ MANI_MANUAL_MIXES.splice(parseInt(this.dataset.mdelm),1); maniSave(); _rPackCalc(); };
   });
 
   document.getElementById("mcClear").onclick=function(){
-    if(MANIFEST.length===0) return;
+    if(MANIFEST.length===0 && MANI_MANUAL_MIXES.length===0) return;
     if(!confirm("Clear manifest?")) return;
-    MANIFEST=[]; _rPackCalc();
+    MANIFEST=[]; MANI_MANUAL_MIXES=[]; maniSave(); _rPackCalc();
+  };
+
+  // 自动混装余数 开关
+  document.getElementById("mcAutoMix").onchange=function(){ MANI_AUTOMIX=this.checked; maniSave(); _rPackCalc(); };
+  // 混装箱外箱尺寸（A 可改；留空/重置回到 B 自动取最大箱型）
+  function syncMixDims(){ var L=+document.getElementById("mcMixL").value||0, W=+document.getElementById("mcMixW").value||0, H=+document.getElementById("mcMixH").value||0;
+    if(L>0&&W>0&&H>0){ MANI_MIX_DIMS={l:L,w:W,h:H}; } else { MANI_MIX_DIMS=null; } maniSave(); _rPackCalc(); }
+  ["mcMixL","mcMixW","mcMixH"].forEach(function(id){ document.getElementById(id).onchange=syncMixDims; });
+  document.getElementById("mcMixReset").onclick=function(){ MANI_MIX_DIMS=null; maniSave(); _rPackCalc(); };
+  // 手动合并（高级）：勾选若干 SKU -> 并入 1 个手动混装箱
+  document.getElementById("mcMerge").onclick=function(){
+    var sel=Array.from(document.querySelectorAll("[data-mchk]:checked")).map(function(c){return parseInt(c.dataset.mchk);});
+    sel=sel.filter(function(v,i,a){return a.indexOf(v)===i;});
+    if(sel.length<1){ document.getElementById("mcMergeHint").innerHTML='<span class="err">请先勾选左侧清单中的 SKU 行</span>'; return; }
+    var mix=[];
+    sel.forEach(function(idx){ var r=MANIFEST[idx]; if(!r) return; mix.push({sku:r.sku,name:r.name,qty:r.qty,unitW:manUnitW(r),unitVol:manUnitVol(r)}); });
+    if(mix.length===0) return;
+    var dims=manDims(manPool());
+    MANI_MANUAL_MIXES.push({mix:mix,box_l:dims.l,box_w:dims.w,box_h:dims.h});
+    sel.sort(function(a,b){return b-a;}).forEach(function(idx){ MANIFEST.splice(idx,1); });  // 已从 MANIFEST 移除，避免重复计
+    maniSave();
+    document.getElementById("mcMergeHint").innerHTML='<span class="ok">v 已合并 '+mix.length+' 个 SKU 为 1 个手动混装箱</span>';
+    _rPackCalc();
   };
 
   document.getElementById("mcFeedTob").onclick=function(){
@@ -2728,8 +2884,9 @@ function _rPackCalc(){
 }
 
 function calcManifest(){
+  MANI_VIEW=buildManView();
   MANI_TOTAL_BOXES=0; MANI_TOTAL_GW=0; MANI_TOTAL_CBM=0; MANI_TOTAL_VW=0; MANI_TOTAL_CW=0; MANI_MIN_BOX_TRIGGERED=0;
-  MANIFEST.forEach(function(r){
+  MANI_VIEW.forEach(function(r){
     MANI_TOTAL_BOXES+=r.boxes;
     MANI_TOTAL_GW+=r.gw;
     MANI_TOTAL_CBM+=r.cbm;
