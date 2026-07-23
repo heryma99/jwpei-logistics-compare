@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784791569";</script>
+<script>window.__BUILD__="1784795283";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -807,6 +807,7 @@ function surAmt(v, cw, units){
   if(v.min!=null) base = Math.max(base, v.min);
   return base;
 }
+function getUsdFx(){ try{ const s=localStorage.getItem('jwpei_usdCny'); if(s&&parseFloat(s)>0) return parseFloat(s); }catch(e){} const el=document.getElementById('usdFx'); const v=parseFloat(el&&el.value); return (v>0)?v:7.2; }
 function computeFreight(ch, sku, units, destCn, eurFx, opts){
   opts = opts || {};
   const cargoType = opts.cargoType || sku.attr || '箱包皮革';
@@ -815,6 +816,8 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   const p = ch.pricing;
   const cm = ch.countryMap || {};
   const co = findCountryWithAlias(cm, destCn);
+  // ★ 申报价 decl 货币=USD，凡用它算费用（VAT/DUTY/手续费/按值费）都先 ×USD/CNY 转人民币
+  const declCny = (sku.decl||0) * getUsdFx();
   const divisor = co.volumetric_divisor || p.divisor;
   const sw = sku.weight * units;
   const vw = volumeWeight(sku.l, sku.w, sku.h, divisor) * units;
@@ -836,7 +839,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
       let a = f.type==="fixed" ? f.value
             : f.type==="per_kg" ? f.value*cw
             : f.type==="pct_of_freight" ? freight*f.value
-            : f.type==="pct_of_value" ? sku.decl*units*f.value : 0;
+            : f.type==="pct_of_value" ? declCny*units*f.value : 0;
       if(a){ items.push({name:f.name, amt:a}); total+=a; }
     }
   }
@@ -847,11 +850,11 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   if(add.custom_per_shipment){ const a=add.custom_per_shipment; items.push({name:"海关资料处理费",amt:a}); total+=a; }
   // 国家级税费 VAT/DUTY（申报值×比例，如中东捷邮按目的国税率）
   const taxPct = co.tax || 0;
-  if(taxPct){ const a=(sku.decl||0)*units*taxPct; items.push({name:"VAT/DUTY(申报值×"+(taxPct*100).toFixed(0)+"%)",amt:a}); total+=a; }
+  if(taxPct){ const a=declCny*units*taxPct; items.push({name:"VAT/DUTY(申报值×"+(taxPct*100).toFixed(0)+"%)",amt:a}); total+=a; }
   // 欧盟：VAT + 代缴服务费(2%) + 3欧元/Item临时固定关税（云途欧盟路向）
   if(co.vat!=null){
     const fx = eurFx || p.fx || 7.8;
-    const declVal=(sku.decl||0)*units;
+    const declVal=declCny*units;
     const vat=declVal*co.vat;
     const svc=declVal*(co.service_fee_pct||0);
     const duty=(co.duty_fixed_eur||0)*fx;
@@ -861,8 +864,8 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   }
   // 整渠道级 DDP/DDU 口径：DDP 含税跳过补税；DDU 按整渠道 duty_rate/vat_rate 补（绝大多数渠道这两项=0，税费已由国家字段承担）
   if(!p.tax_included && p.incoterm!=="DDP"){
-    const duty = sku.decl*units*(p.duty_rate||0);
-    const vat  = (sku.decl*units + freight + duty)*(p.vat_rate||0);
+    const duty = declCny*units*(p.duty_rate||0);
+    const vat  = (declCny*units + freight + duty)*(p.vat_rate||0);
     if(duty){ items.push({name:"关税("+(p.duty_rate*100)+"%)",amt:duty}); total+=duty; }
     if(vat){ items.push({name:"VAT("+(p.vat_rate*100)+"%)",amt:vat}); total+=vat; }
   }
@@ -1104,6 +1107,7 @@ function rFreight(){
     邮编 <input id="acZip" type="text" placeholder="选填→自动识别美西/美中/美东" maxlength="5" style="width:130px" title="美国邮编首位：8/9=美西  4-7=美中  0-3=美东">
     货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option></select>
     EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
+    USD/CNY <input type="number" id="usdFx" step="0.01" value="7.20" style="width:70px" title="申报价均为USD，凡用申报值算VAT/DUTY/手续费都先×此汇率转CNY" onchange="try{localStorage.setItem('jwpei_usdCny',this.value)}catch(e){}">
     <label style="margin-left:12px"><input type="checkbox" id="conservativeMode"> 完整预算（含偏远/磁检/商业清关等可能费用）</label>
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
     <h3>比对模式</h3>
@@ -1784,7 +1788,7 @@ function rAll(){
       <div><label>箱长 cm（默认单件）</label><input id="acBl" type="number" step="0.1" placeholder="默认"></div>
       <div><label>箱宽 cm</label><input id="acBw" type="number" step="0.1" placeholder="默认"></div>
       <div><label>箱高 cm</label><input id="acBh" type="number" step="0.1" placeholder="默认"></div>
-      <div><label>申报值/件 CNY</label><input id="acDecl" type="number" step="1" value="200"></div>
+      <div><label>申报值/件 USD</label><input id="acDecl" type="number" step="1" value="50" title="申报价均为USD，计算时自动×USD/CNY转人民币"></div>
     </div>
     <div class="row" style="margin-top:8px">
       <div><label>货物类型（B2B产品附加费）</label><select id="acCargo">
@@ -1838,6 +1842,7 @@ function rAll(){
     if(ch.cat==='small'){
       if(!ch.countries[country]) return null;
       const co=ch.countries[country];
+      const declCny=decl*getUsdFx();  // 手动申报值按 USD 处理，先转 CNY
       const cr=co.charge_rule||ch.charge_rule||'max';
       if(cr==='actual') bw=actualW;
       else if(cr==='vol_if_2x_actual') bw=(volW>=actualW*2)?volW:actualW;
@@ -1846,15 +1851,15 @@ function rAll(){
       const br=co.brackets; if(!br||!br.length) return null;
       const b=findBracket(br,bw);
       let base=b.rate*bw+b.reg; const parts=[`运费 ${b.rate}/kg × ${bw.toFixed(2)}kg`, `挂号 ${b.reg}`];
-      let ins=0; if(opt.insurance) ins=Math.max(decl*0.007,5);
+      let ins=0; if(opt.insurance) ins=Math.max(declCny*0.007,5);  // 申报值(USD)×0.7% 最低5元(CNY)，已转人民币
       const add=co.add||{};
       if(add.war_per_kg){ base+=add.war_per_kg*bw; parts.push(`战争附加费 ${add.war_per_kg}/kg × ${bw.toFixed(2)}kg`); }
       if(add.custom_per_shipment){ base+=add.custom_per_shipment; parts.push(`海关资料处理费 ${add.custom_per_shipment}`); }
       const taxPct=co.tax||0;
-      if(taxPct){ const boxDecl=decl*(opt.qty||1); const tax=boxDecl*taxPct; base+=tax; parts.push(`VAT/DUTY(申报值×${(taxPct*100).toFixed(0)}%) ${tax.toFixed(2)}`); }
+      if(taxPct){ const boxDecl=declCny*(opt.qty||1); const tax=boxDecl*taxPct; base+=tax; parts.push(`VAT/DUTY(申报值×${(taxPct*100).toFixed(0)}%) ${tax.toFixed(2)}`); }
       // 云途欧盟：VAT + 代缴服务费(2%) + 3欧元/Item临时固定关税
       if(co.vat!=null){
-        const boxDecl=decl*(opt.qty||1);
+        const boxDecl=declCny*(opt.qty||1);
         const vat=boxDecl*co.vat;
         const svc=boxDecl*(co.service_fee_pct||0);
         const duty=(co.duty_fixed_eur||0)*(opt.eurFx||7.8);
