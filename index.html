@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784719246";</script>
+<script>window.__BUILD__="1784775420";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -1259,7 +1259,7 @@ function rOps(){
   if(!E){ $("#app").innerHTML='<div class="err">海外仓引擎未加载(OV_ENGINE)</div>'; return; }
   const WH=D.warehouses, GCID=window.OV_DATA.gc_D;
   const whIds=Object.keys(WH);
-  const catLabel={HEAD:'头程运费',LC:'卸货费',IB_TF:'分拣费',IB_TS:'理货费',IB_F:'入库操作费',SHELF:'转运上架费',NPIF:'新品查验',STO:'仓储费',BFF:'出库操作费',TAIL:'尾程运费',RETURN:'退件处理'};
+  window.catLabel={HEAD:'头程运费',LC:'卸货费',IB_TF:'分拣费',IB_TS:'理货费',IB_F:'入库操作费',SHELF:'转运上架费',NPIF:'新品查验',STO:'仓储费',BFF:'出库操作费',TAIL:'尾程运费',RETURN:'退件处理'};
   const FEE_ORDER=['IB_F','LC','IB_TF','IB_TS','SHELF','NPIF','STO','BFF','TAIL','RETURN']; // 全费用科目（统一字典）
   const segLabels=['头程','入库','仓储','出库','尾程','退件'];
   let st={wh:whIds[0], seg:SEGS.length};
@@ -1338,7 +1338,7 @@ function rOps(){
 
   function catRows(cats, keys){
     let rows='';
-    keys.forEach(k=>{ const c=cats[k]; if(!c) return; rows+='<tr><td>'+catLabel[k]+'</td><td class="rate-cell">$'+(c.amt?E.fmt(c.amt):'0.00')+'</td><td>'+E.badge(c.rating)+'</td><td class="note-cell">'+(c.note?E.esc(c.note):'')+'</td></tr>'; });
+    keys.forEach(k=>{ const c=cats[k]; if(!c) return; rows+='<tr><td>'+window.catLabel[k]+'</td><td class="rate-cell">$'+(c.amt?E.fmt(c.amt):'0.00')+'</td><td>'+E.badge(c.rating)+'</td><td class="note-cell">'+(c.note?E.esc(c.note):'')+'</td></tr>'; });
     if(!rows) rows='<tr><td colspan=4 class="mut">该仓未提供此段（—）</td></tr>';
     return rows;
   }
@@ -1353,7 +1353,7 @@ function rOps(){
       let all='';
       if(headOn()){
         all+='<h3>头程（中国→海外仓）</h3><table class="result-table"><thead><tr><th>科目</th><th>金额(¥)</th><th>可验证性</th><th>计费依据</th></tr></thead><tbody>'
-          +'<tr><td>'+catLabel.HEAD+'</td><td class="rate-cell">¥'+E.fmt(headR.amt)+'</td><td>'+E.badge(headR.rating)+'</td><td class="note-cell">'+E.esc(headR.note||'')+'</td></tr></tbody></table>';
+          +'<tr><td>'+window.catLabel.HEAD+'</td><td class="rate-cell">¥'+E.fmt(headR.amt)+'</td><td>'+E.badge(headR.rating)+'</td><td class="note-cell">'+E.esc(headR.note||'')+'</td></tr></tbody></table>';
       } else {
         all+='<h3>头程（中国→海外仓）</h3><div class="mut">已跳过头程 —— 当前只估海外仓操作费。把上方「模式」切回「含头程」即可看到头程报价。</div>';
       }
@@ -1364,7 +1364,7 @@ function rOps(){
     } else if(st.seg===0){
       if(headOn()){
         segHtml='<h3>头程（中国→海外仓）</h3><table class="result-table"><thead><tr><th>科目</th><th>金额(¥)</th><th>可验证性</th><th>计费依据</th></tr></thead><tbody>'
-          +'<tr><td>'+catLabel.HEAD+'</td><td class="rate-cell">¥'+E.fmt(headR.amt)+'</td><td>'+E.badge(headR.rating)+'</td><td class="note-cell">'+E.esc(headR.note||'')+'</td></tr></tbody></table>'
+          +'<tr><td>'+window.catLabel.HEAD+'</td><td class="rate-cell">¥'+E.fmt(headR.amt)+'</td><td>'+E.badge(headR.rating)+'</td><td class="note-cell">'+E.esc(headR.note||'')+'</td></tr></tbody></table>'
           +'<div class="kpi-sub">头程 ¥'+E.fmt(headR.amt)+' ｜ 海外仓操作合计 $'+E.fmt(opSub)+'</div>';
       } else {
         segHtml='<h3>头程（中国→海外仓）</h3><div class="mut">已跳过头程 —— 当前只估海外仓操作费。</div><div class="kpi-sub">海外仓操作合计 $'+E.fmt(opSub)+'</div>';
@@ -1397,7 +1397,7 @@ function rOps(){
       let minV=Infinity,maxV=-Infinity,have=false;
       ids.forEach(id=>{ const c=R[id].cats[k]; if(c&&c.amt&&c.rating!=='red'&&c.rating!=='na'){ if(c.amt<minV)minV=c.amt; if(c.amt>maxV)maxV=c.amt; have=true; } });
       let tds=ids.map(id=>{ const c=R[id].cats[k]; if(!c||!c.amt) return '<td class="na">—</td>'; if(c.rating==='red'||c.rating==='na') return '<td class="na" title="'+(E.esc(c.note||'未对齐/无数据'))+'">N/A</td>'; let cls=''; if(have){ if(Math.abs(c.amt-minV)<1e-9)cls=' min'; else if(Math.abs(c.amt-maxV)<1e-9)cls=' max'; } return '<td class="'+cls+'">$'+E.fmt(c.amt)+'</td>'; }).join('');
-      rows+='<tr><td>'+catLabel[k]+' '+mini(tally(k))+'</td>'+tds+'</tr>';
+      rows+='<tr><td>'+window.catLabel[k]+' '+mini(tally(k))+'</td>'+tds+'</tr>';
     });
     const subs=ids.map(id=>{ let s=0; for(const k in R[id].cats) s+=R[id].cats[k].amt; return s; });
     let minS=Infinity,maxS=-Infinity; ids.forEach((id,i)=>{ if(subs[i]<minS)minS=subs[i]; if(subs[i]>maxS)maxS=subs[i]; });
@@ -1414,7 +1414,7 @@ function rOps(){
     const hasRed=Object.keys(minR.cats).some(k=>minR.cats[k].rating==='red');
     const zeroCore=['IB_F','STO','BFF','TAIL'].filter(k=>!(minR.cats[k]&&minR.cats[k].amt));
     let verdict='综合最低（'+(headOn()?'含头程':'仅海外仓')+'）：'+E.esc(WH[minId].name)+' ¥'+E.fmt(tots[bestIdx]);
-    if(zeroCore.length) verdict+='　·　⚠️最低仓「'+zeroCore.map(k=>catLabel[k]).join('/')+'」为 0（免租/包干），结果仅供参考';
+    if(zeroCore.length) verdict+='　·　⚠️最低仓「'+zeroCore.map(k=>window.catLabel[k]).join('/')+'」为 0（免租/包干），结果仅供参考';
     if(hasRed) verdict+='　·　⚠️最低仓含🔴未对齐科目';
     const head='<div class="cmp-scroll"><table class="result-table cmp-table"><thead><tr><th>费用科目 \\ 海外仓</th>'+ids.map(id=>'<th>'+E.esc(WH[id].name)+(WH[id].bill_month?('<span class="th-month">'+E.esc(WH[id].bill_month)+'</span>'):'')+'</th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>'
       +'<div class="ok" style="margin:6px 0;font-weight:600">'+verdict+'</div>'
@@ -1498,7 +1498,7 @@ function rRoute(){
     seg+='<h3 class="ok">合并总预算（全链路）</h3><div class="kpi"><span class="cur">¥</span>'+(headR.amt+opSub*fx).toFixed(2)+'</div>'
       +'<div class="kpi-sub">= 头程 ¥'+E.fmt(headR.amt)+' + 海外仓操作 $'+E.fmt(opSub)+' × FX '+fx+'（≈¥'+(opSub*fx).toFixed(2)+'）。成本挂在 SKU「'+E.esc(sku.sku)+'」上。</div>';
     let det='<h3>海外仓段明细（'+E.esc(WH[$("#rtWh").value].name)+'）</h3><table class="result-table"><thead><tr><th>科目</th><th>金额($)</th><th>可验证性</th><th>计费依据</th></tr></thead><tbody>';
-    for(const k in res.cats){ const c=res.cats[k]; det+='<tr><td>'+k+'</td><td>$'+E.fmt(c.amt)+'</td><td>'+E.badge(c.rating)+'</td><td class="note-cell">'+E.esc(c.note||'')+'</td></tr>'; }
+    for(const k in res.cats){ const c=res.cats[k]; det+='<tr><td>'+(window.catLabel[k]||k)+'</td><td>$'+E.fmt(c.amt)+'</td><td>'+E.badge(c.rating)+'</td><td class="note-cell">'+E.esc(c.note||'')+'</td></tr>'; }
     det+='</tbody></table>';
     $("#rtRes").innerHTML=seg+det;
   };
