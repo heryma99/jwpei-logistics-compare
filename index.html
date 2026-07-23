@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784775420";</script>
+<script>window.__BUILD__="1784777389";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -2497,7 +2497,8 @@ function _rPackSpec(){
 /* ===================== 11 装箱清单 ===================== */
 var MANIFEST = [];
 var MANI_DIVISOR = 6000;
-var MANI_TOTAL_BOXES = 0, MANI_TOTAL_GW = 0, MANI_TOTAL_CBM = 0, MANI_TOTAL_VW = 0;
+var MANI_TOTAL_BOXES = 0, MANI_TOTAL_GW = 0, MANI_TOTAL_CBM = 0, MANI_TOTAL_VW = 0, MANI_TOTAL_CW = 0, MANI_MIN_BOX_TRIGGERED = 0;
+var MANI_MIN_BOX_KG = 12;   // 尾程快递单箱计费重最低标准(kg)
 
 function rPackCalc(){
   if(PACK_LOADED){ _rPackCalc(); return; }
@@ -2537,8 +2538,7 @@ function _rPackCalc(){
 
   // C. KPI cards
   var vwStr = fmt(MANI_TOTAL_VW);
-  var chargeWt = Math.max(MANI_TOTAL_GW, MANI_TOTAL_VW);
-  var chargeNote = MANI_TOTAL_GW >= MANI_TOTAL_VW ? 'Heavy cargo (GW>' : 'Light cargo (VW>';
+  var chargeWt = MANI_TOTAL_CW;   // 整票计费重 = Σ 每箱计费重(单箱 MAX(实重,体积重)，不足 MANI_MIN_BOX_KG 按 MANI_MIN_BOX_KG 计)
   h += '<div class="mc-cards">';
   h += '<div class="mc-card"><div class="v">'+MANIFEST.length+'</div><div class="l">SKU Types</div></div>';
   h += '<div class="mc-card"><div class="v">'+MANI_TOTAL_BOXES+'</div><div class="l">Total Boxes</div></div>';
@@ -2549,7 +2549,9 @@ function _rPackCalc(){
   h += '</div>';
   h += '<div class="mc-infobar">';
   h += '<span>Divisor:</span><input type="number" id="mcDivisor" value="'+MANI_DIVISOR+'" style="width:70px" min="1000" max="10000" step="500">';
-  h += '<span class="mut">'+chargeNote+' Density='+(MANI_TOTAL_CBM>0?fmt(MANI_TOTAL_GW/MANI_TOTAL_CBM):'-')+' kg/CBM</span>';
+  var minNote = '单箱计费重 = MAX(实重, 体积重)，<'+MANI_MIN_BOX_KG+'kg 按 '+MANI_MIN_BOX_KG+'kg 计（尾程快递一箱最低收费）';
+  if(MANI_MIN_BOX_TRIGGERED>0) minNote += '　·　⚠ <b class="s-charge">'+MANI_MIN_BOX_TRIGGERED+' 箱</b>触发 '+MANI_MIN_BOX_KG+'kg 下限';
+  h += '<span class="mut">'+minNote+'</span>';
   h += '<div style="margin-left:auto;display:flex;gap:6px">';
   h += '<button class="act" id="mcFeedTob">Feed to Tab 4 toB</button>';
   h += '<button class="ghost" id="mcFeedRoute">Feed to Tab 6 Route</button>';
@@ -2559,14 +2561,20 @@ function _rPackCalc(){
   h += '<h3>C. Manifest <span class="mut">('+MANIFEST.length+' items)</span></h3>';
   if(MANIFEST.length>0){
     h += '<div style="overflow-x:auto"><table><thead><tr>';
-    h += '<th>SKU</th><th>Name</th><th>Box Size</th><th>pcs/box</th><th>Qty</th><th>Boxes</th><th>GW kg</th><th>CBM</th><th>VW</th><th>Source</th><th></th>';
+    h += '<th>SKU</th><th>Name</th><th>Box Size</th><th>pcs/box</th><th>Qty</th><th>Boxes</th><th>GW kg</th><th>CBM</th><th>VW</th><th>计费重/箱</th><th>Source</th><th></th>';
     h += '</tr></thead><tbody>';
     MANIFEST.forEach(function(row,i){
       var src = row.source==="est"?'<span class="ps-tag est">Est</span>':'<span class="ps-tag on">OK</span>';
       var vw = (row.box_l*row.box_w*row.box_h*row.boxes)/MANI_DIVISOR;
+      var vwBox=(row.box_l*row.box_w*row.box_h)/MANI_DIVISOR;
+      var gwBox=row.gw/(row.boxes||1);
+      var cwBox=Math.max(gwBox, vwBox);
+      var cwMinFlag = cwBox < MANI_MIN_BOX_KG;
+      if(cwMinFlag) cwBox = MANI_MIN_BOX_KG;
       h += '<tr><td><b>'+esc(row.sku)+'</b></td><td>'+esc(row.name)+'</td><td>'+row.spec+'</td>';
       h += '<td>'+row.qpb+'</td><td>'+row.qty+'</td><td>'+row.boxes+'</td>';
       h += '<td>'+fmt(row.gw)+'</td><td>'+fmt(row.cbm)+'</td><td>'+fmt(vw)+'</td>';
+      h += '<td'+(cwMinFlag?' class="s-charge" title="单箱计费重<'+MANI_MIN_BOX_KG+'kg，按尾程最低 '+MANI_MIN_BOX_KG+'kg/箱计"':'')+'>'+fmt(cwBox)+(cwMinFlag?' ⚠':'')+'</td>';
       h += '<td>'+src+'</td><td><button class="ghost" data-mdel="'+i+'" style="padding:2px 6px;font-size:11px">X</button></td></tr>';
     });
     h += '</tbody></table></div>';
@@ -2666,11 +2674,16 @@ function _rPackCalc(){
 }
 
 function calcManifest(){
-  MANI_TOTAL_BOXES=0; MANI_TOTAL_GW=0; MANI_TOTAL_CBM=0; MANI_TOTAL_VW=0;
+  MANI_TOTAL_BOXES=0; MANI_TOTAL_GW=0; MANI_TOTAL_CBM=0; MANI_TOTAL_VW=0; MANI_TOTAL_CW=0; MANI_MIN_BOX_TRIGGERED=0;
   MANIFEST.forEach(function(r){
     MANI_TOTAL_BOXES+=r.boxes;
     MANI_TOTAL_GW+=r.gw;
     MANI_TOTAL_CBM+=r.cbm;
+    var vwBox=(r.box_l*r.box_w*r.box_h)/MANI_DIVISOR;
+    var gwBox=r.gw/(r.boxes||1);
+    var cwBox=Math.max(gwBox, vwBox);            // 单箱计费重 = MAX(单箱实重, 单箱体积重)
+    if(cwBox < MANI_MIN_BOX_KG){ cwBox=MANI_MIN_BOX_KG; MANI_MIN_BOX_TRIGGERED+=r.boxes; }  // 尾程快递一箱最低收费
+    MANI_TOTAL_CW += cwBox * r.boxes;
     MANI_TOTAL_VW+=(r.box_l*r.box_w*r.box_h*r.boxes)/MANI_DIVISOR;
   });
 }
