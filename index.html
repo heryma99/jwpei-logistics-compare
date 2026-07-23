@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784795283";</script>
+<script>window.__BUILD__="1784806333";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -232,6 +232,13 @@
   .mix-chips{font-size:11px;color:var(--mut);margin-top:2px;line-height:1.3}
   .mix-chips b{color:var(--fg)}
   td .mc-chk{display:inline-flex;align-items:center}
+  .ol-row{margin:3px 0}
+  .split-card{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:var(--panel2)}
+  .split-h{font-size:13px;color:var(--red);margin-bottom:8px}
+  .split-row{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .split-total{margin-top:9px;font-weight:600;color:var(--fg)}
+  .split-alt{margin-top:7px;font-size:12px;color:var(--mut)}
+  .split-note{margin-top:6px;font-size:11px;color:var(--mut);line-height:1.5}
 
 </style>
   <script src="sku_master.js"></script>
@@ -922,10 +929,46 @@ function qualify(ch, sku, units, audience, b2bType){
     if(!audList.includes(audience) && !audList.includes('2'+audience.slice(-1))) reasons.push("派送对象不符("+ch.audience+"≠"+audience+")");
   }
   if(ch.max_weight && (sku.weight*units) > ch.max_weight) reasons.push("超重("+(sku.weight*units)+"kg>"+ch.max_weight+"kg上限)");
+  if(ch.max_side){ const side=Math.max(sku.l||0,sku.w||0,sku.h||0); if(side>ch.max_side) reasons.push("超单边("+side.toFixed(0)+"cm>"+ch.max_side+"cm上限)"); }
+  if(ch.max_volume){ const v=(sku.l||0)*(sku.w||0)*(sku.h||0); if(v>ch.max_volume) reasons.push("超体积("+v.toFixed(0)+"cm³>"+ch.max_volume+"cm³)"); }
+  if(ch.max_girth){ const g=2*((sku.l||0)+(sku.w||0))+(sku.h||0); if(g>ch.max_girth) reasons.push("超周长("+g.toFixed(0)+"cm>"+ch.max_girth+"cm)"); }
   if(ch.accepted && !ch.accepted.includes(sku.attr)) reasons.push("属性不符("+sku.attr+"不被接受)");
   // 2B 类型细分：FBA/非FBA/商业地址
   if(audience==='2B' && b2bType && ch.b2bType && !ch.b2bType.includes(b2bType)) reasons.push("派送类型不符(渠道仅支持"+ch.b2bType.join('/')+")");
   return reasons;
+}
+
+/* ===================== 多SKU订单（订单模式）+ 拆包建议 ===================== */
+var ORDER_LINES = [];
+var _limitsSeeded = false;
+function loadOrder(){ try{ const a=JSON.parse(localStorage.getItem('jwpei_order_lines')||'[]'); ORDER_LINES=Array.isArray(a)?a:[]; }catch(e){ ORDER_LINES=[]; } if(!Array.isArray(ORDER_LINES)) ORDER_LINES=[]; }
+function saveOrder(){ try{ localStorage.setItem('jwpei_order_lines', JSON.stringify(ORDER_LINES)); }catch(e){} }
+function seedChannelLimits(){
+  if(_limitsSeeded) return; _limitsSeeded=true;
+  (S.modules.small&&S.modules.small.carriers||[]).forEach(c=>{
+    if(c.max_side==null) c.max_side=60;
+    if(c.max_volume==null) c.max_volume=60000;
+    if(c.max_girth==null) c.max_girth=150;
+  });
+  (S.modules.express&&S.modules.express.carriers||[]).forEach(c=>{
+    if(c.max_side==null) c.max_side=120;
+    if(c.max_volume==null) c.max_volume=800000;
+    if(c.max_girth==null) c.max_girth=400;
+  });
+}
+function round1(n){ return Math.round(n*10)/10; }
+/* 把订单的多个 SKU 行合成一个复合 SKU（总重/容积/申报值），外箱尺寸选填，留空按 Σ体积×1.3 估算 */
+function buildComposite(ol, itemsArr, destCn){
+  const resolved = ol.map(l=>({l, it: itemsArr.find(x=>x.sku===l.sku)})).filter(o=>o.it);
+  if(!resolved.length) return null;
+  let weight=0, vol=0, decl=0; const attrSet=new Set();
+  resolved.forEach(o=>{ const q=Math.max(1,+o.l.qty||1); weight+=(+o.it.weight||0)*q; vol+=(o.it.l*o.it.w*o.it.h||0)*q; decl+=(+o.it.decl||0)*q; if(o.it.attr) attrSet.add(o.it.attr); });
+  const L=+$("#orderL").value, W=+$("#orderW").value, H=+$("#orderH").value;
+  let l,w,h,est;
+  if(L>0&&W>0&&H>0){ l=L;w=W;h=H; est=false; } else { const s=Math.cbrt(Math.max(1,vol*1.3)); l=round1(s*1.25); w=round1(s); h=round1(s*0.8); est=true; }
+  const attr = attrSet.has('带电')?'带电':'普货';
+  const name = resolved.map(o=>`${o.l.sku}×${o.l.qty}`).join(' + ');
+  return {sku:'__ORDER__', name, weight, l, w, h, attr, decl, _estimated:est};
 }
 
 /* ===================== 导航 ===================== */
@@ -1073,6 +1116,7 @@ function combSkus(){
 
 /* ===================== 货运模块（小包/商业快递/toB）共用 ===================== */
 function rFreight(){
+    seedChannelLimits(); loadOrder();
     const M=S.modules[CUR];
     const items=combSkus();   // S.items ∪ 谷仓字典（直接引用谷仓 SKU）
     // 默认选第一个 SKU（演示自动带出）
@@ -1095,12 +1139,74 @@ function rFreight(){
   const isoOfDisplay = {};
   displayCountries.forEach(cn=>{ isoOfDisplay[cn] = (typeof CN2ISO==='object' && CN2ISO[cn]) || cn; });
   const defaultDest = displayCountries.find(x=>["美国","英国","德国"].includes(x)) || displayCountries[0] || "";
+  /* 全不可发 → 拆包最优建议（FFD 贪心分箱，跨模块找最便宜可发渠道） */
+  function renderSplitSuggestion(orderLines, destCn, aud, b2bType, opts){
+    const destIso = opts.destIso;
+    const unitsList=[];
+    orderLines.forEach(l=>{
+      const it=items.find(x=>x.sku===l.sku); if(!it) return;
+      const q=Math.max(1, parseInt(l.qty)||1);
+      const uw=+it.weight||0, uv=(it.l*it.w*it.h)||0, ud=+it.decl||0, ua=it.attr||'普货';
+      for(let i=0;i<q;i++) unitsList.push({sku:l.sku, w:uw, v:uv, d:ud, attr:ua});
+    });
+    if(!unitsList.length) return '<div class="err">订单无有效 SKU，请在 ① 物料主数据引用谷仓编码</div>';
+    const carriers=allFreightCarriers;
+    const isoOK=ch=>{ const il=Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]); return il.includes(destIso); };
+    const canShip=comp=> carriers.some(ch=> isoOK(ch) && qualify(ch,comp,1,aud,b2bType).length===0 );
+    const bestFor=comp=>{ let best=null; carriers.forEach(ch=>{ if(!isoOK(ch)) return; if(qualify(ch,comp,1,aud,b2bType).length) return; const r=computeFreight(ch,comp,1,destCn,opts.eurFx,{cargoType:opts.cargoType,conservative:opts.conservative,destIso}); if(!best||r.total<best.cost) best={ch,cost:r.total,r}; }); return best; };
+    const estDims=vol=>{ const v=Math.max(1,vol*1.3); const s=Math.cbrt(v); return {l:round1(s*1.25),w:round1(s),h:round1(s*0.8)}; };
+    const compFrom=arr=>{ let weight=0,vol=0,decl=0; const as=new Set(); arr.forEach(u=>{weight+=u.w;vol+=u.v;decl+=u.d;if(u.attr==='带电')as.add('带电');}); const d=estDims(vol); return {sku:'__P__',weight,l:d.l,w:d.w,h:d.h,attr:as.has('带电')?'带电':'普货',decl,_vol:vol}; };
+    const sorted=[...unitsList].sort((a,b)=>(b.w*b.v)-(a.w*a.v));
+    const parcels=[];
+    sorted.forEach(u=>{
+      for(const p of parcels){ const t=p.units.concat(u); if(canShip(compFrom(t))){ p.units=t; p.comp=compFrom(t); return; } }
+      parcels.push({units:[u], comp:compFrom([u])});
+    });
+    const plans=parcels.map((p,i)=>({i, units:p.units, comp:p.comp, best:bestFor(p.comp)}));
+    const total=plans.reduce((s,p)=>s+(p.best?p.best.cost:0),0);
+    const fullComp=compFrom(unitsList); const fullBest=bestFor(fullComp);
+    let h=`<div class="split-card">
+      <div class="split-h">✗ 当前规格/目的国 0 渠道可发（可能超重 / 超尺寸 / 超体积）→ 已给出拆包方案</div>`;
+    let anyUnfit=false;
+    plans.forEach(p=>{
+      const names={}; p.units.forEach(u=>{ names[u.sku]=(names[u.sku]||0)+1; });
+      const nameStr=Object.entries(names).map(([k,v])=>`${k}×${v}`).join(' · ');
+      const dim=`${p.comp.l}×${p.comp.w}×${p.comp.h}cm · ${p.comp.weight.toFixed(2)}kg`;
+      if(p.best){
+        h+=`<div class="split-row"><div><b>包裹 ${p.i+1}</b>　${esc(nameStr)}</div><div class="mut">估算 ${dim}</div><div style="color:var(--green)">${p.best.ch.carrier}·${p.best.ch.channel} ¥${p.best.cost.toFixed(2)}</div></div>`;
+      } else {
+        anyUnfit=true;
+        h+=`<div class="split-row" style="border-left:3px solid var(--red)"><div><b>包裹 ${p.i+1}</b>　${esc(nameStr)}</div><div class="mut">估算 ${dim}</div><div style="color:var(--red)">单件超所有渠道上限 → 建议走商业快递/海外仓中转</div></div>`;
+      }
+    });
+    h+=`<div class="split-total">合计拆 ${plans.length} 个包裹 · 到手总成本 ¥${total.toFixed(2)}</div>`;
+    if(fullBest){
+      const cheaper = fullBest.cost < total;
+      h+=`<div class="split-alt">备选：不拆包走 ${fullBest.ch.carrier}·${fullBest.ch.channel} 单包 ¥${fullBest.cost.toFixed(2)} ${cheaper?'（更省，已建议优先）':'（更贵）'}</div>`;
+    }
+    if(anyUnfit) h+=`<div class="split-note">注：部分包裹单件即超所有渠道上限，建议走商业快递(DHL/UPS/FedEx)或海外仓中转(先入仓再尾程)。</div>`;
+    h+=`<div class="split-note">拆包算法：FFD 贪心（按 重量×体积 降序塞包），每包选最便宜可发渠道；外箱尺寸为估算(Σ体积×1.3)，可在订单区手填真实外箱后重算。</div></div>`;
+    return h;
+  }
   let h=`<div class="card"><h2>${M.name}　<span class="pill">货运引擎 · 4 支柱归一</span></h2>
     <div class="note">录入方式（你要的「越简单越好」）：<span class="kbd">① 选 SKU 自动带出</span> <span class="kbd">② 批量 ToB 自动算体积（接主数据）</span> <span class="kbd">③ 模板导入/手动</span>。三者都产出同一「发货规格」喂给引擎。</div>
-    <h3>发货规格（SKU 自动带出）</h3>
-    <label>选择 SKU</label><input id="skuSel" list="gcList" style="min-width:220px" value="${(items[0]||{}).sku||''}"><datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
-    件数 <input type="number" id="units" value="${defaultUnits}">
-    <span id="skuVol" class="mut" style="margin-left:6px"></span>
+    <div style="display:flex;gap:18px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
+      <span class="mut" style="font-size:12px">录入方式</span>
+      <label style="display:inline-flex;gap:5px;align-items:center;cursor:pointer"><input type="radio" name="entryMode" value="single" checked> 单件（1 SKU × N 件）</label>
+      <label style="display:inline-flex;gap:5px;align-items:center;cursor:pointer"><input type="radio" name="entryMode" value="order"> 订单（多 SKU 多件）</label>
+    </div>
+    <h3>发货规格</h3>
+    <span id="singleBlock">
+      <label>选择 SKU</label><input id="skuSel" list="gcList" style="min-width:220px" value="${(items[0]||{}).sku||''}"><datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
+      件数 <input type="number" id="units" value="${defaultUnits}">
+      <span id="skuVol" class="mut" style="margin-left:6px"></span>
+    </span>
+    <div id="orderBlock" style="display:none">
+      <div class="note">订单模式：一个客户订单含多个 SKU 多件。系统自动合成复合包裹→走现有引擎比价；超尺寸/重量则只显示能发的渠道，全不可发则给出拆包方案。</div>
+      <div id="orderLines"></div>
+      <button class="ghost" id="addLine" style="margin:4px 0">+ 添加 SKU</button>
+      <div style="margin-top:4px">外箱尺寸（选填，留空按内容物估算）：<input id="orderL" type="number" placeholder="长" style="width:50px">×<input id="orderW" type="number" placeholder="宽" style="width:50px">×<input id="orderH" type="number" placeholder="高" style="width:50px"> cm <span class="mut">填了用真实外箱，不填用 Σ体积×1.3 估算</span></div>
+    </div>
     目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
     收货类型 <select id="b2bType"><option value="">不限（2C 个人）</option><option value="FBA">2B · FBA 仓</option><option value="非FBA">2B · 非FBA（商业/住宅）</option></select>
     <span class="mut" style="font-size:11px">·发 2C 个人选「不限」；发 2B 商业选 FBA/非FBA，渠道在 FBA 仓地址有特殊附加、非FBA 按 非FBA附加/kg 算</span>
@@ -1118,13 +1224,22 @@ function rFreight(){
     <div id="fOut"></div></div>`;
   $("#app").innerHTML=h;
   const draw=()=>{
-    const skuStr=$("#skuSel").value, units=+$("#units").value, destCn=$("#dest").value, aud=defaultAud;
+    const skuStr=$("#skuSel").value, destCn=$("#dest").value, aud=defaultAud;
     const destIso = isoOfDisplay[destCn] || chineseToIso(destCn) || destCn;
-    const sku=items.find(x=>x.sku===skuStr); const mode=$('input[name=mode]:checked').value;
-    if(!sku){ $("#fOut").innerHTML='<div class="err">未找到 SKU「'+skuStr+'」，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
-    // 体积显示
-    const skuVolEl=document.getElementById('skuVol');
-    if(skuVolEl){ const v=sku.l*sku.w*sku.h; skuVolEl.textContent=`体积: ${v}cm³ × ${units}件 = ${(v*units).toFixed(1)}cm³`; }
+    const entryMode = (document.querySelector('input[name=entryMode]:checked')||{}).value || 'single';
+    const mode=$('input[name=mode]:checked').value;
+    let sku, units;
+    if(entryMode==='order'){
+      const ol = ORDER_LINES.filter(l=>l.sku && (+l.qty>0));
+      const comp = buildComposite(ol, items, destCn);
+      if(!comp){ $("#fOut").innerHTML='<div class="err">订单模式请先添加有效 SKU（自动带出谷仓主数据重量/尺寸）</div>'; return; }
+      sku=comp; units=1;
+      const sv=document.getElementById('skuVol'); if(sv){ sv.textContent=`复合包裹: ${comp.weight.toFixed(2)}kg · 容积${(comp.l*comp.w*comp.h).toFixed(0)}cm³${comp._estimated?'（外箱为估算,可在订单区手填真实尺寸）':''}`; }
+    } else {
+      sku = items.find(x=>x.sku===skuStr); units=+$("#units").value;
+      if(!sku){ $("#fOut").innerHTML='<div class="err">未找到 SKU「'+skuStr+'」，请在 ① 物料主数据输入/引用谷仓编码</div>'; return; }
+      const sv=document.getElementById('skuVol'); if(sv){ const v=sku.l*sku.w*sku.h; sv.textContent=`体积: ${v}cm³ × ${units}件 = ${(v*units).toFixed(1)}cm³`; }
+    }
     // P2 资格校验
     const b2bType = ($("#b2bType") && $("#b2bType").value) || "";
     let eligible=[], rejected=[];
@@ -1138,7 +1253,15 @@ function rFreight(){
       <span class="count ok">✓ 入围 <b>${eligible.length}</b> 个渠道</span>
       ${rejected.length?`<details class="rejected-details"><summary><span>淘汰 <b>${rejected.length}</b> 个渠道</span></summary><div>${rejectedHtml}</div></details>`:''}
     </div>`;
-    if(!eligible.length){ $("#fOut").innerHTML=out+`<div class="err">当前规格/目的国无可用渠道，请调整 SKU、件数、目的国或收货类型。</div>`; return; }
+    if(!eligible.length){
+      const eurFx=parseFloat($("#euFx")?.value)||7.8;
+      const conservative=$("#conservativeMode")?.checked;
+      const cargoType=(document.getElementById('cargoType')?.value)||'箱包皮革';
+      const orderLines = entryMode==='order' ? ORDER_LINES.filter(l=>l.sku && (+l.qty>0)) : [{sku:skuStr, qty:units}];
+      const split = renderSplitSuggestion(orderLines, destCn, aud, b2bType, {destIso, eurFx, cargoType, conservative});
+      $("#fOut").innerHTML = out + split;
+      return;
+    }
     const eurFx=parseFloat($("#euFx")?.value)||7.8;
     const conservative=$("#conservativeMode")?.checked;
     // ② ③ ④ 通用:小包/快递/头程 预估+比价 共用
@@ -1319,6 +1442,23 @@ function rFreight(){
   document.querySelectorAll('input[name=mode]').forEach(r=> r.onchange=draw);
   $("#run").onclick=draw;
   bindCombo($("#dest"), $("#destList"), displayCountries, draw);
+  // 订单模式：录入方式切换 + SKU 行管理
+  document.querySelectorAll('input[name=entryMode]').forEach(r=> r.onchange=()=>{
+    const m=document.querySelector('input[name=entryMode]:checked').value;
+    const sb=$("#singleBlock"), ob=$("#orderBlock");
+    if(sb) sb.style.display = m==='order'?'none':'';
+    if(ob) ob.style.display = m==='order'?'':'none';
+    if(m==='order') renderOrderLines();
+  });
+  function renderOrderLines(){
+    const box=$("#orderLines"); if(!box) return;
+    box.innerHTML = ORDER_LINES.map((l,i)=>`<div class="ol-row"><input class="ol-sku" list="gcList" data-i="${i}" value="${esc(l.sku||'')}" placeholder="SKU" style="min-width:160px"> <input class="ol-qty" data-i="${i}" type="number" min="1" value="${l.qty||1}" style="width:54px"> 件 <button class="ol-del" data-i="${i}" title="删除">✕</button></div>`).join('');
+    box.querySelectorAll('.ol-sku').forEach(inp=> inp.oninput=()=>{ ORDER_LINES[+inp.dataset.i].sku=inp.value; saveOrder(); });
+    box.querySelectorAll('.ol-qty').forEach(inp=> inp.oninput=()=>{ ORDER_LINES[+inp.dataset.i].qty=Math.max(1,parseInt(inp.value)||1); saveOrder(); });
+    box.querySelectorAll('.ol-del').forEach(b=> b.onclick=()=>{ ORDER_LINES.splice(+b.dataset.i,1); saveOrder(); renderOrderLines(); });
+  }
+  $("#addLine").onclick=()=>{ ORDER_LINES.push({sku:'',qty:1}); saveOrder(); renderOrderLines(); };
+  if((document.querySelector('input[name=entryMode]:checked')||{}).value==='order') renderOrderLines();
   draw();
 }
 
