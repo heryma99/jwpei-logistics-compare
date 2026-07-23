@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784846479";</script>
+<script>window.__BUILD__="1784848487";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -572,7 +572,8 @@ function syncParcelFromRates(){
       accepted: live?['普货','带电']:['普货'],
       pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:c.charge_rule||'max', rounding:c.rounding||0.001, min_charge_weight:0.001, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
-      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap, countryMap: c.countries
+      decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap, countryMap: c.countries,
+      sizeRules: c.size_rules || null   // 白名单式尺寸限制（真实报价单口径），无则尺寸不校验
     };
   }).filter(Boolean);
   if(carriers.length) S.modules.parcel.carriers = carriers;
@@ -922,16 +923,29 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   return {cw, items, total, transit:ch.decision?.transit};
 }
 // 资格校验（P2 硬约束）：派送对象匹配? 重量≤上限? 属性接受? audience 支持多值如["2B","2C"]
-function qualify(ch, sku, units, audience, b2bType){
+function qualify(ch, sku, units, audience, b2bType, destIso){
   const reasons=[];
   if(ch.audience && audience){
     const audList = Array.isArray(ch.audience) ? ch.audience : [ch.audience];
     if(!audList.includes(audience) && !audList.includes('2'+audience.slice(-1))) reasons.push("派送对象不符("+ch.audience+"≠"+audience+")");
   }
   if(ch.max_weight && (sku.weight*units) > ch.max_weight) reasons.push("超重("+(sku.weight*units)+"kg>"+ch.max_weight+"kg上限)");
-  if(ch.max_side){ const side=Math.max(sku.l||0,sku.w||0,sku.h||0); if(side>ch.max_side) reasons.push("超单边("+side.toFixed(0)+"cm>"+ch.max_side+"cm上限)"); }
-  if(ch.max_volume){ const v=(sku.l||0)*(sku.w||0)*(sku.h||0); if(v>ch.max_volume) reasons.push("超体积("+v.toFixed(0)+"cm³>"+ch.max_volume+"cm³)"); }
-  if(ch.max_girth){ const g=2*((sku.l||0)+(sku.w||0))+(sku.h||0); if(g>ch.max_girth) reasons.push("超周长("+g.toFixed(0)+"cm>"+ch.max_girth+"cm)"); }
+  // 尺寸限制：白名单式 —— 仅当该渠道对该国在 rates.json 显式配置 size_rules 才校验；未配置视为"可能能发"，绝不注入默认值
+  const sr = (ch.sizeRules && destIso) ? (ch.sizeRules[destIso] || ch.sizeRules.default || null) : null;
+  if(sr){
+    const L=sku.l||0, W=sku.w||0, H=sku.h||0;
+    const arr=[L,W,H].sort((a,b)=>b-a);                 // 长≥宽≥高
+    const side=arr[0], sum=arr[0]+arr[1]+arr[2], vol=arr[0]*arr[1]*arr[2], girth=arr[0]+2*(arr[1]+arr[2]);
+    if(sr.max_side && side>sr.max_side) reasons.push("超单边("+side.toFixed(0)+"cm>"+sr.max_side+"cm)");
+    if(sr.max_volume && vol>sr.max_volume) reasons.push("超体积("+vol.toFixed(0)+"cm³>"+sr.max_volume+"cm³)");
+    if(sr.max_sum && sum>sr.max_sum) reasons.push("超三边和("+sum.toFixed(0)+"cm>"+sr.max_sum+"cm)");
+    if(sr.max_girth && girth>sr.max_girth) reasons.push("超围长("+girth.toFixed(0)+"cm>"+sr.max_girth+"cm)");
+  } else if(ch.max_side||ch.max_volume||ch.max_girth){  // 兼容旧 DEF 硬编码字段（当前均为空，不误淘汰）
+    const side=Math.max(sku.l||0,sku.w||0,sku.h||0), vol=(sku.l||0)*(sku.w||0)*(sku.h||0), g=2*((sku.l||0)+(sku.w||0))+(sku.h||0);
+    if(ch.max_side && side>ch.max_side) reasons.push("超单边("+side.toFixed(0)+"cm>"+ch.max_side+"cm)");
+    if(ch.max_volume && vol>ch.max_volume) reasons.push("超体积("+vol.toFixed(0)+"cm³>"+ch.max_volume+"cm³)");
+    if(ch.max_girth && g>ch.max_girth) reasons.push("超周长("+g.toFixed(0)+"cm>"+ch.max_girth+"cm)");
+  }
   if(ch.accepted && !ch.accepted.includes(sku.attr)) reasons.push("属性不符("+sku.attr+"不被接受)");
   // 2B 类型细分：FBA/非FBA/商业地址
   if(audience==='2B' && b2bType && ch.b2bType && !ch.b2bType.includes(b2bType)) reasons.push("派送类型不符(渠道仅支持"+ch.b2bType.join('/')+")");
@@ -947,17 +961,9 @@ var SKU_PRESETS = {};
 function loadPresets(){ try{ SKU_PRESETS=JSON.parse(localStorage.getItem('jwpei_sku_presets')||'{}'); }catch(e){ SKU_PRESETS={}; } if(typeof SKU_PRESETS!=='object'||!SKU_PRESETS) SKU_PRESETS={}; }
 function savePresets(){ try{ localStorage.setItem('jwpei_sku_presets', JSON.stringify(SKU_PRESETS)); }catch(e){} }
 function seedChannelLimits(){
-  if(_limitsSeeded) return; _limitsSeeded=true;
-  (S.modules.small&&S.modules.small.carriers||[]).forEach(c=>{
-    if(c.max_side==null) c.max_side=60;
-    if(c.max_volume==null) c.max_volume=60000;
-    if(c.max_girth==null) c.max_girth=150;
-  });
-  (S.modules.express&&S.modules.express.carriers||[]).forEach(c=>{
-    if(c.max_side==null) c.max_side=120;
-    if(c.max_volume==null) c.max_volume=800000;
-    if(c.max_girth==null) c.max_girth=400;
-  });
+  // 尺寸限制采用白名单式：仅当渠道在 rates.json 显式配置 size_rules 才校验。
+  // 不再注入默认值 —— "没写限制" 视为该渠道可能能发，绝不拿默认门槛误淘汰渠道。
+  _limitsSeeded = true;
 }
 function round1(n){ return Math.round(n*10)/10; }
 /* 把订单的多个 SKU 行合成一个复合 SKU（总重/容积/申报值），外箱尺寸选填，留空按 Σ体积×1.3 估算 */
@@ -1240,7 +1246,7 @@ function rFreight(){
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
       const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
-      const reasons=qualify(ch, sku, units, aud, b2bType).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
+      const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
