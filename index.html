@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784854141";</script>
+<script>window.__BUILD__="1784860000";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -241,8 +241,8 @@
   .split-note{margin-top:6px;font-size:11px;color:var(--mut);line-height:1.5}
 
 </style>
-  <script src="sku_master.js?v=1784854141"></script>
-  <script src="rates.js?v=1784854141"></script>
+  <script src="sku_master.js?v=1784860000"></script>
+  <script src="rates.js?v=1784860000"></script>
   <script>
 const CN2ISO = {
 "美国": "US",
@@ -1718,7 +1718,7 @@ function rMom(){
   // 主站顶部 nav 已是 4 业务域切入口；这里只嵌入看板（默认 cat=all）+ 原两期环比折叠区
   let h=`<div class="card"><h2>⑦ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
     <div class="note">按主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）组织：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。看板上方 Tab 切换业务域，左栏选渠道、右栏看环比详情。</div>
-    <iframe id="mIframe" src="price_change.html?cat=all&embed=1" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=1784860000" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
     <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
       <div style="margin-top:10px">
         <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
