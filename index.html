@@ -2430,6 +2430,7 @@ function unpackPackSpecs(min){
 
 function loadPackSpecs(cb){
   if(PACK_LOADED){ if(cb) cb(); return; }
+  if(!S.packSpecs) S.packSpecs = {};
   var keys = Object.keys(S.packSpecs);
   if(keys.length > 0){
     PACK_SPECS = S.packSpecs;
