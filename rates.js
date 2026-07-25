@@ -15253,19 +15253,19 @@ window.RATES={
           "tiers": [
             {
               "min": 10.0,
-              "rate": 61
+              "rate": 62
             },
             {
               "min": 21.0,
-              "rate": 59
+              "rate": 60
             },
             {
               "min": 71.0,
-              "rate": 57
+              "rate": 58
             },
             {
               "min": 101.0,
-              "rate": 55
+              "rate": 56
             }
           ],
           "postcode": "8,9",
@@ -15317,19 +15317,19 @@ window.RATES={
           "tiers": [
             {
               "min": 10.0,
-              "rate": 61
+              "rate": 62
             },
             {
               "min": 21.0,
-              "rate": 59
+              "rate": 60
             },
             {
               "min": 71.0,
-              "rate": 57
+              "rate": 58
             },
             {
               "min": 101.0,
-              "rate": 55
+              "rate": 56
             }
           ],
           "postcode": "4,5,6,7",
@@ -15381,19 +15381,19 @@ window.RATES={
           "tiers": [
             {
               "min": 10.0,
-              "rate": 61
+              "rate": 62
             },
             {
               "min": 21.0,
-              "rate": 59
+              "rate": 60
             },
             {
               "min": 71.0,
-              "rate": 57
+              "rate": 58
             },
             {
               "min": 101.0,
-              "rate": 55
+              "rate": 56
             }
           ],
           "postcode": "0,1,2,3",
@@ -15461,19 +15461,19 @@ window.RATES={
           "tiers": [
             {
               "min": 10.0,
-              "rate": 59
+              "rate": 60
             },
             {
               "min": 21.0,
-              "rate": 57
+              "rate": 58
             },
             {
               "min": 71.0,
-              "rate": 55
+              "rate": 56
             },
             {
               "min": 101.0,
-              "rate": 53
+              "rate": 54
             }
           ],
           "postcode": "8,9",
@@ -15525,19 +15525,19 @@ window.RATES={
           "tiers": [
             {
               "min": 10.0,
-              "rate": 59
+              "rate": 60
             },
             {
               "min": 21.0,
-              "rate": 57
+              "rate": 58
             },
             {
               "min": 71.0,
-              "rate": 55
+              "rate": 56
             },
             {
               "min": 101.0,
-              "rate": 53
+              "rate": 54
             }
           ],
           "postcode": "4,5,6,7",
@@ -15589,19 +15589,19 @@ window.RATES={
           "tiers": [
             {
               "min": 10.0,
-              "rate": 59
+              "rate": 60
             },
             {
               "min": 21.0,
-              "rate": 57
+              "rate": 58
             },
             {
               "min": 71.0,
-              "rate": 55
+              "rate": 56
             },
             {
               "min": 101.0,
-              "rate": 53
+              "rate": 54
             }
           ],
           "postcode": "0,1,2,3",
