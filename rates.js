@@ -48,7 +48,8 @@ window.RATES={
               "rate": 92.0,
               "reg": 12.0
             }
-          ]
+          ],
+          "min_charge_weight": 0.03
         },
         "英国": {
           "brackets": [
@@ -121,7 +122,10 @@ window.RATES={
               "rate": 46.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.2,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "德国": {
           "brackets": [
@@ -155,7 +159,10 @@ window.RATES={
               "rate": 46.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "vat": 0.19,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "意大利": {
           "brackets": [
@@ -169,7 +176,10 @@ window.RATES={
               "rate": 51.0,
               "reg": 25.0
             }
-          ]
+          ],
+          "vat": 0.22,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "西班牙": {
           "brackets": [
@@ -183,7 +193,10 @@ window.RATES={
               "rate": 50.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "荷兰": {
           "brackets": [
@@ -212,7 +225,10 @@ window.RATES={
               "rate": 56.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "比利时": {
           "brackets": [
@@ -236,7 +252,10 @@ window.RATES={
               "rate": 67.0,
               "reg": 21.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "奥地利": {
           "brackets": [
@@ -255,7 +274,10 @@ window.RATES={
               "rate": 59.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.2,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "瑞典": {
           "brackets": [
@@ -274,7 +296,10 @@ window.RATES={
               "rate": 52.0,
               "reg": 21.0
             }
-          ]
+          ],
+          "vat": 0.25,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "波兰": {
           "brackets": [
@@ -293,7 +318,10 @@ window.RATES={
               "rate": 63.0,
               "reg": 15.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "南非": {
           "brackets": [
@@ -307,7 +335,9 @@ window.RATES={
               "rate": 164.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.1
         },
         "塞浦路斯": {
           "brackets": [
@@ -321,7 +351,10 @@ window.RATES={
               "rate": 117.0,
               "reg": 29.0
             }
-          ]
+          ],
+          "vat": 0.19,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "爱尔兰": {
           "brackets": [
@@ -335,7 +368,10 @@ window.RATES={
               "rate": 78.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "希腊": {
           "brackets": [
@@ -344,7 +380,10 @@ window.RATES={
               "rate": 81.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "vat": 0.24,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "保加利亚": {
           "brackets": [
@@ -353,7 +392,10 @@ window.RATES={
               "rate": 76.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "vat": 0.2,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "葡萄牙": {
           "brackets": [
@@ -362,7 +404,10 @@ window.RATES={
               "rate": 60.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "匈牙利": {
           "brackets": [
@@ -371,7 +416,10 @@ window.RATES={
               "rate": 65.0,
               "reg": 21.0
             }
-          ]
+          ],
+          "vat": 0.27,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "斯洛伐克": {
           "brackets": [
@@ -380,7 +428,10 @@ window.RATES={
               "rate": 82.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "捷克": {
           "brackets": [
@@ -399,7 +450,10 @@ window.RATES={
               "rate": 67.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "罗马尼亚": {
           "brackets": [
@@ -408,7 +462,10 @@ window.RATES={
               "rate": 79.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "芬兰": {
           "brackets": [
@@ -417,7 +474,10 @@ window.RATES={
               "rate": 74.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "vat": 0.255,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "丹麦": {
           "brackets": [
@@ -436,7 +496,10 @@ window.RATES={
               "rate": 60.0,
               "reg": 24.0
             }
-          ]
+          ],
+          "vat": 0.25,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "挪威": {
           "brackets": [
@@ -484,7 +547,8 @@ window.RATES={
               "rate": 65.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "min_charge_weight": 0.02
         },
         "以色列": {
           "brackets": [
@@ -537,7 +601,9 @@ window.RATES={
               "rate": 102.0,
               "reg": 100.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.05
         },
         "新加坡": {
           "brackets": [
@@ -546,7 +612,8 @@ window.RATES={
               "rate": 30.0,
               "reg": 16.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "泰国": {
           "brackets": [
@@ -555,7 +622,8 @@ window.RATES={
               "rate": 43.0,
               "reg": 14.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "新西兰": {
           "brackets": [
@@ -564,7 +632,9 @@ window.RATES={
               "rate": 83.0,
               "reg": 17.0
             }
-          ]
+          ],
+          "charge_rule": "vol_if_2x_actual",
+          "volumetric_divisor": 6000
         },
         "瑞士": {
           "brackets": [
@@ -602,7 +672,10 @@ window.RATES={
               "rate": 68.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.24,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "拉脱维亚": {
           "brackets": [
@@ -616,7 +689,10 @@ window.RATES={
               "rate": 71.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "立陶宛": {
           "brackets": [
@@ -630,7 +706,10 @@ window.RATES={
               "rate": 69.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "克罗地亚": {
           "brackets": [
@@ -639,7 +718,10 @@ window.RATES={
               "rate": 94.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "vat": 0.25,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "斯洛文尼亚": {
           "brackets": [
@@ -648,7 +730,10 @@ window.RATES={
               "rate": 86.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "vat": 0.22,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "巴基斯坦": {
           "brackets": [
@@ -657,7 +742,9 @@ window.RATES={
               "rate": 88.0,
               "reg": 8.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.05
         },
         "尼日利亚": {
           "brackets": [
@@ -676,7 +763,9 @@ window.RATES={
               "rate": 119.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.1
         },
         "加纳": {
           "brackets": [
@@ -695,7 +784,8 @@ window.RATES={
               "rate": 140.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "乌干达": {
           "brackets": [
@@ -714,7 +804,8 @@ window.RATES={
               "rate": 144.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "肯尼亚": {
           "brackets": [
@@ -733,7 +824,8 @@ window.RATES={
               "rate": 104.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "马约特": {
           "brackets": [
@@ -752,7 +844,8 @@ window.RATES={
               "rate": 144.0,
               "reg": 100.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "坦桑尼亚": {
           "brackets": [
@@ -761,7 +854,8 @@ window.RATES={
               "rate": 115.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "卢旺达": {
           "brackets": [
@@ -770,7 +864,8 @@ window.RATES={
               "rate": 113.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "安哥拉": {
           "brackets": [
@@ -779,7 +874,8 @@ window.RATES={
               "rate": 117.0,
               "reg": 24.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "摩洛哥": {
           "brackets": [
@@ -793,7 +889,8 @@ window.RATES={
               "rate": 104.0,
               "reg": 46.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "塞内加尔": {
           "brackets": [
@@ -802,7 +899,8 @@ window.RATES={
               "rate": 178.0,
               "reg": 90.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "毛里求斯": {
           "brackets": [
@@ -811,7 +909,8 @@ window.RATES={
               "rate": 141.0,
               "reg": 15.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "留尼汪": {
           "brackets": [
@@ -820,7 +919,8 @@ window.RATES={
               "rate": 155.0,
               "reg": 60.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "马达加斯加": {
           "brackets": [
@@ -829,7 +929,8 @@ window.RATES={
               "rate": 144.0,
               "reg": 60.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "塞舌尔": {
           "brackets": [
@@ -838,7 +939,8 @@ window.RATES={
               "rate": 249.0,
               "reg": 95.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "赞比亚": {
           "brackets": [
@@ -847,7 +949,8 @@ window.RATES={
               "rate": 144.0,
               "reg": 35.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "阿拉伯联合酋长国": {
           "brackets": [
@@ -866,7 +969,9 @@ window.RATES={
               "rate": 65.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.1
         },
         "沙特阿拉伯": {
           "brackets": [
@@ -899,7 +1004,9 @@ window.RATES={
               "rate": 67.0,
               "reg": 75.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.1
         },
         "卡塔尔": {
           "brackets": [
@@ -908,7 +1015,9 @@ window.RATES={
               "rate": 72.0,
               "reg": 45.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.1
         },
         "巴林": {
           "brackets": [
@@ -917,7 +1026,9 @@ window.RATES={
               "rate": 68.0,
               "reg": 61.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.1
         },
         "约旦": {
           "brackets": [
@@ -926,7 +1037,8 @@ window.RATES={
               "rate": 108.0,
               "reg": 30.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "越南": {
           "brackets": [
@@ -935,7 +1047,8 @@ window.RATES={
               "rate": 26.0,
               "reg": 11.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "菲律宾": {
           "brackets": [
@@ -949,7 +1062,8 @@ window.RATES={
               "rate": 32.0,
               "reg": 50.0
             }
-          ]
+          ],
+          "charge_rule": "actual"
         },
         "秘鲁": {
           "brackets": [
@@ -1016,7 +1130,10 @@ window.RATES={
               "rate": 63.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "charge_rule": "vol_if_2x_actual",
+          "volumetric_divisor": 8000,
+          "min_charge_weight": 0.05
         },
         "阿塞拜疆": {
           "brackets": [
@@ -1025,7 +1142,8 @@ window.RATES={
               "rate": 130.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "马来西亚": {
           "brackets": [
@@ -1039,7 +1157,8 @@ window.RATES={
               "rate": 23.0,
               "reg": 28.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "澳大利亚": {
           "brackets": [
@@ -1157,7 +1276,9 @@ window.RATES={
               "rate": 30.0,
               "reg": 6.0
             }
-          ]
+          ],
+          "volumetric_divisor": 9000,
+          "min_charge_weight": 0.5
         }
       },
       "dest": [
@@ -1319,7 +1440,8 @@ window.RATES={
               "rate": 86.0,
               "reg": 40.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "澳大利亚": {
           "brackets": [
@@ -4022,7 +4144,8 @@ window.RATES={
               "rate": 104.0,
               "reg": 12.0
             }
-          ]
+          ],
+          "min_charge_weight": 0.03
         },
         "英国": {
           "brackets": [
@@ -4090,7 +4213,10 @@ window.RATES={
               "rate": 67.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.2,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "德国": {
           "brackets": [
@@ -4124,7 +4250,10 @@ window.RATES={
               "rate": 70.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "vat": 0.19,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "意大利": {
           "brackets": [
@@ -4138,7 +4267,10 @@ window.RATES={
               "rate": 78.0,
               "reg": 25.0
             }
-          ]
+          ],
+          "vat": 0.22,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "西班牙": {
           "brackets": [
@@ -4152,7 +4284,10 @@ window.RATES={
               "rate": 76.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "荷兰": {
           "brackets": [
@@ -4186,7 +4321,10 @@ window.RATES={
               "rate": 85.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "比利时": {
           "brackets": [
@@ -4210,7 +4348,10 @@ window.RATES={
               "rate": 82.0,
               "reg": 21.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "卢森堡": {
           "brackets": [
@@ -4234,7 +4375,10 @@ window.RATES={
               "rate": 115.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "vat": 0.17,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "爱尔兰": {
           "brackets": [
@@ -4253,7 +4397,10 @@ window.RATES={
               "rate": 90.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "保加利亚": {
           "brackets": [
@@ -4267,7 +4414,10 @@ window.RATES={
               "rate": 90.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "vat": 0.2,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "克罗地亚": {
           "brackets": [
@@ -4281,7 +4431,10 @@ window.RATES={
               "rate": 107.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "vat": 0.25,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "捷克": {
           "brackets": [
@@ -4300,7 +4453,10 @@ window.RATES={
               "rate": 84.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "爱沙尼亚": {
           "brackets": [
@@ -4314,7 +4470,10 @@ window.RATES={
               "rate": 89.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.24,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "芬兰": {
           "brackets": [
@@ -4328,7 +4487,10 @@ window.RATES={
               "rate": 96.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "vat": 0.255,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "匈牙利": {
           "brackets": [
@@ -4342,7 +4504,10 @@ window.RATES={
               "rate": 88.0,
               "reg": 21.0
             }
-          ]
+          ],
+          "vat": 0.27,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "拉脱维亚": {
           "brackets": [
@@ -4356,7 +4521,10 @@ window.RATES={
               "rate": 90.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "立陶宛": {
           "brackets": [
@@ -4370,7 +4538,10 @@ window.RATES={
               "rate": 89.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "马耳他": {
           "brackets": [
@@ -4384,7 +4555,10 @@ window.RATES={
               "rate": 152.0,
               "reg": 30.0
             }
-          ]
+          ],
+          "vat": 0.18,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "波兰": {
           "brackets": [
@@ -4403,7 +4577,10 @@ window.RATES={
               "rate": 83.0,
               "reg": 15.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "葡萄牙": {
           "brackets": [
@@ -4417,7 +4594,10 @@ window.RATES={
               "rate": 89.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "罗马尼亚": {
           "brackets": [
@@ -4431,7 +4611,10 @@ window.RATES={
               "rate": 97.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.21,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "斯洛伐克": {
           "brackets": [
@@ -4445,7 +4628,10 @@ window.RATES={
               "rate": 104.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "vat": 0.23,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "斯洛文尼亚": {
           "brackets": [
@@ -4459,7 +4645,10 @@ window.RATES={
               "rate": 102.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "vat": 0.22,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "瑞典": {
           "brackets": [
@@ -4478,7 +4667,10 @@ window.RATES={
               "rate": 78.0,
               "reg": 21.0
             }
-          ]
+          ],
+          "vat": 0.25,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "奥地利": {
           "brackets": [
@@ -4497,7 +4689,10 @@ window.RATES={
               "rate": 85.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "vat": 0.2,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "丹麦": {
           "brackets": [
@@ -4516,7 +4711,10 @@ window.RATES={
               "rate": 80.0,
               "reg": 24.0
             }
-          ]
+          ],
+          "vat": 0.25,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "南非": {
           "brackets": [
@@ -4530,7 +4728,9 @@ window.RATES={
               "rate": 166.0,
               "reg": 28.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.1
         },
         "巴西": {
           "brackets": [
@@ -4569,7 +4769,9 @@ window.RATES={
               "rate": 102.0,
               "reg": 100.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.05
         },
         "希腊": {
           "brackets": [
@@ -4578,7 +4780,10 @@ window.RATES={
               "rate": 95.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "vat": 0.24,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "瑞士": {
           "brackets": [
@@ -4650,7 +4855,8 @@ window.RATES={
               "rate": 70.0,
               "reg": 20.0
             }
-          ]
+          ],
+          "min_charge_weight": 0.02
         },
         "新加坡": {
           "brackets": [
@@ -4659,7 +4865,8 @@ window.RATES={
               "rate": 39.0,
               "reg": 16.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "泰国": {
           "brackets": [
@@ -4668,7 +4875,8 @@ window.RATES={
               "rate": 44.0,
               "reg": 14.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "越南": {
           "brackets": [
@@ -4677,7 +4885,8 @@ window.RATES={
               "rate": 27.0,
               "reg": 11.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "菲律宾": {
           "brackets": [
@@ -4691,7 +4900,8 @@ window.RATES={
               "rate": 49.0,
               "reg": 50.0
             }
-          ]
+          ],
+          "charge_rule": "actual"
         },
         "智利": {
           "brackets": [
@@ -4710,7 +4920,8 @@ window.RATES={
               "rate": 98.0,
               "reg": 25.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "哥伦比亚": {
           "brackets": [
@@ -4719,7 +4930,8 @@ window.RATES={
               "rate": 136.0,
               "reg": 27.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "以色列": {
           "brackets": [
@@ -4737,7 +4949,10 @@ window.RATES={
               "rate": 133.0,
               "reg": 29.0
             }
-          ]
+          ],
+          "vat": 0.19,
+          "service_fee_pct": 0.02,
+          "duty_fixed_eur": 3.0
         },
         "韩国": {
           "brackets": [
@@ -4760,7 +4975,9 @@ window.RATES={
               "rate": 97.0,
               "reg": 17.0
             }
-          ]
+          ],
+          "charge_rule": "vol_if_2x_actual",
+          "volumetric_divisor": 6000
         },
         "巴基斯坦": {
           "brackets": [
@@ -4769,7 +4986,9 @@ window.RATES={
               "rate": 98.0,
               "reg": 8.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000,
+          "min_charge_weight": 0.05
         },
         "尼日利亚": {
           "brackets": [
@@ -4788,7 +5007,8 @@ window.RATES={
               "rate": 130.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "加纳": {
           "brackets": [
@@ -4807,7 +5027,8 @@ window.RATES={
               "rate": 151.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "乌干达": {
           "brackets": [
@@ -4826,7 +5047,8 @@ window.RATES={
               "rate": 156.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "肯尼亚": {
           "brackets": [
@@ -4845,7 +5067,8 @@ window.RATES={
               "rate": 114.0,
               "reg": 22.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "马约特": {
           "brackets": [
@@ -4864,7 +5087,8 @@ window.RATES={
               "rate": 154.0,
               "reg": 100.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "坦桑尼亚": {
           "brackets": [
@@ -4873,7 +5097,8 @@ window.RATES={
               "rate": 127.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "卢旺达": {
           "brackets": [
@@ -4882,7 +5107,8 @@ window.RATES={
               "rate": 124.0,
               "reg": 18.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "安哥拉": {
           "brackets": [
@@ -4891,7 +5117,8 @@ window.RATES={
               "rate": 128.0,
               "reg": 24.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "摩洛哥": {
           "brackets": [
@@ -4905,7 +5132,8 @@ window.RATES={
               "rate": 114.0,
               "reg": 46.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "塞内加尔": {
           "brackets": [
@@ -4914,7 +5142,8 @@ window.RATES={
               "rate": 186.0,
               "reg": 90.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "毛里求斯": {
           "brackets": [
@@ -4923,7 +5152,8 @@ window.RATES={
               "rate": 151.0,
               "reg": 15.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "留尼汪": {
           "brackets": [
@@ -4932,7 +5162,8 @@ window.RATES={
               "rate": 166.0,
               "reg": 60.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "马达加斯加": {
           "brackets": [
@@ -4941,7 +5172,8 @@ window.RATES={
               "rate": 154.0,
               "reg": 60.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "塞舌尔": {
           "brackets": [
@@ -4950,7 +5182,8 @@ window.RATES={
               "rate": 260.0,
               "reg": 95.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "赞比亚": {
           "brackets": [
@@ -4959,7 +5192,8 @@ window.RATES={
               "rate": 155.0,
               "reg": 35.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "阿拉伯联合酋长国": {
           "brackets": [
@@ -4978,7 +5212,8 @@ window.RATES={
               "rate": 69.0,
               "reg": 26.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "沙特阿拉伯": {
           "brackets": [
@@ -5011,7 +5246,8 @@ window.RATES={
               "rate": 69.0,
               "reg": 75.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "卡塔尔": {
           "brackets": [
@@ -5020,7 +5256,8 @@ window.RATES={
               "rate": 74.0,
               "reg": 45.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "巴林": {
           "brackets": [
@@ -5029,7 +5266,8 @@ window.RATES={
               "rate": 70.0,
               "reg": 61.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "约旦": {
           "brackets": [
@@ -5038,7 +5276,8 @@ window.RATES={
               "rate": 110.0,
               "reg": 30.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "秘鲁": {
           "brackets": [
@@ -5091,7 +5330,10 @@ window.RATES={
               "rate": 80.0,
               "reg": 23.0
             }
-          ]
+          ],
+          "charge_rule": "vol_if_2x_actual",
+          "volumetric_divisor": 8000,
+          "min_charge_weight": 0.05
         },
         "中国香港": {
           "brackets": [
@@ -5110,7 +5352,8 @@ window.RATES={
               "rate": 4.0,
               "reg": 45.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "中国澳门": {
           "brackets": [
@@ -5129,7 +5372,8 @@ window.RATES={
               "rate": 15.0,
               "reg": 25.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "马来西亚": {
           "brackets": [
@@ -5143,7 +5387,8 @@ window.RATES={
               "rate": 22.0,
               "reg": 28.0
             }
-          ]
+          ],
+          "volumetric_divisor": 5000
         },
         "印度尼西亚": {
           "brackets": [
@@ -5167,7 +5412,8 @@ window.RATES={
               "rate": 140.0,
               "reg": 60.0
             }
-          ]
+          ],
+          "charge_rule": "actual"
         },
         "澳大利亚": {
           "brackets": [
@@ -5355,7 +5601,8 @@ window.RATES={
               "rate": 113.0,
               "reg": 108.0
             }
-          ]
+          ],
+          "volumetric_divisor": 6000
         },
         "日本": {
           "brackets": [
@@ -5369,7 +5616,9 @@ window.RATES={
               "rate": 32.0,
               "reg": 9.0
             }
-          ]
+          ],
+          "volumetric_divisor": 9000,
+          "min_charge_weight": 0.5
         }
       },
       "dest": [
