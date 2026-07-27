@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784860000";</script>
+<script>window.__BUILD__="1785159246";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -241,8 +241,8 @@
   .split-note{margin-top:6px;font-size:11px;color:var(--mut);line-height:1.5}
 
 </style>
-  <script src="sku_master.js?v=1784860000"></script>
-  <script src="rates.js?v=1784860000"></script>
+  <script src="sku_master.js?v=1785159246"></script>
+  <script src="rates.js?v=1785159246"></script>
   <script>
 const CN2ISO = {
 "美国": "US",
@@ -453,7 +453,7 @@ const DEF = {
         sur:{product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, clearance:{per_shipment:100}, high_risk:{AE:18,SA:18,RU:15}, peak:{per_kg:0}, remote:{per_shipment:269}, oversize:{per_event:0}, addr_change:{per_event:100}, return:{per_event:304}, magnet:{per_shipment:30}},
         decision:{transit:5},
         history:[ {date:"2026-07-01",tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],fuel:0.26,op:35} ] },
-      {id:"express_fedex_ip",carrier:"中运通达·FedEx",channel:"IP多国(广州联邦IP,不含油)",audience:["2B","2C"],countries:["US","DE","UK","JP","CA","AU","FR","IT","ES","KR","SG","MY","TH","VN","PH","MX","BR","CL","RU"],max_weight:null,accepted:["普货","带电"],
+      {id:"zy_fedex",carrier:"中运通达·FedEx",channel:"IP多国(广州联邦IP,不含油)",audience:["2B","2C"],countries:["US","DE","UK","JP","CA","AU","FR","IT","ES","KR","SG","MY","TH","VN","PH","MX","BR","CL","RU"],max_weight:null,accepted:["普货","带电"],
         pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.385,weight_tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:1.5,rate:300},{kg:2,rate:359},{kg:3,rate:424},{kg:5,rate:639},{kg:10,rate:1118},{kg:20,rate:1600},{kg:30,rate:2200}],duty_rate:0,vat_rate:0,fx:1},
         fees:[{name:"住宅派送(25/票*燃油)",type:"fixed",value:25}],
         sur:{product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, peak:{per_kg:1.2}, clearance:0},
@@ -646,6 +646,56 @@ function syncTobFromRates(){
 applyCountryOverrides();     // ★ per-country 覆盖先注入 RATES
 syncParcelFromRates();
 syncTobFromRates();          // ★ 头程也从 RATES 同步（亚丰/中运通达/海运/卡航/海派/卡派 全进来）
+/* ③ 商业快递：直接复用 RATES express 真实渠道（中运通达 FedEx/UPS/DHL 等），与 ⑨ 全渠道比价同源 */
+function syncExpressFromRates(){
+  if(!window.RATES||!window.RATES.channels) return;
+  const existing = S.modules.express.carriers || [];
+  const liveIds = new Set();
+  const newCarriers = window.RATES.channels.filter(c=>c.cat==='express').map(c=>{
+    liveIds.add(c.id);
+    const countries = Object.keys(c.countryMap||{}).map(cn=>{
+      const k=cn.replace(/\s*\(.*\)$/,'').trim();
+      return (typeof CN2ISO==='object'&&(CN2ISO[k]||CN2ISO[cn]))||cn;
+    }).filter(Boolean);
+    return {
+      id: c.id,
+      cat: c.cat,
+      carrier: c.carrier || '中运通达',
+      channel: c.name,
+      audience: ['2B','2C'],
+      countries,
+      isoCountries: countries,
+      max_weight: c.maxw || null,
+      accepted: ['普货','带电'],
+      pricing:{
+        incoterm: c.incoterm||'DDP',
+        tax_included: (c.incoterm||'DDP')==='DDP',
+        currency: c.currency||'CNY',
+        divisor: c.volumetric_divisor||5000,
+        charge_rule: 'max',
+        rounding: 0.5,
+        min_charge_weight: 0.5,
+        fuel_pct: c.fuel_included ? 0 : (c.fuel||0),
+        weight_tiers: [],
+        duty_rate: 0, vat_rate: 0, fx: 1
+      },
+      fees: [{name:'住宅派送(25/票*燃油)',type:'fixed',value:25}],
+      sur: c.sur || {product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, peak:{per_kg:1.2}, clearance:0},
+      surcharges: c.surcharges || {},
+      decision:{transit: 5},
+      history:[{date:'2026-07-01', tiers:[], fuel:(c.fuel||0), op:35}],
+      matrix: c.matrix,
+      zones: c.zones,
+      countryMap: c.countryMap,
+      fuel_included: c.fuel_included,
+      fuel: c.fuel
+    };
+  });
+  const merged = existing.filter(c=> !c.id || !liveIds.has(c.id));
+  merged.push(...newCarriers);
+  S.modules.express.carriers = merged;
+}
+syncExpressFromRates();
 /* ⑤/⑥ 头程与 ④ 头程「统一数据源」：把 RATES.b2b-air 全部真实渠道并入 OV_HC.carriers，
    按物流商归并（中运通达/亚丰），渠道=具体服务线，目的地=region。这样海外仓头程/全链路头程
    与 toB 头程模块看到的是同一套完整渠道（不再只是 2 个泛化承运商）。
@@ -686,6 +736,7 @@ function applyDivisorOverrides(ov){
   };
   Object.keys(ov).forEach(id=> set(id, ov[id]));
   syncParcelFromRates();
+  syncExpressFromRates();
   saveState();
 }
 /* per-country 计费例外覆盖：存于浏览器本地，覆盖 rates.json 中各国除数和计费规则 */
@@ -811,6 +862,17 @@ function tierRate(tiers, cw){
   if(!t) t = sorted[sorted.length-1];
   return t;
 }
+// 分区矩阵渠道（如中运通达 FedEx IP）：国家 → 分区索引（依赖渠道 countryMap: 国家→分区标签）
+function zoneIndexFor(ch, country){
+  if(ch.countryMap && ch.countryMap[country]){
+    const lbl = ch.countryMap[country];
+    for(let zi=0; zi<(ch.zones||[]).length; zi++){
+      // ★ countryMap 值可能是「分区代码」(label) 或「区域名」(countries)，两种都认
+      if(ch.zones[zi].label===lbl || ch.zones[zi].countries===lbl) return zi;
+    }
+  }
+  return null;
+}
 // 货运引擎：真 SKU ÷ divisor → 缴费重 → 全费用展开 = Landed Cost
 // destCn: 中文目的国（用于 per-country divisor / 国家级附加费 / 国家级税费覆盖）；eurFx: EUR/CNY 汇率（默认取渠道 fx 或 7.8）
 // 统一附加费金额解析：支持 数值(固定) / {per_kg} / {per_piece} / {per_shipment|per_ticket|per_event} / {per_item, free}，可带 min 保底
@@ -844,10 +906,31 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   const cw = chargeWeight(sw, vw, effectiveRule, p.rounding, effectiveMin);
   // ★ 小包修复：优先用「目的国自己的」brackets 费率与挂号费（此前 bug：全局只取渠道第一个国家的费率/挂号费，导致发法国却按美国 92/kg 计）
   const coBrackets = (co && co.brackets && co.brackets.length) ? co.brackets : null;
-  let rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
-  let freight = rate * cw;
+  // 分区矩阵渠道（zy_fedex/zy_ups）：countryMap → zone → matrix[weight]（总票价，非/kg）
+  let rate, freight, matrixBase = null, matrixWk = null, matrixZi = null;
+  if(ch.matrix && ch.countryMap && ch.countryMap[destCn]){
+    const zi = zoneIndexFor(ch, destCn);
+    if(zi !== null){
+      // ★ matrix 键是字符串(如 '6.0')，必须转成 Number 键查表，否则 ch.matrix[6] 取到 undefined
+      const m = {}; Object.keys(ch.matrix).forEach(k=>{ m[parseFloat(k)] = ch.matrix[k]; });
+      const keys = Object.keys(m).map(Number).sort((a,b)=>a-b);
+      const wk = keys.find(k => k >= cw - 1e-9) || keys[keys.length-1];
+      matrixBase = (m[wk]||[])[zi];
+      matrixWk = wk; matrixZi = zi;
+    }
+  }
+  if(matrixBase != null){
+    freight = matrixBase;
+    rate = freight / Math.max(cw, 1e-9);
+  } else {
+    rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
+    freight = rate * cw;
+  }
   const cwStr = fmtKg(cw, ch.cat);
-  let items = [{name:"基本运费("+rate+"/kg×"+cwStr+"kg)", amt:freight}];
+  const zlabel = matrixZi != null ? ((ch.zones||[])[matrixZi]||{}).label : '';
+  let items = matrixBase != null
+    ? [{name:`基本运费(分区${zlabel} · ${matrixWk}kg总价)`, amt:freight}]
+    : [{name:"基本运费("+rate+"/kg×"+cwStr+"kg)", amt:freight}];
   let total = freight;
   if(coBrackets){
     // 挂号费按目的国自己的 reg
@@ -1729,7 +1812,7 @@ function rMom(){
   // 主站顶部 nav 已是 4 业务域切入口；这里只嵌入看板（默认 cat=all）+ 原两期环比折叠区
   let h=`<div class="card"><h2>⑦ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
     <div class="note">按主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）组织：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。看板上方 Tab 切换业务域，左栏选渠道、右栏看环比详情。</div>
-    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=1784860000" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=1785159246" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
     <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
       <div style="margin-top:10px">
         <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
@@ -1982,6 +2065,14 @@ function rAll(){
   function findBracket(br,w){ for(const b of br){ if(w<=b.up) return b; } return br[br.length-1]; }
   function findTier(tiers,w){ if(!tiers||!tiers.length) return null; let last=null; for(const t of tiers){ if(w>=t.min) last=t; else break; } return last; }
   function countryToZone(ch,country){
+    // 优先走显式 countryMap（zy_fedex/zy_ups 等国家→分区标签映射）
+    if(ch.countryMap && ch.countryMap[country]){
+      const lbl = ch.countryMap[country];
+      for(let zi=0;zi<ch.zones.length;zi++){
+        // ★ countryMap 值可能是「分区代码」(label) 或「区域名」(countries)，两种都认
+        if(ch.zones[zi].label===lbl || ch.zones[zi].countries===lbl) return zi;
+      }
+    }
     for(let zi=0;zi<ch.zones.length;zi++){ const parts=ch.zones[zi].countries.split(/[、,，\s]+/).filter(x=>x.trim()); if(parts.includes(country)) return zi; }
     if(country==='美国'){ for(let zi=0;zi<ch.zones.length;zi++){ const parts=ch.zones[zi].countries.split(/[、,，\s]+/).filter(x=>x.trim()); if(parts.some(p=>p.startsWith('美'))) return zi; } }
     if(country==='加拿大'){ for(let zi=0;zi<ch.zones.length;zi++){ const c=ch.zones[zi].countries; if(c.includes('加墨')||c.includes('加拿大')) return zi; } }
