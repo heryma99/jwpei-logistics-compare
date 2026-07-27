@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="1784860000";</script>
+<script>window.__BUILD__="__BUILD_TS__";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -241,8 +241,8 @@
   .split-note{margin-top:6px;font-size:11px;color:var(--mut);line-height:1.5}
 
 </style>
-  <script src="sku_master.js?v=1784860000"></script>
-  <script src="rates.js?v=1784860000"></script>
+  <script src="sku_master.js?v=__BUILD_TS__"></script>
+  <script src="rates.js?v=__BUILD_TS__"></script>
   <script>
 const CN2ISO = {
 "美国": "US",
@@ -846,7 +846,8 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   const coBrackets = (co && co.brackets && co.brackets.length) ? co.brackets : null;
   let rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
   let freight = rate * cw;
-  let items = [{name:"基本运费("+rate+"/kg×"+cw+"kg)", amt:freight}];
+  const cwStr = fmtKg(cw, ch.cat);
+  let items = [{name:"基本运费("+rate+"/kg×"+cwStr+"kg)", amt:freight}];
   let total = freight;
   if(coBrackets){
     // 挂号费按目的国自己的 reg
@@ -864,7 +865,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   if(p.fuel_pct){ const a=freight*p.fuel_pct; items.push({name:"燃油("+(p.fuel_pct*100)+"%)",amt:a}); total+=a; }
   // 国家级附加费（战争附加费 / 海关资料处理费 等，随渠道附在 country.add）
   const add = co.add || {};
-  if(add.war_per_kg){ const a=add.war_per_kg*cw; items.push({name:"战争附加费("+add.war_per_kg+"/kg)",amt:a}); total+=a; }
+  if(add.war_per_kg){ const a=add.war_per_kg*cw; items.push({name:"战争附加费("+add.war_per_kg+"/kg×"+cwStr+"kg)",amt:a}); total+=a; }
   if(add.custom_per_shipment){ const a=add.custom_per_shipment; items.push({name:"海关资料处理费",amt:a}); total+=a; }
   // 国家级税费 VAT/DUTY（申报值×比例，如中东捷邮按目的国税率）
   const taxPct = co.tax || 0;
@@ -898,7 +899,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     // 产品附加费（按货物类型 /kg）
     if(sur.product){
       const pr = (sur.product[cargoType]!=null?sur.product[cargoType]:(sur.product['普货']||0));
-      if(pr){ const a=pr*cw; items.push({name:`产品附加费(${cargoType} ${pr}/kg × ${cw}kg)`, amt:a}); total+=a; }
+      if(pr){ const a=pr*cw; items.push({name:`产品附加费(${cargoType} ${pr}/kg × ${cwStr}kg)`, amt:a}); total+=a; }
     }
     // 磁检费（带电/带磁货物）
     if(sur.magnet && (sku.battery || /磁|电池/.test(cargoType||''))){
@@ -908,7 +909,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     // 高风险国家附加费（按目的国 /kg）
     if(sur.high_risk && destIso && sur.high_risk[destIso]){
       const hr = sur.high_risk[destIso]*cw;
-      items.push({name:`高风险国家附加费(${destIso} ${sur.high_risk[destIso]}/kg × ${cw}kg)`, amt:hr}); total+=hr;
+      items.push({name:`高风险国家附加费(${destIso} ${sur.high_risk[destIso]}/kg × ${cwStr}kg)`, amt:hr}); total+=hr;
     }
     // 旺季/偏远/超长超重/改址/退件：完整预算（可能费用）模式才计入
     if(conservative){
@@ -1393,13 +1394,13 @@ function rFreight(){
       }
       const cw=(isUS3(ch)?computeAll(ch, detectedRegion||'美西').cw:computeAll(ch).cw);
       out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3>${pickHtml}${body}
-        <div class="mut">缴费重 ${cw.toFixed(2)}kg（实重${(sku.weight*units).toFixed(2)} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor)*units).toFixed(2)} ÷${ch.pricing.divisor}）· 时效约 ${ch.decision?.transit||10} 天</div>
+        <div class="mut">缴费重 ${fmtKg(cw, ch.cat)}kg（实重${(sku.weight*units).toFixed(2)} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor)*units).toFixed(2)} ÷${ch.pricing.divisor}）· 时效约 ${ch.decision?.transit||10} 天</div>
         <div class="mut" style="margin-top:8px;line-height:1.6">
           <b>✓ 必收：</b>基本运费 + 燃油 + 品类附加（按货物类型）+ 非FBA/住宅附加 + 报关费（非FBA）+ 商检 + 磁检<br>
           <b>⚠️ 可能附加（实报实销，按发生计，<u>不计入</u>基准）：</b>偏远 / 超品名 / 超尺寸 / 超重 / 更改地址；另有旺季附加、退件、仓租查验等未列
         </div>`;
       $("#fOut").innerHTML=out;
-      const ec=document.getElementById('estCh'); if(ec) ec.onchange=()=>{ const i=+ec.value; const nch=eligible[i]; let nb=''; if(isUS3(nch)){ nb=usRegions.map(reg=>{const r=computeAll(nch,reg);return `<h4 class="reg-h">${reg} 区 · 基准 ¥${r.mustTotal.toFixed(2)}</h4>`+estBlock(r);}).join(''); } else { const r=computeAll(nch); nb=`<h4 class="reg-h">到手总成本 基准 ¥${r.mustTotal.toFixed(2)}</h4>`+estBlock(r); } const o2=`<h3>预估明细 · ${nch.carrier}·${nch.channel}</h3>${pickHtml}${nb}<div class="mut">缴费重 ${computeAll(nch).cw.toFixed(2)}kg · 时效约 ${nch.decision?.transit||10} 天</div>`; $("#fOut").innerHTML=o2; const e2=document.getElementById('estCh'); if(e2){e2.value=i; e2.onchange=arguments.callee;} };
+      const ec=document.getElementById('estCh'); if(ec) ec.onchange=()=>{ const i=+ec.value; const nch=eligible[i]; let nb=''; if(isUS3(nch)){ nb=usRegions.map(reg=>{const r=computeAll(nch,reg);return `<h4 class="reg-h">${reg} 区 · 基准 ¥${r.mustTotal.toFixed(2)}</h4>`+estBlock(r);}).join(''); } else { const r=computeAll(nch); nb=`<h4 class="reg-h">到手总成本 基准 ¥${r.mustTotal.toFixed(2)}</h4>`+estBlock(r); } const o2=`<h3>预估明细 · ${nch.carrier}·${nch.channel}</h3>${pickHtml}${nb}<div class="mut">缴费重 ${fmtKg(computeAll(nch).cw, nch.cat)}kg · 时效约 ${nch.decision?.transit||10} 天</div>`; $("#fOut").innerHTML=o2; const e2=document.getElementById('estCh'); if(e2){e2.value=i; e2.onchange=arguments.callee;} };
       return;
     }
     // 比价：全候选排序（美国头程渠道并列展示美西/美中/美东三区价格）
@@ -1431,7 +1432,7 @@ function rFreight(){
       const cnShort=cnList.length>3?cnList.slice(0,3).join('、')+` 等${cnList.length}国`:cnList.join('、');
       const sw=(sku.weight*units).toFixed(2);
       const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(2);
-      const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${x.r.cw}kg`;
+      const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${fmtKg(x.r.cw, x.ch.cat)}kg`;
       const diff = idx===0? `<span class="diff-badge best">★ 最优</span>` : `<span class="diff-badge">+¥${(x.r.mustTotal-best).toFixed(2)}</span>`;
       const usCells = x.rt ? x.rt.map(z=>`<td class="price-cell">${priceCellFor(z.r,false)}</td>`).join('') : '<td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>';
       const totalCell = `<td class="price-cell">${priceCellFor(x.r, idx===0)}</td>`;
@@ -1440,7 +1441,7 @@ function rFreight(){
         <td class="mut">${idx+1}</td>
         <td class="c-name"><b>${x.ch.carrier}</b><br><span class="mut">${x.ch.channel}</span></td>
         <td class="c-country mut" title="${cnList.join('、')}">${cnShort}</td>
-        <td title="${cwTip}"><b>${x.r.cw.toFixed(2)}</b>kg<br><span class="mut">÷${x.ch.pricing.divisor}</span></td>
+        <td title="${cwTip}"><b>${fmtKg(x.r.cw, x.ch.cat)}</b>kg<br><span class="mut">÷${x.ch.pricing.divisor}</span></td>
         ${bodyCells}
         <td>${x.r.transit||'-'}天</td>
         <td>${diff}</td>
@@ -1728,7 +1729,7 @@ function rMom(){
   // 主站顶部 nav 已是 4 业务域切入口；这里只嵌入看板（默认 cat=all）+ 原两期环比折叠区
   let h=`<div class="card"><h2>⑦ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
     <div class="note">按主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）组织：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。看板上方 Tab 切换业务域，左栏选渠道、右栏看环比详情。</div>
-    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=1784860000" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=__BUILD_TS__" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
     <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
       <div style="margin-top:10px">
         <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
@@ -2000,10 +2001,10 @@ function rAll(){
       else bw=Math.max(actualW,volW);
       const br=co.brackets; if(!br||!br.length) return null;
       const b=findBracket(br,bw);
-      let base=b.rate*bw+b.reg; const parts=[`运费 ${b.rate}/kg × ${bw.toFixed(2)}kg`, `挂号 ${b.reg}`];
+      let base=b.rate*bw+b.reg; const bwStr=fmtKg(bw, ch.cat); const parts=[`运费 ${b.rate}/kg × ${bwStr}kg`, `挂号 ${b.reg}`];
       let ins=0; if(opt.insurance) ins=Math.max(declCny*0.007,5);  // 申报值(USD)×0.7% 最低5元(CNY)，已转人民币
       const add=co.add||{};
-      if(add.war_per_kg){ base+=add.war_per_kg*bw; parts.push(`战争附加费 ${add.war_per_kg}/kg × ${bw.toFixed(2)}kg`); }
+      if(add.war_per_kg){ base+=add.war_per_kg*bw; parts.push(`战争附加费 ${add.war_per_kg}/kg × ${bwStr}kg`); }
       if(add.custom_per_shipment){ base+=add.custom_per_shipment; parts.push(`海关资料处理费 ${add.custom_per_shipment}`); }
       const taxPct=co.tax||0;
       if(taxPct){ const boxDecl=declCny*(opt.qty||1); const tax=boxDecl*taxPct; base+=tax; parts.push(`VAT/DUTY(申报值×${(taxPct*100).toFixed(0)}%) ${tax.toFixed(2)}`); }
@@ -2405,6 +2406,13 @@ function calcOne(id, sc){
 }
 function badge(r){ var m={'green':'🟢已验证','yellow':'🟡部分对齐','red':'🔴未对齐','na':'⚪无数据'}; var c={'green':'b-green','yellow':'b-yellow','red':'b-red','na':'b-na'}; return '<span class="badge '+c[r]+'">'+(m[r]||r)+'</span>'; }
 function fmt(x){ return (Math.round(x*100)/100).toFixed(2); }
+function fmtKg(kg, cat){
+  // 小包专线/包裹：最多保留4位小数并去掉末尾0；商业快递/B2B/其他：保留2位
+  if(cat==='small' || cat==='parcel'){
+    return (Math.round(kg*10000)/10000).toFixed(4).replace(/\.?0+$/,'');
+  }
+  return (Math.round(kg*100)/100).toFixed(2);
+}
 function esc(s){ return String(s).replace(/&/g,'&amp;amp;').replace(/</g,'&amp;lt;').replace(/>/g,'&amp;gt;'); }
 window.OV_ENGINE={calcOne:calcOne, calcHead:calcHead, calcXpU:calcXpU, badge:badge, fmt:fmt, esc:esc, WH:WH, GC:OV_GC, SEGS:SEGS, tailGoodcang:tailGoodcang, tailNorm:tailNorm, calcTail:calcTail, periodOf:periodOf, tierRate:tierRate, volCapOf:volCapOf, wtCapOf:wtCapOf, tailXpUSPS:tailXpUSPS};
 /* ★ 头程数据源统一：此时 OV_HC 已挂载，把 RATES.b2b-air 全部真实渠道并入头程承运商池（⑤/⑥ 与 ④ 同源） */
