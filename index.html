@@ -440,37 +440,9 @@ const DEF = {
                    {date:"2026-07-10",tiers:[{kg:0.5,rate:62},{kg:1,rate:55},{kg:2,rate:50}],op:0} ] }
     ]},
     express:{ name:"商业快递", engine:"freight", carriers:[
-      {id:"express_dhl_ww",carrier:"中运通达·DHL",channel:"Express Worldwide(广州DHL,不含油)",audience:["2B","2C"],countries:["US","DE","UK","JP"],max_weight:null,accepted:["普货","带电","液体"],
-        pricing:{incoterm:"DDU",tax_included:false,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.285,weight_tiers:[{kg:5,rate:75},{kg:10,rate:62},{kg:30,rate:52}],duty_rate:0,vat_rate:0,fx:1},
-        fees:[{name:"住宅派送",type:"fixed",value:25}],
-        sur:{clearance:{per_shipment:100}, product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, high_risk:{AE:18,SA:18,RU:15}, peak:{per_kg:0}, remote:{per_shipment:269}, oversize:{per_event:229}, addr_change:{per_event:100}, return:{per_event:304}, magnet:{per_shipment:30}},
-        decision:{transit:4},
-        history:[ {date:"2026-06-01",tiers:[{kg:5,rate:72},{kg:10,rate:60},{kg:30,rate:50}],fuel:0.27,op:40},
-                   {date:"2026-07-01",tiers:[{kg:5,rate:75},{kg:10,rate:62},{kg:30,rate:52}],fuel:0.285,op:40} ] },
-      {id:"express_ups_red",carrier:"中运通达·UPS",channel:"Red 红单(大陆UPS,含油)",audience:["2B","2C"],countries:["US","DE"],max_weight:null,accepted:["普货","带电"],
-        pricing:{incoterm:"DDU",tax_included:false,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.26,weight_tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],duty_rate:0,vat_rate:0,fx:1},
-        fees:[],
-        sur:{product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, clearance:{per_shipment:100}, high_risk:{AE:18,SA:18,RU:15}, peak:{per_kg:0}, remote:{per_shipment:269}, oversize:{per_event:0}, addr_change:{per_event:100}, return:{per_event:304}, magnet:{per_shipment:30}},
-        decision:{transit:5},
-        history:[ {date:"2026-07-01",tiers:[{kg:5,rate:78},{kg:10,rate:65},{kg:30,rate:54}],fuel:0.26,op:35} ] },
-      {id:"zy_fedex",carrier:"中运通达·FedEx",channel:"IP多国(广州联邦IP,不含油)",audience:["2B","2C"],countries:["US","DE","UK","JP","CA","AU","FR","IT","ES","KR","SG","MY","TH","VN","PH","MX","BR","CL","RU"],max_weight:null,accepted:["普货","带电"],
-        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0.385,weight_tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:1.5,rate:300},{kg:2,rate:359},{kg:3,rate:424},{kg:5,rate:639},{kg:10,rate:1118},{kg:20,rate:1600},{kg:30,rate:2200}],duty_rate:0,vat_rate:0,fx:1},
-        fees:[{name:"住宅派送(25/票*燃油)",type:"fixed",value:25}],
-        sur:{product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, peak:{per_kg:1.2}, clearance:0},
-        decision:{transit:5},
-        history:[ {date:"2026-07-01",tiers:[{kg:0.5,rate:202},{kg:1,rate:241},{kg:5,rate:639}],fuel:0.385,op:35} ] },
-      {id:"express_ups_bulk",carrier:"中运通达·UPS",channel:"红单大货(大陆UPS,含油)",audience:["2B","2C"],countries:["US","CA","MX","PR","DE","FR","UK","IT","ES","NL","FI","DK","NO","BE","CH","SE","PT","PL","CZ","AT","GR","HU","IE","JP","KR","TH","TW"],max_weight:99,accepted:["普货"],
-        pricing:{incoterm:"DDU",tax_included:false,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:22,fuel_pct:0,weight_tiers:[{kg:46,rate:65},{kg:70,rate:65},{kg:99,rate:65}],duty_rate:0,vat_rate:0,fx:1},
-        fees:[],
-        sur:{product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, clearance:{per_shipment:100}, high_risk:{AE:18,SA:18,RU:15}, peak:{per_kg:0}, remote:{per_shipment:269}, oversize:{per_event:0}, addr_change:{per_event:100}, return:{per_event:304}, magnet:{per_shipment:30}},
-        decision:{transit:4},
-        history:[{date:"2026-07-01",tiers:[{kg:46,rate:65},{kg:70,rate:65},{kg:99,rate:65}],fuel:0,op:0}] },
-      {id:"express_ups_ddp",carrier:"中运通达·UPS",channel:"红单包税(大陆UPS包税美国,含油)",audience:["2B","2C"],countries:["US","CA"],max_weight:null,accepted:["普货"],
-        pricing:{incoterm:"DDP",tax_included:true,currency:"CNY",divisor:5000,charge_rule:"max",rounding:0.5,min_charge_weight:0.5,fuel_pct:0,weight_tiers:[{kg:0.5,rate:297},{kg:1,rate:317},{kg:1.5,rate:338},{kg:2,rate:358},{kg:2.5,rate:403},{kg:3,rate:448},{kg:3.5,rate:468},{kg:4,rate:507},{kg:4.5,rate:549},{kg:5,rate:589},{kg:5.5,rate:711},{kg:6,rate:790},{kg:6.5,rate:830},{kg:7,rate:830},{kg:7.5,rate:830},{kg:8,rate:869},{kg:8.5,rate:911},{kg:9,rate:951},{kg:9.5,rate:991},{kg:10,rate:1031},{kg:10.5,rate:1182},{kg:11,rate:1218},{kg:11.5,rate:1255},{kg:12,rate:1290},{kg:12.5,rate:1323},{kg:13,rate:1360},{kg:13.5,rate:1400},{kg:14,rate:1430},{kg:14.5,rate:1471},{kg:15,rate:1505},{kg:15.5,rate:1602},{kg:16,rate:1637},{kg:16.5,rate:1674},{kg:17,rate:1709},{kg:17.5,rate:1747},{kg:18,rate:1781},{kg:18.5,rate:1817},{kg:19,rate:1855},{kg:19.5,rate:1891},{kg:20,rate:1927},{kg:21,rate:1735}],duty_rate:0,vat_rate:0,fx:1},
-        fees:[],
-        sur:{product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, magnet:{per_shipment:30}, clearance:0},
-        decision:{transit:4},
-        history:[{date:"2026-07-01",tiers:[{kg:21,rate:58}],fuel:0,op:0}] }
+      /* 商业快递全部从 window.RATES.channels.filter(c=>c.cat==='express') 同步：
+         zy_dhl / zy_fedex / zy_ups 等，用报价表真实分区矩阵（总票价，非/kg），
+         避免写死 weight_tiers 与真实报价不一致。 */
     ]},
     tob:{ name:"toB 头程", engine:"freight", carriers:[
       {carrier:"云途",channel:"德国空派",audience:"2B",countries:["DE"],max_weight:null,accepted:["普货","带电"],
