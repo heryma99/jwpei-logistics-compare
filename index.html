@@ -883,7 +883,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   // ★ 小包修复：优先用「目的国自己的」brackets 费率与挂号费（此前 bug：全局只取渠道第一个国家的费率/挂号费，导致发法国却按美国 92/kg 计）
   const coBrackets = (co && co.brackets && co.brackets.length) ? co.brackets : null;
   // 分区矩阵渠道（zy_fedex/zy_ups）：countryMap → zone → matrix[weight]（总票价，非/kg）
-  let rate, freight, matrixBase = null, matrixWk = null, matrixZi = null, matrixOver = false, bulkTier = null;
+  let rate, freight, matrixBase = null, matrixWk = null, matrixZi = null, matrixOver = false, matrixUnderMin = false, bulkTier = null;
   // ★ 目的国不在该渠道可达范围 → 标记不可用(避免对不可达国家静默报 ¥0 误导比价)
   if (ch.countryMap && !Object.prototype.hasOwnProperty.call(ch.countryMap, destCn)) matrixOver = true;
   // ★ 纯大货渠道(无 matrix，仅 bulk_tiers) 也需先解析分区 index
@@ -915,7 +915,14 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     // ★ 纯大货渠道(无 matrix，仅 bulk_tiers，如大陆UPS红单大货)：按分区查区间单价(元/kg)
     const bt = (ch.bulk_tiers||[]).find(t => cw >= t.min - 1e-9 && cw <= t.max + 1e-9);
     if(bt && bt.rates && bt.rates[ziBulk] != null){ bulkTier = bt; matrixZi = ziBulk; }
-    else { matrixOver = true; }  // cw 不在任何大货区间 → 该渠道对当前重量不可用
+    else {
+      matrixOver = true;  // cw 不在任何大货区间 → 该渠道对当前重量不可用
+      const mins = (ch.bulk_tiers||[]).map(t=>t.min);
+      const maxs = (ch.bulk_tiers||[]).map(t=>t.max);
+      matrixUnderMin = mins.length && cw < Math.min(...mins);
+      // 低于最小档提示最小起运重；高于最大档提示最大档
+      matrixWk = matrixUnderMin ? Math.min(...mins) : (maxs.length ? Math.max(...maxs) : null);
+    }
   }
   if(bulkTier != null){
     rate = bulkTier.rates[matrixZi];
@@ -937,7 +944,12 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     : matrixBase != null
     ? [{name:`基本运费(分区${zlabel} · ${matrixWk}kg总价)`, amt:freight}]
     : [{name:"基本运费("+rate+"/kg×"+cwStr+"kg)", amt:freight}];
-  if(matrixOver){ items.push({name:`⚠ 计费重${cwStr}kg 超出该渠道报价最大档 ${matrixWk}kg，此渠道不可用（价格仅按最大档参考）`, amt:0}); }
+  if(matrixOver){
+    const reason = matrixUnderMin
+      ? `低于该渠道最小计费重 ${matrixWk}kg`
+      : `超出该渠道报价最大档 ${matrixWk}kg（价格仅按最大档参考）`;
+    items.push({name:`⚠ 计费重${cwStr}kg ${reason}，此渠道不可用`, amt:0});
+  }
   let total = freight;
   if(coBrackets){
     // 挂号费按目的国自己的 reg
@@ -1026,6 +1038,8 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     if(s.oversize_per_event){ items.push({name:"超尺寸附加费",amt:s.oversize_per_event}); total+=s.oversize_per_event; }
     if(s.heavy_per_event){ items.push({name:"超重附加费",amt:s.heavy_per_event}); total+=s.heavy_per_event; }
   }
+  // 计费重不在渠道服务区间时，总成本标为无穷大，避免在比价模式里被当成¥0最优
+  if(matrixOver) total = Number.POSITIVE_INFINITY;
   return {cw, items, total, transit:ch.decision?.transit, overLimit:matrixOver||undefined};
 }
 // 资格校验（P2 硬约束）：派送对象匹配? 重量≤上限? 属性接受? audience 支持多值如["2B","2C"]
@@ -1337,6 +1351,9 @@ function rFreight(){
     </div>
     <div id="fOut"></div></div>`;
   $("#app").innerHTML=h;
+  // ★ 预估模式下当前选中的渠道索引，必须持久化在 draw() 外部，否则每次重绘会读到旧 DOM 的 select 值
+  let estChannelIdx = 0;
+  const costLabel = (v)=> Number.isFinite(v) ? '¥'+v.toFixed(2) : '不可用';
   const draw=()=>{
     const destCn=$("#dest").value, aud=defaultAud;
     const destIso = isoOfDisplay[destCn] || chineseToIso(destCn) || destCn;
@@ -1469,24 +1486,24 @@ function rFreight(){
     const estBlock=(r)=>{
       let h=`<table><thead><tr><th>科目（必收）</th><th>金额¥</th></tr></thead><tbody>`;
       r.mustItems.forEach(it=> h+=`<tr><td>${it.name}</td><td>${it.amt.toFixed(2)}</td></tr>`);
-      h+=`<tr class="best"><td>基准到手总成本（必收）</td><td>¥${r.mustTotal.toFixed(2)}</td></tr></tbody></table>`;
+      h+=`<tr class="best"><td>基准到手总成本（必收）</td><td>${costLabel(r.mustTotal)}</td></tr></tbody></table>`;
       if(r.maybeItems.length){
         h+=`<table style="margin-top:8px"><thead><tr><th>可能附加（实报实销/按发生）</th><th>金额¥</th></tr></thead><tbody>`;
         r.maybeItems.forEach(it=> h+=`<tr><td>${it.name}</td><td>${it.amt.toFixed(2)}</td></tr>`);
-        h+=`<tr class="warn"><td>含可能附加上限</td><td>¥${r.totalWithMaybe.toFixed(2)}</td></tr></tbody></table>`;
+        h+=`<tr class="warn"><td>含可能附加上限</td><td>${costLabel(r.totalWithMaybe)}</td></tr></tbody></table>`;
       }
       return h;
     };
     if(mode==="estimate"){
-      const pickHtml=`<label>选渠道</label><select id="estCh">${eligible.map((c,i)=>`<option value="${i}">${c.carrier}·${c.channel}</option>`).join('')}</select>`;
-      const chIdx=Math.min(eligible.length-1, +($("#estCh")?.value||0));
-      const ch=eligible[chIdx];
+      estChannelIdx = Math.max(0, Math.min(eligible.length-1, estChannelIdx));
+      const pickHtml=`<label>选渠道</label><select id="estCh">${eligible.map((c,i)=>`<option value="${i}" ${i===estChannelIdx?'selected':''}>${c.carrier}·${c.channel}</option>`).join('')}</select>`;
+      const ch=eligible[estChannelIdx];
       let body='';
       if(isUS3(ch)){
-        body = usRegions.map(reg=>{ const r=computeAll(ch, reg); return `<h4 class="reg-h">${reg} 区（邮编识别）· 基准 ¥${r.mustTotal.toFixed(2)}${r.maybeTotal>0?` ＋可能 ¥${r.maybeTotal.toFixed(2)}`:''}</h4>`+estBlock(r); }).join('');
+        body = usRegions.map(reg=>{ const r=computeAll(ch, reg); return `<h4 class="reg-h">${reg} 区（邮编识别）· 基准 ${costLabel(r.mustTotal)}${r.maybeTotal>0?` ＋可能 ${costLabel(r.maybeTotal)}`:''}</h4>`+estBlock(r); }).join('');
       } else {
         const r=computeAll(ch);
-        body = `<h4 class="reg-h">到手总成本 基准 ¥${r.mustTotal.toFixed(2)}${r.maybeTotal>0?` ＋可能 ¥${r.maybeTotal.toFixed(2)}`:''}</h4>`+estBlock(r);
+        body = `<h4 class="reg-h">到手总成本 基准 ${costLabel(r.mustTotal)}${r.maybeTotal>0?` ＋可能 ${costLabel(r.maybeTotal)}`:''}</h4>`+estBlock(r);
       }
       const cw=(isUS3(ch)?computeAll(ch, detectedRegion||'美西').cw:computeAll(ch).cw);
       out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3>${pickHtml}${body}
@@ -1496,7 +1513,7 @@ function rFreight(){
           <b>⚠️ 可能附加（实报实销，按发生计，<u>不计入</u>基准）：</b>偏远 / 超品名 / 超尺寸 / 超重 / 更改地址；另有旺季附加、退件、仓租查验等未列
         </div>`;
       $("#fOut").innerHTML=out;
-      const ec=document.getElementById('estCh'); if(ec) ec.onchange=()=>{ const i=+ec.value; const nch=eligible[i]; let nb=''; if(isUS3(nch)){ nb=usRegions.map(reg=>{const r=computeAll(nch,reg);return `<h4 class="reg-h">${reg} 区 · 基准 ¥${r.mustTotal.toFixed(2)}</h4>`+estBlock(r);}).join(''); } else { const r=computeAll(nch); nb=`<h4 class="reg-h">到手总成本 基准 ¥${r.mustTotal.toFixed(2)}</h4>`+estBlock(r); } const o2=`<h3>预估明细 · ${nch.carrier}·${nch.channel}</h3>${pickHtml}${nb}<div class="mut">缴费重 ${fmtKg(computeAll(nch).cw, nch.cat)}kg · 时效约 ${nch.decision?.transit||10} 天</div>`; $("#fOut").innerHTML=o2; const e2=document.getElementById('estCh'); if(e2){e2.value=i; e2.onchange=arguments.callee;} };
+      const ec=document.getElementById('estCh'); if(ec) ec.onchange=()=>{ estChannelIdx=+ec.value; draw(); };
       return;
     }
     // 比价：全候选排序（美国头程渠道并列展示美西/美中/美东三区价格）
@@ -1511,6 +1528,9 @@ function rFreight(){
     //   其他模块：保留"到手总成本"列（大字总价 + 小字运费/附加费拆解）
     const isUSTob=(CUR==='tob' && destIso==='US');
     const priceCellFor=(rr,isBest)=>{
+      if(!Number.isFinite(rr.mustTotal)){
+        return `<div style="font-size:15px;font-weight:700;color:var(--err)">不可用</div><div class="mut" style="font-size:11px;line-height:1.5">计费重不在<br>该渠道区间</div>`;
+      }
       const b=(rr.mustItems||[]).find(i=>i.name.includes('基本运费'))||(rr.mustItems||[])[0];
       const base=b?b.amt:rr.mustTotal;
       const addon=rr.mustTotal-base;
@@ -1529,7 +1549,13 @@ function rFreight(){
       const sw=(sku.weight*units).toFixed(2);
       const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(2);
       const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${fmtKg(x.r.cw, x.ch.cat)}kg`;
-      const diff = idx===0? `<span class="diff-badge best">★ 最优</span>` : `<span class="diff-badge">+¥${(x.r.mustTotal-best).toFixed(2)}</span>`;
+      const diff = !Number.isFinite(x.r.mustTotal)
+        ? '<span class="diff-badge">不可用</span>'
+        : idx===0
+          ? '<span class="diff-badge best">★ 最优</span>'
+          : !Number.isFinite(best)
+            ? '<span class="diff-badge">—</span>'
+            : `<span class="diff-badge">+¥${(x.r.mustTotal-best).toFixed(2)}</span>`;
       const usCells = x.rt ? x.rt.map(z=>`<td class="price-cell">${priceCellFor(z.r,false)}</td>`).join('') : '<td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>';
       const totalCell = `<td class="price-cell">${priceCellFor(x.r, idx===0)}</td>`;
       const bodyCells = isUSTob ? usCells : totalCell;
