@@ -637,7 +637,8 @@ function syncExpressFromRates(){
       audience: ['2B','2C'],
       countries,
       isoCountries: countries,
-      max_weight: c.maxw || null,
+      /* ★ 限重：有大货区间(bulk_tiers)取大货最大档(如DHL 9999kg/FedEx 999kg)；否则=矩阵最大档。超出即 qualify 淘汰 */
+      max_weight: c.maxw || (c.bulk_tiers && c.bulk_tiers.length ? Math.max.apply(null, c.bulk_tiers.map(t=>t.max)) : (c.matrix ? Math.max.apply(null, Object.keys(c.matrix).map(Number).filter(n=>!isNaN(n))) : null)),
       accepted: ['普货','带电'],
       pricing:{
         incoterm: c.incoterm||'DDP',
@@ -651,12 +652,15 @@ function syncExpressFromRates(){
         weight_tiers: [],
         duty_rate: 0, vat_rate: 0, fx: 1
       },
-      fees: [{name:'住宅派送(25/票*燃油)',type:'fixed',value:25}],
+      /* ★ 住宅派送费改为条件收取（sur.residential，仅地址=住宅时收），不再无条件塞进 fees（此前商业地址也被多收25） */
+      fees: [],
       sur: c.sur || {product:{箱包皮革:7,鞋类:7,服装:5,纺织品:5,普货:0}, peak:{per_kg:1.2}, clearance:0},
       surcharges: c.surcharges || {},
       decision:{transit: 5},
       history:[{date:'2026-07-01', tiers:[], fuel:(c.fuel||0), op:35}],
       matrix: c.matrix,
+      matrix_pak: c.matrix_pak,     /* PAK袋独立档(联邦IP 0.5-2.5kg) */
+      bulk_tiers: c.bulk_tiers,     /* 21kg+ 大货区间单价(元/kg，报价表"区间"段) */
       zones: c.zones,
       countryMap: c.countryMap,
       fuel_included: c.fuel_included,
@@ -879,19 +883,35 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   // ★ 小包修复：优先用「目的国自己的」brackets 费率与挂号费（此前 bug：全局只取渠道第一个国家的费率/挂号费，导致发法国却按美国 92/kg 计）
   const coBrackets = (co && co.brackets && co.brackets.length) ? co.brackets : null;
   // 分区矩阵渠道（zy_fedex/zy_ups）：countryMap → zone → matrix[weight]（总票价，非/kg）
-  let rate, freight, matrixBase = null, matrixWk = null, matrixZi = null;
+  let rate, freight, matrixBase = null, matrixWk = null, matrixZi = null, matrixOver = false, bulkTier = null;
   if(ch.matrix && ch.countryMap && ch.countryMap[destCn]){
     const zi = zoneIndexFor(ch, destCn);
     if(zi !== null){
+      // ★ PAK袋独立档（联邦IP）/ 文件档（DHL）：opts.pak / opts.doc 时切独立矩阵
+      const srcMx = (opts.pak && ch.matrix_pak) ? ch.matrix_pak : (opts.doc && ch.matrix_doc) ? ch.matrix_doc : ch.matrix;
       // ★ matrix 键是字符串(如 '6.0')，必须转成 Number 键查表，否则 ch.matrix[6] 取到 undefined
-      const m = {}; Object.keys(ch.matrix).forEach(k=>{ m[parseFloat(k)] = ch.matrix[k]; });
+      const m = {}; Object.keys(srcMx).forEach(k=>{ m[parseFloat(k)] = srcMx[k]; });
       const keys = Object.keys(m).map(Number).sort((a,b)=>a-b);
-      const wk = keys.find(k => k >= cw - 1e-9) || keys[keys.length-1];
-      matrixBase = (m[wk]||[])[zi];
-      matrixWk = wk; matrixZi = zi;
+      let wk = keys.find(k => k >= cw - 1e-9);
+      if(wk == null){
+        // ★ 超出矩阵最大档：先找大货区间单价(bulk_tiers, 21kg+，报价表"区间"段，元/kg)
+        const bt = (ch.bulk_tiers||[]).find(t => cw >= t.min - 1e-9 && cw <= t.max + 1e-9);
+        if(bt && bt.rates && bt.rates[zi] != null){
+          bulkTier = bt; matrixZi = zi;
+        } else {
+          // 无大货档才标记不可用（价格仅按最大档参考）
+          wk = keys[keys.length-1]; matrixOver = true;
+          matrixBase = (m[wk]||[])[zi]; matrixWk = wk; matrixZi = zi;
+        }
+      } else {
+        matrixBase = (m[wk]||[])[zi]; matrixWk = wk; matrixZi = zi;
+      }
     }
   }
-  if(matrixBase != null){
+  if(bulkTier != null){
+    rate = bulkTier.rates[matrixZi];
+    freight = rate * cw;
+  } else if(matrixBase != null){
     freight = matrixBase;
     rate = freight / Math.max(cw, 1e-9);
   } else {
@@ -900,9 +920,12 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   }
   const cwStr = fmtKg(cw, ch.cat);
   const zlabel = matrixZi != null ? ((ch.zones||[])[matrixZi]||{}).label : '';
-  let items = matrixBase != null
+  let items = bulkTier != null
+    ? [{name:`基本运费(大货${bulkTier.min}-${bulkTier.max}kg区间 · 分区${zlabel} · ${rate}/kg×${cwStr}kg)`, amt:freight}]
+    : matrixBase != null
     ? [{name:`基本运费(分区${zlabel} · ${matrixWk}kg总价)`, amt:freight}]
     : [{name:"基本运费("+rate+"/kg×"+cwStr+"kg)", amt:freight}];
+  if(matrixOver){ items.push({name:`⚠ 计费重${cwStr}kg 超出该渠道报价最大档 ${matrixWk}kg，此渠道不可用（价格仅按最大档参考）`, amt:0}); }
   let total = freight;
   if(coBrackets){
     // 挂号费按目的国自己的 reg
@@ -956,6 +979,11 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
       const pr = (sur.product[cargoType]!=null?sur.product[cargoType]:(sur.product['普货']||0));
       if(pr){ const a=pr*cw; items.push({name:`产品附加费(${cargoType} ${pr}/kg × ${cwStr}kg)`, amt:a}); total+=a; }
     }
+    // 住宅派送费（报价源 sur.residential /票；★ 仅地址类型=住宅时收，商业/FBA 地址不收）
+    if(sur.residential && opts.addrType==='住宅'){
+      const rv = typeof sur.residential==='object' ? (sur.residential.per_shipment||sur.residential.per_ticket||0) : (Number(sur.residential)||0);
+      if(rv){ items.push({name:`住宅派送(${rv}/票)`, amt:rv}); total+=rv; }
+    }
     // 磁检费（带电/带磁货物）
     if(sur.magnet && (sku.battery || /磁|电池/.test(cargoType||''))){
       const mg = typeof sur.magnet==='object' ? (sur.magnet.per_shipment||sur.magnet.per_ticket||0) : sur.magnet;
@@ -986,7 +1014,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     if(s.oversize_per_event){ items.push({name:"超尺寸附加费",amt:s.oversize_per_event}); total+=s.oversize_per_event; }
     if(s.heavy_per_event){ items.push({name:"超重附加费",amt:s.heavy_per_event}); total+=s.heavy_per_event; }
   }
-  return {cw, items, total, transit:ch.decision?.transit};
+  return {cw, items, total, transit:ch.decision?.transit, overLimit:matrixOver||undefined};
 }
 // 资格校验（P2 硬约束）：派送对象匹配? 重量≤上限? 属性接受? audience 支持多值如["2B","2C"]
 function qualify(ch, sku, units, audience, b2bType, destIso){
@@ -1229,7 +1257,7 @@ function rFreight(){
     const carriers=allFreightCarriers;
     const isoOK=ch=>{ const il=Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]); return il.includes(destIso); };
     const canShip=comp=> carriers.some(ch=> isoOK(ch) && qualify(ch,comp,1,aud,b2bType).length===0 );
-    const bestFor=comp=>{ let best=null; carriers.forEach(ch=>{ if(!isoOK(ch)) return; if(qualify(ch,comp,1,aud,b2bType).length) return; const r=computeFreight(ch,comp,1,destCn,opts.eurFx,{cargoType:opts.cargoType,conservative:opts.conservative,destIso}); if(!best||r.total<best.cost) best={ch,cost:r.total,r}; }); return best; };
+    const bestFor=comp=>{ let best=null; carriers.forEach(ch=>{ if(!isoOK(ch)) return; if(qualify(ch,comp,1,aud,b2bType).length) return; const r=computeFreight(ch,comp,1,destCn,opts.eurFx,{cargoType:opts.cargoType,conservative:opts.conservative,destIso,addrType:(b2bType==='FBA'?'商业':'住宅')}); if(r.overLimit) return; if(!best||r.total<best.cost) best={ch,cost:r.total,r}; }); return best; };
     const estDims=vol=>{ const v=Math.max(1,vol*1.3); const s=Math.cbrt(v); return {l:round1(s*1.25),w:round1(s),h:round1(s*0.8)}; };
     const compFrom=arr=>{ let weight=0,vol=0,decl=0; const as=new Set(); arr.forEach(u=>{weight+=u.w;vol+=u.v;decl+=u.d;if(u.attr==='带电')as.add('带电');}); const d=estDims(vol); return {sku:'__P__',weight,l:d.l,w:d.w,h:d.h,attr:as.has('带电')?'带电':'普货',decl,_vol:vol}; };
     const sorted=[...unitsList].sort((a,b)=>(b.w*b.v)-(a.w*a.v));
@@ -1357,7 +1385,8 @@ function rFreight(){
     const computeAll=(ch, regionOverride)=>{
       // ②③(非b2b):用统一引擎，但返回结构与 b2b 对齐（must/maybe），避免渲染侧歧义
       if(ch.cat!=='b2b-air'){
-        const r = computeFreight(ch, sku, units, destCn, eurFx, {cargoType, conservative, destIso});
+        /* ★ 地址类型映射：FBA仓=商业地址(不收住宅费)；2C个人/非FBA=住宅地址(收 sur.residential) */
+        const r = computeFreight(ch, sku, units, destCn, eurFx, {cargoType, conservative, destIso, addrType:(b2bType==='FBA'?'商业':'住宅')});
         return {
           cw:r.cw, items:r.items||[], total:r.total||0, transit:r.transit,
           mustItems:r.items||[], mustTotal:r.total||0,
