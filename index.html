@@ -552,13 +552,15 @@ function syncParcelFromRates(){
     return {
       carrier:(c.carrier||(c.name||'').split(/[-·]/)[0]||'云途'),
       channel:c.name, audience:'2C', countries,
-      max_weight:Math.max(...(first.brackets||[]).map(b=>b.up), 2),
+      max_weight:(c.max_weight!=null)?c.max_weight:Math.max(...(first.brackets||[]).map(b=>b.up), 2),
       accepted: live?['普货','带电']:['普货'],
       pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:c.charge_rule||'max', rounding:c.rounding||0.001, min_charge_weight:0.001, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1,
         model:(c.pricing&&c.pricing.model)||null,
         first_weight:(c.pricing&&c.pricing.first_weight)||0,
         first_fee:(c.pricing&&c.pricing.first_fee)||0,
         continue_rate:(c.pricing&&c.pricing.continue_rate)||0,
+        continue_tiers:(c.pricing&&c.pricing.continue_tiers)||null,
+        bulk:(c.pricing&&c.pricing.bulk)||null,
         per_piece:(c.pricing&&c.pricing.per_piece)||0,
         per_kg:(c.pricing&&c.pricing.per_kg)||0},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
@@ -849,6 +851,24 @@ function tierRate(tiers, cw){
   if(!t) t = sorted[sorted.length-1];
   return t;
 }
+// 首重+续重（支持分段续重 continue_tiers 与 ≥bulk_from 特殊公式）
+// tiers: [{upto(kg上界,含), rate(元/kg)}]；bulk: {from, base, rate}（≥from 时 freight=base+rate×(cw-from)）
+function fcFreight(fw, ff, cr, tiers, bulk, cw){
+  if(bulk && bulk.from!=null && cw >= bulk.from){
+    return bulk.base + bulk.rate*Math.max(cw-bulk.from, 0);
+  }
+  if(tiers && tiers.length){
+    let freight = ff, prev = fw;
+    for(const t of tiers){
+      if(cw <= prev) break;
+      const span = Math.min(cw, t.upto) - prev;
+      if(span > 0) freight += span * t.rate;
+      prev = t.upto;
+    }
+    return freight;
+  }
+  return ff + cr*Math.max(cw-fw, 0);
+}
 // 分区矩阵渠道（如中运通达 FedEx IP）：国家 → 分区索引（依赖渠道 countryMap: 国家→分区标签）
 function zoneIndexFor(ch, country){
   if(ch.countryMap && ch.countryMap[country]){
@@ -958,12 +978,18 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     } else {
       const model = p.model || (co&&co.model) || 'rate_kg';
       if(model==='first_continue'){
-        // 首重+续重：freight = 首重费 + 续重率×(cw−首重)
+        // 首重+续重（支持分段续重 continue_tiers 与 ≥bulk_from 特殊公式，如顺丰广东≥100kg）
         const fw = (co&&co.first_weight!=null)?co.first_weight:(p.first_weight||0);
         const ff = (co&&co.first_fee!=null)?co.first_fee:(p.first_fee||0);
         const cr = (co&&co.continue_rate!=null)?co.continue_rate:(p.continue_rate||0);
-        freight = ff + cr*Math.max(cw-fw,0); rate = cr;
-        items = [{name:`基本运费(首重 ${fmtKg(fw,ch.cat)} ¥${ff} + 续重 ¥${cr}/kg × ${fmtKg(Math.max(cw-fw,0),ch.cat)})`, amt:freight}];
+        const tiers = (co&&co.continue_tiers)?co.continue_tiers:(p.continue_tiers||null);
+        const bulk = (co&&co.bulk)?co.bulk:(p.bulk||null);
+        freight = fcFreight(fw, ff, cr, tiers, bulk, cw); rate = cr;
+        let desc = `首重 ${fmtKg(fw,ch.cat)} ¥${ff}`;
+        if(bulk && cw>=bulk.from) desc += ` + ≥${bulk.from}kg特殊公式 ¥${bulk.base}+¥${bulk.rate}/kg×${fmtKg(cw-bulk.from,ch.cat)}`;
+        else if(tiers&&tiers.length) desc += ` + 分段续重(${tiers.map(t=>`≤${t.upto}kg:¥${t.rate}`).join('/')})`;
+        else desc += ` + 续重 ¥${cr}/kg`;
+        items = [{name:`基本运费(${desc})`, amt:freight}];
       } else if(model==='piece_per_kg'){
         // 元/件+元/kg：freight = 元/件 + 元/kg×cw
         const pp = (co&&co.per_piece!=null)?co.per_piece:(p.per_piece||0);
@@ -2178,8 +2204,14 @@ function rAll(){
         const fw=co.first_weight!=null?co.first_weight:(p.first_weight||0);
         const ff=co.first_fee!=null?co.first_fee:(p.first_fee||0);
         const cr2=co.continue_rate!=null?co.continue_rate:(p.continue_rate||0);
-        base=ff+cr2*Math.max(bw-fw,0); bwStr=fmtKg(bw, ch.cat);
-        parts=[`首重 ${fw}kg ¥${ff}`,`续重 ¥${cr2}/kg × ${(bw-fw).toFixed(2)}kg`];
+        const tiers=(co.continue_tiers)?co.continue_tiers:(p.continue_tiers||null);
+        const bulk=(co.bulk)?co.bulk:(p.bulk||null);
+        base=fcFreight(fw, ff, cr2, tiers, bulk, bw); bwStr=fmtKg(bw, ch.cat);
+        let d=`首重 ${fw}kg ¥${ff}`;
+        if(bulk && bw>=bulk.from) d+=` + ≥${bulk.from}kg公式 ¥${bulk.base}+¥${bulk.rate}/kg`;
+        else if(tiers&&tiers.length) d+=` + 分段续重(${tiers.map(t=>`≤${t.upto}:¥${t.rate}`).join('/')})`;
+        else d+=` + 续重 ¥${cr2}/kg`;
+        parts=[d,`续重基数 ${(bw-fw).toFixed(2)}kg`];
       } else if(model==='piece_per_kg'){
         const pp=co.per_piece!=null?co.per_piece:(p.per_piece||0);
         const pk=co.per_kg!=null?co.per_kg:(p.per_kg||0);
