@@ -245,6 +245,8 @@
   <script src="rates.js?v=__BUILD_TS__"></script>
   <script>
 const CN2ISO = {
+   "乌拉圭":"UY", "留尼汪岛":"RE", "哥斯达黎加":"CR", "孟加拉国":"BD", "危地马拉":"GT", "法属波利尼西亚":"PF", "萨尔瓦多":"SV", "巴布亚新几内亚":"PG", "贝宁":"BJ", "布基纳法索":"BF", "布隆迪":"BI", "赤道几内亚":"GQ", "多哥":"TG", "冈比亚":"GM", "刚果(布)":"CG", "刚果(金)":"CD", "吉布提":"DJ", "几内亚":"GN", "加蓬":"GA", "喀麦隆":"CM", "科摩罗":"KM", "科特迪瓦(象牙海岸)":"CI", "利比里亚":"LR", "马里":"ML", "毛里塔尼亚":"MR", "南苏丹共和国":"SS", "尼日尔":"NE", "塞拉利昂":"SL", "中非":"CF", "马其顿":"MK", "黑山共和国":"ME", "阿鲁巴":"AW", "巴拿马":"PA", "多米尼加":"DO", "厄瓜多尔":"EC", "法属圭亚那":"GF", "古巴":"CU", "库拉索岛(荷兰)":"CW", "特立尼达和多巴哥":"TT",
+
 "美国": "US",
 "加拿大": "CA",
 "英国": "UK",
@@ -552,7 +554,13 @@ function syncParcelFromRates(){
       channel:c.name, audience:'2C', countries,
       max_weight:Math.max(...(first.brackets||[]).map(b=>b.up), 2),
       accepted: live?['普货','带电']:['普货'],
-      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:c.charge_rule||'max', rounding:c.rounding||0.001, min_charge_weight:0.001, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
+      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:'CNY', divisor:c.volumetric_divisor||10000, charge_rule:c.charge_rule||'max', rounding:c.rounding||0.001, min_charge_weight:0.001, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1,
+        model:(c.pricing&&c.pricing.model)||null,
+        first_weight:(c.pricing&&c.pricing.first_weight)||0,
+        first_fee:(c.pricing&&c.pricing.first_fee)||0,
+        continue_rate:(c.pricing&&c.pricing.continue_rate)||0,
+        per_piece:(c.pricing&&c.pricing.per_piece)||0,
+        per_kg:(c.pricing&&c.pricing.per_kg)||0},
       fees: reg>0?[{name:'挂号费',type:'fixed',value:reg}]:[],
       decision:{transit:9}, history:[{date:'2026-07',tiers:weight_tiers,op:reg}], taxMap, euFeeMap, countryMap: c.countries,
       sizeRules: c.size_rules || null   // 白名单式尺寸限制（真实报价单口径），无则尺寸不校验
@@ -602,7 +610,10 @@ function syncTobFromRates(){
       isoCountries: countries,  // ISO 数组——资格校验/下拉/显示用
       max_weight: null,
       accepted: ['普货'],
-      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:c.currency||'CNY', divisor:c.volumetric_divisor||6000, charge_rule:'max', rounding:1, min_charge_weight:minpc, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1},
+      pricing:{incoterm:inc, tax_included:(inc==='DDP'), currency:c.currency||'CNY', divisor:c.volumetric_divisor||6000, charge_rule:'max', rounding:1, min_charge_weight:minpc, fuel_pct:0, weight_tiers, duty_rate:0, vat_rate:0, fx:1,
+        mode:c.mode||null,
+        per_cbm:(c.per_cbm!=null)?c.per_cbm:0,
+        cbm_tiers:(c.cbm_tiers||null)},
       fees: declareFee>0 ? [{name:'清关费', type:'fixed', value:declareFee}] : [],
       decision:{transit: 10},
       history:[{date:'2026-07-01', tiers:weight_tiers, op:declareFee}],
@@ -883,7 +894,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   // ★ 小包修复：优先用「目的国自己的」brackets 费率与挂号费（此前 bug：全局只取渠道第一个国家的费率/挂号费，导致发法国却按美国 92/kg 计）
   const coBrackets = (co && co.brackets && co.brackets.length) ? co.brackets : null;
   // 分区矩阵渠道（zy_fedex/zy_ups）：countryMap → zone → matrix[weight]（总票价，非/kg）
-  let rate, freight, matrixBase = null, matrixWk = null, matrixZi = null, matrixOver = false, matrixUnderMin = false, bulkTier = null;
+  let rate, freight, items = null, matrixBase = null, matrixWk = null, matrixZi = null, matrixOver = false, matrixUnderMin = false, bulkTier = null;
   // ★ 目的国不在该渠道可达范围 → 标记不可用(避免对不可达国家静默报 ¥0 误导比价)
   if (ch.countryMap && !Object.prototype.hasOwnProperty.call(ch.countryMap, destCn)) matrixOver = true;
   // ★ 纯大货渠道(无 matrix，仅 bulk_tiers) 也需先解析分区 index
@@ -934,16 +945,47 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
     // 纯大货渠道但 cw 超出所有大货区间：标记不可用，不臆造价格
     rate = 0; freight = 0;
   } else {
-    rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
-    freight = rate * cw;
+    if(p.mode==='cbm'){
+      // ★ CBM（立方米）计价：头程按体积 m³ 计费（如易连韩国海外仓头程）
+      const cbm = (sku.l*sku.w*sku.h*units)/1e6;
+      let pc = (co && co.per_cbm!=null) ? co.per_cbm : (p.per_cbm||0);
+      if(p.cbm_tiers && p.cbm_tiers.length){
+        const t = p.cbm_tiers.find(t=> cbm > t.min - 1e-9 && cbm <= t.max + 1e-9) || p.cbm_tiers[p.cbm_tiers.length-1];
+        if(t && t.rate!=null) pc = t.rate;
+      }
+      freight = pc*cbm; rate = pc;
+      items = [{name:`基本运费(${pc}/CBM × ${cbm.toFixed(3)}m³)`, amt:freight}];
+    } else {
+      const model = p.model || (co&&co.model) || 'rate_kg';
+      if(model==='first_continue'){
+        // 首重+续重：freight = 首重费 + 续重率×(cw−首重)
+        const fw = (co&&co.first_weight!=null)?co.first_weight:(p.first_weight||0);
+        const ff = (co&&co.first_fee!=null)?co.first_fee:(p.first_fee||0);
+        const cr = (co&&co.continue_rate!=null)?co.continue_rate:(p.continue_rate||0);
+        freight = ff + cr*Math.max(cw-fw,0); rate = cr;
+        items = [{name:`基本运费(首重 ${fmtKg(fw,ch.cat)} ¥${ff} + 续重 ¥${cr}/kg × ${fmtKg(Math.max(cw-fw,0),ch.cat)})`, amt:freight}];
+      } else if(model==='piece_per_kg'){
+        // 元/件+元/kg：freight = 元/件 + 元/kg×cw
+        const pp = (co&&co.per_piece!=null)?co.per_piece:(p.per_piece||0);
+        const pk = (co&&co.per_kg!=null)?co.per_kg:(p.per_kg||0);
+        freight = pp + pk*cw; rate = pk;
+        items = [{name:`基本运费(¥${pp}/件 + ¥${pk}/kg × ${fmtKg(cw,ch.cat)})`, amt:freight}];
+      } else {
+        rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
+        freight = rate * cw;
+      }
+    }
   }
   const cwStr = fmtKg(cw, ch.cat);
   const zlabel = matrixZi != null ? ((ch.zones||[])[matrixZi]||{}).label : '';
-  let items = bulkTier != null
-    ? [{name:`基本运费(大货${bulkTier.min}-${bulkTier.max}kg区间 · 分区${zlabel} · ${rate}/kg×${cwStr}kg)`, amt:freight}]
-    : matrixBase != null
-    ? [{name:`基本运费(分区${zlabel} · ${matrixWk}kg总价)`, amt:freight}]
-    : [{name:"基本运费("+rate+"/kg×"+cwStr+"kg)", amt:freight}];
+  // ★ items 已在 CBM / 双模型分支内设置；其余分支（rate_kg / 大货 / 分区矩阵）在此兜底设置
+  if(items == null){
+    items = bulkTier != null
+      ? [{name:`基本运费(大货${bulkTier.min}-${bulkTier.max}kg区间 · 分区${zlabel} · ${rate}/kg×${cwStr}kg)`, amt:freight}]
+      : matrixBase != null
+      ? [{name:`基本运费(分区${zlabel} · ${matrixWk}kg总价)`, amt:freight}]
+      : [{name:"基本运费("+rate+"/kg×"+cwStr+"kg)", amt:freight}];
+  }
   if(matrixOver){
     const reason = matrixUnderMin
       ? `低于该渠道最小计费重 ${matrixWk}kg`
@@ -2124,14 +2166,31 @@ function rAll(){
       if(!ch.countries[country]) return null;
       const co=ch.countries[country];
       const declCny=decl*getUsdFx();  // 手动申报值按 USD 处理，先转 CNY
+      const p=ch.pricing||{};
+      const model=p.model||co.model||'rate_kg';
       const cr=co.charge_rule||ch.charge_rule||'max';
       if(cr==='actual') bw=actualW;
       else if(cr==='vol_if_2x_actual') bw=(volW>=actualW*2)?volW:actualW;
       else if(cr==='vol') bw=volW;
       else bw=Math.max(actualW,volW);
-      const br=co.brackets; if(!br||!br.length) return null;
-      const b=findBracket(br,bw);
-      let base=b.rate*bw+b.reg; const bwStr=fmtKg(bw, ch.cat); const parts=[`运费 ${b.rate}/kg × ${bwStr}kg`, `挂号 ${b.reg}`];
+      let base, bwStr, parts;
+      if(model==='first_continue'){
+        const fw=co.first_weight!=null?co.first_weight:(p.first_weight||0);
+        const ff=co.first_fee!=null?co.first_fee:(p.first_fee||0);
+        const cr2=co.continue_rate!=null?co.continue_rate:(p.continue_rate||0);
+        base=ff+cr2*Math.max(bw-fw,0); bwStr=fmtKg(bw, ch.cat);
+        parts=[`首重 ${fw}kg ¥${ff}`,`续重 ¥${cr2}/kg × ${(bw-fw).toFixed(2)}kg`];
+      } else if(model==='piece_per_kg'){
+        const pp=co.per_piece!=null?co.per_piece:(p.per_piece||0);
+        const pk=co.per_kg!=null?co.per_kg:(p.per_kg||0);
+        base=pp+pk*bw; bwStr=fmtKg(bw, ch.cat);
+        parts=[`件数费 ¥${pp}/件`,`运费 ¥${pk}/kg × ${bwStr}kg`];
+      } else {
+        const br=co.brackets; if(!br||!br.length) return null;
+        const b=findBracket(br,bw);
+        base=b.rate*bw+b.reg; bwStr=fmtKg(bw, ch.cat);
+        parts=[`运费 ${b.rate}/kg × ${bwStr}kg`, `挂号 ${b.reg}`];
+      }
       let ins=0; if(opt.insurance) ins=Math.max(declCny*0.007,5);  // 申报值(USD)×0.7% 最低5元(CNY)，已转人民币
       const add=co.add||{};
       if(add.war_per_kg){ base+=add.war_per_kg*bw; parts.push(`战争附加费 ${add.war_per_kg}/kg × ${bwStr}kg`); }
