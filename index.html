@@ -1020,9 +1020,10 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   }
   let total = freight;
   if(coBrackets){
-    // 挂号费按目的国自己的 reg
-    const regFee = (coBrackets[0] && coBrackets[0].reg) ? coBrackets[0].reg : 0;
-    if(regFee){ items.push({name:"挂号费", amt:regFee}); total+=regFee; }
+    // 挂号/操作费：按「当前计费重所在重量段」取对应 reg（与手动 compute 的 findBracket 行为一致，修复此前只取首段 reg 的 bug）
+    const tb = tierRate(coBrackets, cw);
+    const regFee = (tb && tb.reg) ? tb.reg : 0;
+    if(regFee){ items.push({name:"操作/挂号费", amt:regFee}); total+=regFee; }
   } else {
     for(const f of (ch.fees||[])){
       let a = f.type==="fixed" ? f.value
