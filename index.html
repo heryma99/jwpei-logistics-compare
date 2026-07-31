@@ -1438,7 +1438,7 @@ function rFreight(){
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
       const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
-      const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
+      const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( (ch.cat==='small' || isoList.includes(destIso))?[]:[`目的国不符(${destCn})`] );
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
