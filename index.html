@@ -902,7 +902,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   const destIso = opts.destIso || (typeof CN2ISO==='object' && CN2ISO[destCn]) || destCn;
   const p = ch.pricing;
   const cm = ch.countryMap || {};
-  const co = findCountryWithAlias(cm, destCn);
+  const co = findCountryWithAlias(cm, destCn) || (ch.countries && ch.countries[destCn]) || {};
   // ★ 申报价 decl 货币=USD，凡用它算费用（VAT/DUTY/手续费/按值费）都先 ×USD/CNY 转人民币
   const declCny = (sku.decl||0) * getUsdFx();
   const divisor = co.volumetric_divisor || p.divisor;
@@ -1438,7 +1438,7 @@ function rFreight(){
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
       const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
-      const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( (ch.cat==='small' || isoList.includes(destIso))?[]:[`目的国不符(${destCn})`] );
+      const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( ((ch.cat==='small' && ch.countries && ch.countries[destCn]) || isoList.includes(destIso))?[]:[`目的国不符(${destCn})`] );
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
