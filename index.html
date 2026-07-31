@@ -992,10 +992,18 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
         items = [{name:`基本运费(${desc})`, amt:freight}];
       } else if(model==='piece_per_kg'){
         // 元/件+元/kg：freight = 元/件 + 元/kg×cw
-        const pp = (co&&co.per_piece!=null)?co.per_piece:(p.per_piece||0);
-        const pk = (co&&co.per_kg!=null)?co.per_kg:(p.per_kg||0);
-        freight = pp + pk*cw; rate = pk;
-        items = [{name:`基本运费(¥${pp}/件 + ¥${pk}/kg × ${fmtKg(cw,ch.cat)})`, amt:freight}];
+        const ppRaw = (co&&co.per_piece!=null)?co.per_piece:(p.per_piece||0);
+        const pkRaw = (co&&co.per_kg!=null)?co.per_kg:(p.per_kg||0);
+        const pp = typeof ppRaw==='number' && !Number.isNaN(ppRaw) ? ppRaw : null;
+        const pk = typeof pkRaw==='number' && !Number.isNaN(pkRaw) ? pkRaw : null;
+        if(pp===null || pk===null){
+          matrixOver = true; matrixUnderMin = false; matrixWk = null;
+          freight = 0; rate = 0;
+          items = [{name:`⚠ 目的国${destCn}无有效piece/kg报价(原始:${JSON.stringify({pp:ppRaw,pk:pkRaw})})`, amt:0}];
+        } else {
+          freight = pp + pk*cw; rate = pk;
+          items = [{name:`基本运费(¥${pp}/件 + ¥${pk}/kg × ${fmtKg(cw,ch.cat)})`, amt:freight}];
+        }
       } else {
         rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
         freight = rate * cw;
@@ -1096,7 +1104,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
       if(sur.return){ const rt = surAmt(sur.return, cw, units); if(rt){ items.push({name:`退件费`, amt:rt}); total+=rt; } }
     }
   }
-  total *= (p.fx||1);
+  total = (typeof total==='number' && Number.isFinite(total)) ? total*(p.fx||1) : Number.POSITIVE_INFINITY;
   // ★ 完整预算：加偏远/磁检/商业清关等可能费用（RATES 渠道 surcharges，保守模式）
   if(conservative && ch.surcharges){
     const s=ch.surcharges;
@@ -1138,6 +1146,21 @@ function qualify(ch, sku, units, audience, b2bType, destIso){
   if(ch.accepted && !ch.accepted.includes(sku.attr)) reasons.push("属性不符("+sku.attr+"不被接受)");
   // 2B 类型细分：FBA/非FBA/商业地址
   if(audience==='2B' && b2bType && ch.b2bType && !ch.b2bType.includes(b2bType)) reasons.push("派送类型不符(渠道仅支持"+ch.b2bType.join('/')+")");
+  // ★ 小包专线渠道：目的国必须有有效报价（避免 per_kg="/" 或 brackets 缺失的渠道入围后显示 ¥0.00 误导比价）
+  if(ch.cat==='small'){
+    const co = (ch.countryMap && ch.countryMap[destCn]) || (ch.countries && ch.countries[destCn]) || {};
+    const p = ch.pricing || {};
+    const model = p.model || co.model || 'rate_kg';
+    let hasValidRate = false;
+    if(model==='piece_per_kg'){
+      hasValidRate = typeof co.per_piece==='number' && typeof co.per_kg==='number';
+    } else if(model==='first_continue'){
+      hasValidRate = (co.first_fee!=null && co.continue_rate!=null) || (co.brackets && co.brackets.length) || (p.weight_tiers && p.weight_tiers.length);
+    } else {
+      hasValidRate = (co.brackets && co.brackets.length) || (p.weight_tiers && p.weight_tiers.length);
+    }
+    if(!hasValidRate) reasons.push(`目的国无有效报价(${destCn})`);
+  }
   return reasons;
 }
 
