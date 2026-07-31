@@ -756,7 +756,7 @@ const COUNTRY_ALIAS = {
 };
 function findCountryWithAlias(countryMap, destCn){
   if(!destCn) return {};
-  if(countryMap[destCn] && Object.keys(countryMap[destCn]).length) return countryMap[destCn];
+  if(countryMap && countryMap[destCn] && Object.keys(countryMap[destCn]||{}).length) return countryMap[destCn];
   // 尝试别名
   const alias = COUNTRY_ALIAS[destCn];
   if(alias && countryMap[alias] && Object.keys(countryMap[alias]).length) return countryMap[alias];
@@ -1600,9 +1600,12 @@ function rFreight(){
       if(!Number.isFinite(rr.mustTotal)){
         return `<div style="font-size:15px;font-weight:700;color:var(--err)">不可用</div><div class="mut" style="font-size:11px;line-height:1.5">计费重不在<br>该渠道区间</div>`;
       }
-      const b=(rr.mustItems||[]).find(i=>i.name.includes('基本运费'))||(rr.mustItems||[])[0];
-      const base=b?b.amt:rr.mustTotal;
+      const b=(rr.mustItems||[]).find(i=>i && i.name && i.name.includes('基本运费'))||(rr.mustItems||[])[0];
+      const base=(b && typeof b.amt==='number')?b.amt:(typeof rr.mustTotal==='number'?rr.mustTotal:0);
       const addon=rr.mustTotal-base;
+      if(!Number.isFinite(base)){
+        return `<div style="font-size:15px;font-weight:700;color:var(--err)">不可用</div><div class="mut" style="font-size:11px;line-height:1.5">运费数据<br>暂不可算</div>`;
+      }
       return `<div style="font-size:16px;font-weight:800;${isBest?'color:var(--green)':''}">¥${rr.mustTotal.toFixed(2)}</div>`
         + `<div class="mut" style="font-size:11px;line-height:1.5">运费 ¥${base.toFixed(2)}<br>+ 附加费 ¥${addon.toFixed(2)}</div>`;
     };
