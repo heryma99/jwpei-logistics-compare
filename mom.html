@@ -17,6 +17,7 @@
   .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:500px}
   .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-y:auto;max-height:calc(100vh - 140px)}
   .gt{font-size:12px;font-weight:700;color:var(--mut);padding:8px 6px 2px}
+  .gt2{font-size:12px;font-weight:600;color:var(--acc);padding:6px 8px 2px 18px;border-top:1px dashed var(--line);margin-top:6px}
   .ch{padding:7px 10px;font-size:13px;cursor:pointer;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin:3px 0;gap:8px}
   .ch:hover{background:#1c2533}
   .ch.on{background:#1a304d;color:var(--acc);font-weight:600}
@@ -81,6 +82,12 @@ if (EMBED) {
 let DATA = null;
 const isOverseas = (c) => /海外仓|入仓|集货仓/.test(c.name || "");
 const catOf = (c) => isOverseas(c) ? "overseas" : (c.cat || "");
+const normCarrier = (c) => {
+  const n = c.carrier || "—";
+  if (n.startsWith("云途")) return "云途";
+  if (n.startsWith("亚丰")) return "亚丰";
+  return n;
+};
 const DOMAINS = [["all","全部"],["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]];
 let curCat = "all";
 let curId = null;
@@ -133,23 +140,33 @@ function buildSidebar(){
   sb.innerHTML = "";
 
   const all = Object.entries(DATA.channels).sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
-  const chs = curCat === "all" ? all : all.filter(([id,c]) => catOf(c) === curCat);
-  if (!chs.length){ sb.innerHTML = '<div class="placeholder">无数据</div>'; return; }
 
-  const renderList = (list) => {
+  // 第三步：渠道（按物流商分组渲染）
+  const renderByCarrier = (list) => {
+    const groups = {};
     list.forEach(([id,c]) => {
-      const rows = joinRows(c.prev, c.cur);
-      let up=0,down=0,flat=0,na=0;
-      rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
-      const badgeText = `涨${up} 跌${down} 平${flat}`;
-      const div = document.createElement("div");
-      div.className = "ch" + (id === curId ? " on" : "");
-      div.innerHTML = `<span class="chname">${c.name}<small>${c.carrier}</small></span><span class="badge">${badgeText}</span>`;
-      div.onclick = () => { curId = id; buildSidebar(); renderDetail(id); };
-      sb.appendChild(div);
+      const k = normCarrier(c);
+      (groups[k] = groups[k] || []).push([id,c]);
+    });
+    Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0],'zh')).forEach(([car,sub]) => {
+      const g2 = document.createElement("div");
+      g2.className = "gt2"; g2.textContent = car + " (" + sub.length + ")";
+      sb.appendChild(g2);
+      sub.forEach(([id,c]) => {
+        const rows = joinRows(c.prev, c.cur);
+        let up=0,down=0,flat=0,na=0;
+        rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
+        const badgeText = `涨${up} 跌${down} 平${flat}`;
+        const div = document.createElement("div");
+        div.className = "ch" + (id === curId ? " on" : "");
+        div.innerHTML = `<span class="chname">${c.name}<small>${c.carrier}</small></span><span class="badge">${badgeText}</span>`;
+        div.onclick = () => { curId = id; buildSidebar(); renderDetail(id); };
+        sb.appendChild(div);
+      });
     });
   };
 
+  // 第一步：大类
   if (curCat === "all"){
     [["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]].forEach(([cat,label]) => {
       const sub = all.filter(([id,c]) => catOf(c) === cat);
@@ -157,13 +174,16 @@ function buildSidebar(){
       const g = document.createElement("div");
       g.className = "gt"; g.textContent = label + " (" + sub.length + ")";
       sb.appendChild(g);
-      renderList(sub);
+      renderByCarrier(sub);   // 第二步：物流商
     });
   } else {
-    renderList(chs);
+    const chs = all.filter(([id,c]) => catOf(c) === curCat);
+    if (!chs.length){ sb.innerHTML = '<div class="placeholder">无数据</div>'; return; }
+    renderByCarrier(chs);
   }
 
-  if (!curId || (curCat !== "all" && catOf(DATA.channels[curId] || {}) !== curCat)) curId = chs[0][0];
+  const pool = curCat === "all" ? all : all.filter(([id,c]) => catOf(c) === curCat);
+  if (!curId || (curCat !== "all" && catOf(DATA.channels[curId] || {}) !== curCat)) curId = (pool[0]||[])[0];
   renderDetail(curId);
 }
 
