@@ -15,7 +15,7 @@
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){
         // 本地构建号未知（占位符/空）时不强制刷新，避免误伤；仅当本地与线上真实 build 不一致才刷新
-        if(j && j.build && local && local !== "1785835866" && j.build !== local){
+        if(j && j.build && local && local !== "1785836622" && j.build !== local){
           sessionStorage.setItem('__ver_reloaded__','1');
           setTimeout(function(){ window.location.reload(true); }, 600);
         }
@@ -1653,8 +1653,10 @@ function rFreight(){
         body = `<h4 class="reg-h">到手总成本 基准 ${costLabel(r.mustTotal)}${r.maybeTotal>0?` ＋可能 ${costLabel(r.maybeTotal)}`:''}</h4>`+estBlock(r);
       }
       const cw=(isUS3(ch)?computeAll(ch, detectedRegion||'美西').cw:computeAll(ch).cw);
+      const estCo = findCountryWithAlias(ch.countryMap||{}, destCn) || (ch.countries && ch.countries[destCn]) || {};
+      const estDiv = estCo.volumetric_divisor || ch.pricing.divisor;
       out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3>${pickHtml}${body}
-        <div class="mut">缴费重 ${fmtKg(cw, ch.cat)}kg（实重${(sku.weight*units).toFixed(2)} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,ch.pricing.divisor)*units).toFixed(2)} ÷${ch.pricing.divisor}）· 时效约 ${ch.decision?.transit||10} 天</div>
+        <div class="mut">缴费重 ${fmtKg(cw, ch.cat)}kg（实重${(sku.weight*units).toFixed(2)} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,estDiv)*units).toFixed(2)} ÷${estDiv}）· 时效约 ${ch.decision?.transit||10} 天</div>
         <div class="mut" style="margin-top:8px;line-height:1.6">
           <b>✓ 必收：</b>基本运费 + 燃油 + 品类附加（按货物类型）+ 非FBA/住宅附加 + 报关费（非FBA）+ 商检 + 磁检<br>
           <b>⚠️ 可能附加（实报实销，按发生计，<u>不计入</u>基准）：</b>偏远 / 超品名 / 超尺寸 / 超重 / 更改地址；另有旺季附加、退件、仓租查验等未列
@@ -1697,7 +1699,9 @@ function rFreight(){
       const cnList=isoList.map(isoToChinese);
       const cnShort=cnList.length>3?cnList.slice(0,3).join('、')+` 等${cnList.length}国`:cnList.join('、');
       const sw=(sku.weight*units).toFixed(2);
-      const vw=(volumeWeight(sku.l,sku.w,sku.h,x.ch.pricing.divisor)*units).toFixed(2);
+      const coDiv = findCountryWithAlias(x.ch.countryMap||{}, destCn) || (x.ch.countries && x.ch.countries[destCn]) || {};
+      const effDiv = coDiv.volumetric_divisor || x.ch.pricing.divisor;
+      const vw=(volumeWeight(sku.l,sku.w,sku.h,effDiv)*units).toFixed(2);
       const cwTip=`MAX(实重${sw}, 体积重${vw}) 向上进位到${x.ch.pricing.rounding}kg = ${fmtKg(x.r.cw, x.ch.cat)}kg`;
       const diff = !Number.isFinite(x.r.mustTotal)
         ? '<span class="diff-badge">不可用</span>'
@@ -1713,7 +1717,7 @@ function rFreight(){
         <td class="mut">${idx+1}</td>
         <td class="c-name"><b>${x.ch.carrier}</b><br><span class="mut">${x.ch.channel}</span></td>
         <td class="c-country mut" title="${cnList.join('、')}">${cnShort}</td>
-        <td title="${cwTip}"><b>${fmtKg(x.r.cw, x.ch.cat)}</b>kg<br><span class="mut">÷${x.ch.pricing.divisor}</span></td>
+        <td title="${cwTip}"><b>${fmtKg(x.r.cw, x.ch.cat)}</b>kg<br><span class="mut">÷${effDiv}</span></td>
         ${bodyCells}
         <td>${x.r.transit||'-'}天</td>
         <td>${diff}</td>
