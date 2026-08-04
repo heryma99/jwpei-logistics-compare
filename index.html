@@ -15,7 +15,7 @@
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){
         // 本地构建号未知（占位符/空）时不强制刷新，避免误伤；仅当本地与线上真实 build 不一致才刷新
-        if(j && j.build && local && local !== "__BUILD_TS__" && j.build !== local){
+        if(j && j.build && local && local !== "1785835866" && j.build !== local){
           sessionStorage.setItem('__ver_reloaded__','1');
           setTimeout(function(){ window.location.reload(true); }, 600);
         }
@@ -738,8 +738,19 @@ function applyDivisorOverrides(ov){
   syncExpressFromRates();
   saveState();
 }
-/* per-country 计费例外覆盖：存于浏览器本地，覆盖 rates.json 中各国除数和计费规则 */
+/* per-country 计费例外覆盖：仓库 country_overrides 为团队基准，localStorage jwpei_country_overrides 为本地个人覆盖 */
 function applyCountryOverrides(ov){
+  // 1) 先应用仓库里的团队 country_overrides（全员共享）
+  (window.RATES&&window.RATES.channels||[]).forEach(ch=>{
+    const chOv = ch.country_overrides || {};
+    Object.keys(chOv).forEach(cn=>{
+      const data = chOv[cn];
+      if(!ch.countries[cn]) ch.countries[cn] = {brackets:[]};
+      if(data.volumetric_divisor!=null) ch.countries[cn].volumetric_divisor = data.volumetric_divisor;
+      if(data.charge_rule) ch.countries[cn].charge_rule = data.charge_rule;
+    });
+  });
+  // 2) 再应用浏览器本地的个人覆盖（优先级更高）
   ov = ov || JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
   if(!ov || !Object.keys(ov).length) return;
   (window.RATES&&window.RATES.channels||[]).forEach(ch=>{
@@ -747,7 +758,7 @@ function applyCountryOverrides(ov){
     Object.keys(chOv).forEach(cn=>{
       const data = chOv[cn];
       if(!ch.countries[cn]) ch.countries[cn] = {brackets:[]};
-      if(data.volumetric_divisor) ch.countries[cn].volumetric_divisor = data.volumetric_divisor;
+      if(data.volumetric_divisor!=null) ch.countries[cn].volumetric_divisor = data.volumetric_divisor;
       if(data.charge_rule) ch.countries[cn].charge_rule = data.charge_rule;
     });
   });
@@ -815,7 +826,41 @@ function saveCountryOverrides(){
   const ov = JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
   let nCountries = 0; Object.values(ov).forEach(c=>nCountries += Object.keys(c).length);
   const el = document.getElementById('coStat');
-  if(el) el.innerHTML = '<span class="ok">✓ 已即时生效</span> <span class="mut">· '+nCountries+' 条国家例外已记到浏览器本地（刷新页面不丢，跨浏览器需重新配置）</span>';
+  const tok=(typeof localStorage!=='undefined'?(localStorage.getItem('jwpei_team_token')||'').trim():'');
+  if(tok){
+    // 有团队 token 时自动写回 GitHub
+    const divOv=JSON.parse(localStorage.getItem('jwpei_divisor_overrides')||'{}');
+    pushDivisorsToGitHub(divOv, ov, tok)
+      .then(()=>{ if(el) el.innerHTML = '<span class="ok">✓ 已即时生效并写回团队仓库</span> <span class="mut">· '+nCountries+' 条国家例外，全员刷新即见</span>'; })
+      .catch(e=>{ if(el) el.innerHTML = '<span class="ok">✓ 本机已生效</span> <span class="err">团队写回失败：'+e.message+'</span>'; });
+  } else {
+    if(el) el.innerHTML = '<span class="ok">✓ 已即时生效</span> <span class="mut">· '+nCountries+' 条国家例外已记到浏览器本地（刷新页面不丢，跨浏览器需重新配置）</span>';
+  }
+}
+/* 团队保存：把 divisor 覆盖 + 国家例外写回 GitHub 仓库 rates.json（全员可见） */
+function b64encodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64decodeUtf8(b64){ return decodeURIComponent(escape(atob(b64.replace(/\s/g,'')))); }
+async function pushDivisorsToGitHub(ov, co, tok){
+  const api='https://api.github.com/repos/heryma99/jwpei-logistics-compare/contents/rates.json';
+  const headers={'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'};
+  const cur=await fetch(api,{headers});
+  if(!cur.ok) throw new Error('读取仓库失败 HTTP '+cur.status);
+  const meta=await cur.json();
+  const obj=JSON.parse(b64decodeUtf8(meta.content));
+  (obj.channels||[]).forEach(c=>{
+    if(ov[c.id]!=null) c.volumetric_divisor=ov[c.id];
+    // 合并国家例外（个人本地覆盖优先于仓库现有）
+    if(co && co[c.id]){
+      c.country_overrides = c.country_overrides || {};
+      Object.keys(co[c.id]).forEach(cn=>{
+        c.country_overrides[cn] = Object.assign({}, c.country_overrides[cn], co[c.id][cn]);
+      });
+    }
+  });
+  const body=JSON.stringify({message:'团队保存：更新渠道体积重除数与国家例外（via 配置中心）',content:b64encodeUtf8(JSON.stringify(obj,null,2)),sha:meta.sha});
+  const res=await fetch(api,{method:'PUT',headers:Object.assign({},headers,{'Content-Type':'application/json'}),body});
+  if(!res.ok){ const t=await res.text().catch(()=>''); throw new Error('写回仓库失败 HTTP '+res.status+' '+(t||'').slice(0,120)); }
+  return true;
 }
 /* 物料主数据表：搜索 + 分页状态（2317 条不能一次性渲染，否则卡死） */
 let ITEM_PAGE=1, ITEM_Q="";
@@ -2080,34 +2125,20 @@ function rConfig(){
     localStorage.setItem('jwpei_divisor_overrides', JSON.stringify(ov));
     applyDivisorOverrides(ov);
     const n=Object.keys(ov).length;
+    const co=JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
     const tok=(localStorage.getItem('jwpei_team_token')||'').trim();
     if(!tok){
       $("#divStat").innerHTML='<span class="ok">✓ 已保存 '+n+' 条并生效（存于浏览器本地）</span>';
       return;
     }
-    // 团队保存：直接 PUT 回 GitHub 仓库（全员刷新即见、无延迟）
-    pushDivisorsToGitHub(ov, tok)
-      .then(ok=>{ if(ok) $("#divStat").innerHTML='<span class="ok">✓ 已保存到团队（'+n+' 条），全员刷新即见</span>'; else throw new Error('写回失败'); })
+    // 团队保存：直接 PUT 回 GitHub 仓库（除数 + 国家例外，全员刷新即见、无延迟）
+    pushDivisorsToGitHub(ov, co, tok)
+      .then(ok=>{ if(ok) $("#divStat").innerHTML='<span class="ok">✓ 已保存到团队（'+n+' 条除数 + '+Object.values(co).reduce((s,v)=>s+Object.keys(v||{}).length,0)+' 条国家例外），全员刷新即见</span>'; else throw new Error('写回失败'); })
       .catch(e=>$("#divStat").innerHTML='<span class="err">团队保存失败：'+e.message+'（本机已保存）</span>');
   };
   $("#saveToken").onclick=()=>{ const v=document.getElementById('teamToken').value.trim(); localStorage.setItem('jwpei_team_token',v); $("#tokStat").innerHTML=v?'<span class="ok">✓ 已记住团队 Token</span>':'<span class="mut">已清除</span>'; };
 
-  // 团队保存：把 divisor 覆盖写回 GitHub 仓库 rates.json（全员可见）
-  function b64encodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
-  function b64decodeUtf8(b64){ return decodeURIComponent(escape(atob(b64.replace(/\s/g,'')))); }
-  async function pushDivisorsToGitHub(ov, tok){
-    const api='https://api.github.com/repos/heryma99/jwpei-logistics-compare/contents/rates.json';
-    const headers={'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'};
-    const cur=await fetch(api,{headers});
-    if(!cur.ok) throw new Error('读取仓库失败 HTTP '+cur.status);
-    const meta=await cur.json();
-    const obj=JSON.parse(b64decodeUtf8(meta.content));
-    (obj.channels||[]).forEach(c=>{ if(ov[c.id]!=null) c.volumetric_divisor=ov[c.id]; });
-    const body=JSON.stringify({message:'团队保存：更新渠道体积重除数（via 配置中心）',content:b64encodeUtf8(JSON.stringify(obj,null,2)),sha:meta.sha});
-    const res=await fetch(api,{method:'PUT',headers:Object.assign({},headers,{'Content-Type':'application/json'}),body});
-    if(!res.ok){ const t=await res.text().catch(()=>''); throw new Error('写回仓库失败 HTTP '+res.status+' '+(t||'').slice(0,120)); }
-    return true;
-  }
+  // pushDivisorsToGitHub 已提升到全局作用域，供 saveCountryOverrides / saveDiv 共用
   $("#editCfg").onclick=()=>{ const ta=$("#cfg"); ta.style.display='block'; ta.value=JSON.stringify(S,null,2); $("#cfgWrap").style.display='none'; };
   $("#saveCfg").onclick=()=>{ const ta=$("#cfg"); if(ta.style.display==='none'){ $("#cStat").innerHTML='<span class="mut">请先点「展开编辑 JSON」再保存</span>'; return; } try{ S=JSON.parse(ta.value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
   $("#resetCfg").onclick=()=>{ if(confirm("恢复默认配置？当前改动将丢失")){ S=JSON.parse(JSON.stringify(DEF)); saveState(); rConfig(); } };
