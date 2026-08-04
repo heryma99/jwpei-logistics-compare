@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>报价环比分析</title>
+<style>
+  :root{ --bg:#0e1117; --card:#161b22; --line:#30363d; --txt:#e6edf3; --mut:#8b949e;
+         --acc:#58a6ff; --up:#f85149; --down:#3fb950; --flat:#8b949e; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;padding:16px}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:12px;margin-bottom:12px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  button{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
+  button.on{background:var(--acc);color:#0e1117;border-color:var(--acc);font-weight:600}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;max-width:420px}
+  .chips{display:flex;gap:10px;margin:8px 0 14px;flex-wrap:wrap}
+  .chip{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}
+  .chip.up{background:rgba(248,81,73,.15);color:var(--up)}
+  .chip.down{background:rgba(63,185,80,.15);color:var(--down)}
+  .chip.flat{background:rgba(139,148,158,.15);color:var(--flat)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th:nth-child(2),td:nth-child(2){text-align:left}
+  thead th{color:var(--mut);font-weight:600;position:sticky;top:0;background:var(--bg)}
+  .up{color:var(--up);font-weight:600}
+  .down{color:var(--down);font-weight:600}
+  .flat{color:var(--flat)}
+  .ov{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px}
+  .ovc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+  .ovc:hover{border-color:var(--acc)}
+  .ovc .nm{font-weight:600;font-size:13px;margin-bottom:4px}
+  .ovc .mt{font-size:11px;color:var(--mut)}
+  .ovc .st{font-size:12px;margin-top:4px}
+  .note{color:var(--mut);font-size:12px;margin-top:18px;line-height:1.6}
+  code{background:var(--card);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>📊 报价环比分析</h1>
+<div class="sub" id="sub">加载中…</div>
+
+<div class="bar" id="carrierBar"></div>
+<div class="bar"><span style="color:var(--mut)">渠道</span><select id="chSel"></select></div>
+
+<div class="chips" id="chips"></div>
+<div id="detail"></div>
+
+<h2 style="font-size:15px;margin-top:22px">全渠道环比总览</h2>
+<div class="ov" id="overview"></div>
+
+<div class="note">
+  数据来源：<code>versions.json</code>（上一期 <b id="bD"></b> → 本期 <b id="cD"></b>）。<br>
+  红＝涨价，绿＝降价，灰＝持平。逐（目的国/分区 × 重量段）比对运费。本期报价已随主站 <code>rates.js</code> 生效。
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const EMBED = params.get("embed") === "1";
+if (EMBED) { document.querySelector("h1").style.display="none"; document.querySelector(".note").style.display="none"; document.querySelectorAll("h2").forEach(e=>e.style.display="none"); }
+
+let DATA = null;
+const carrierOrder = ["中运通达","亚丰(璞景/德翼)","云途"];
+let curCarrier = carrierOrder[0];
+
+fetch("versions.json?_=" + Date.now(), {cache:"no-store"})
+  .then(r => r.json())
+  .then(d => { DATA = d; init(); })
+  .catch(e => { document.getElementById("sub").textContent = "加载 versions.json 失败：" + e; });
+
+function init(){
+  document.getElementById("sub").textContent =
+    `上一期 ${DATA.baseline.date}（${DATA.baseline.label}）→ 本期 ${DATA.current.date}（${DATA.current.label}）；共 ${Object.keys(DATA.channels).length} 渠道可比`;
+  document.getElementById("bD").textContent = DATA.baseline.date;
+  document.getElementById("cD").textContent = DATA.current.date;
+
+  const carriers = carrierOrder.filter(c => Object.values(DATA.channels).some(ch => ch.carrier === c));
+  const bar = document.getElementById("carrierBar");
+  carriers.forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = c; b.dataset.c = c;
+    if (c === curCarrier) b.classList.add("on");
+    b.onclick = () => { curCarrier = c; [...bar.children].forEach(x=>x.classList.toggle("on", x.dataset.c===c)); fillChannels(); };
+    bar.appendChild(b);
+  });
+  fillChannels();
+  fillOverview();
+}
+
+function fillChannels(){
+  const chs = Object.entries(DATA.channels).filter(([id,c]) => c.carrier === curCarrier);
+  const sel = document.getElementById("chSel");
+  sel.innerHTML = "";
+  chs.forEach(([id,c]) => {
+    const o = document.createElement("option");
+    o.value = id; o.textContent = c.name; sel.appendChild(o);
+  });
+  if (chs.length) renderChannel(chs[0][0]);
+  sel.onchange = () => renderChannel(sel.value);
+}
+
+function joinRows(prev, cur){
+  const pm = {};
+  prev.forEach(r => pm[r.dim+"|"+r.w] = r.rate);
+  const out = [];
+  cur.forEach(r => {
+    const pv = pm[r.dim+"|"+r.w];
+    const rate = r.rate;
+    let d = null, dir = "flat";
+    if (pv != null){ d = +(rate - pv).toFixed(2); dir = d>0?"up":(d<0?"down":"flat"); }
+    out.push({dim:r.dim, w:r.w, prev:pv, cur:rate, d, dir});
+  });
+  return out;
+}
+
+function renderChannel(id){
+  const c = DATA.channels[id];
+  const rows = joinRows(c.prev, c.cur);
+  let up=0,down=0,flat=0,na=0;
+  rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
+  const chips = document.getElementById("chips");
+  chips.innerHTML =
+    `<span class="chip up">▲ 涨 ${up}</span><span class="chip down">▼ 跌 ${down}</span>`+
+    `<span class="chip flat">＝ 持平 ${flat}</span>`+(na?`<span class="chip flat">· 仅本期 ${na}</span>`:"");
+
+  let html = `<table><thead><tr><th>目的国/分区</th><th>重量段</th><th>上期 ¥/kg</th><th>本期 ¥/kg</th><th>Δ</th><th>方向</th></tr></thead><tbody>`;
+  rows.forEach(r => {
+    const prevTxt = r.prev==null ? "—" : r.prev;
+    const dTxt = r.d==null ? "—" : (r.d>0?"+":"")+r.d;
+    const dirTxt = r.dir==="up"?"▲ 涨":r.dir==="down"?"▼ 跌":"＝ 持平";
+    html += `<tr><td>${r.dim}</td><td>${r.w}</td><td>${prevTxt}</td><td>${r.cur}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${dirTxt}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById("detail").innerHTML = html;
+}
+
+function fillOverview(){
+  const ov = document.getElementById("overview");
+  ov.innerHTML = "";
+  const ids = Object.keys(DATA.channels).sort((a,b)=>DATA.channels[a].carrier.localeCompare(DATA.channels[b].carrier,'zh') || DATA.channels[a].name.localeCompare(DATA.channels[b].name,'zh'));
+  ids.forEach(id => {
+    const c = DATA.channels[id];
+    const rows = joinRows(c.prev, c.cur);
+    let up=0,down=0,flat=0;
+    rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else flat++; });
+    const div = document.createElement("div");
+    div.className = "ovc";
+    const tag = up>down ? `<span class="up">▲${up}</span>` : down>up ? `<span class="down">▼${down}</span>` : `<span class="flat">＝${flat}</span>`;
+    div.innerHTML = `<div class="nm">${c.name}</div><div class="mt">${c.carrier}</div><div class="st">涨${up} 跌${down} 平${flat} ｜ ${tag}</div>`;
+    div.onclick = () => { curCarrier = c.carrier; [...document.getElementById("carrierBar").children].forEach(x=>x.classList.toggle("on", x.dataset.c===c.carrier)); fillChannels(); document.getElementById("chSel").value = id; renderChannel(id); window.scrollTo({top:0,behavior:"smooth"}); };
+    ov.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>
