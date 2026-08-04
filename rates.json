@@ -1357,11 +1357,6 @@
         "redelivery_per_shipment": 50,
         "remote_note": "美国偏远(阿拉斯加/夏威夷/APO/波多黎各/关岛)",
         "redelivery_note": "退件后改派 40-50元/票"
-      },
-      "country_overrides": {
-        "澳大利亚": {
-          "volumetric_divisor": 8000
-        }
       }
     },
     {
