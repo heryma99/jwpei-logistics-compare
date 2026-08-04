@@ -2329,6 +2329,7 @@ function rAll(){
       } else if(model==='piece_per_kg'){
         const pp=co.per_piece!=null?co.per_piece:(p.per_piece||0);
         const pk=co.per_kg!=null?co.per_kg:(p.per_kg||0);
+        if(!(pp>0)||!(pk>0)) return null;
         base=pp+pk*bw; bwStr=fmtKg(bw, ch.cat);
         parts=[`件数费 ¥${pp}/件`,`运费 ¥${pk}/kg × ${bwStr}kg`];
       } else {
@@ -2376,6 +2377,7 @@ function rAll(){
       const zi=countryToZone(ch,country); if(zi===null) return null;
       const m=matOf(ch); const rows=Object.keys(m).map(Number).sort((a,b)=>a-b);
       let wr=rows.filter(r=>r<=bw); wr=wr.length?Math.max.apply(null,wr):rows[0];
+      if(wr==null||!m[wr]||m[wr][zi]==null) return null;
       let price=m[wr][zi];
       if(!ch.fuel_included) price*=(1+ch.fuel);
       const zlabel=ch.zones[zi].label;
