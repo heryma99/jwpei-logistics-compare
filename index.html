@@ -24,6 +24,13 @@
   }catch(e){}
 })();
 </script>
+<script>
+/* 团队保存端點（方案1：GitHub 當後端）。
+   留空 '' = 僅存本機 localStorage（現狀，同事看不到）；
+   部署後設為 CloudStudio 代理 URL，除數/參數改動即 commit 回 rates.json，全員刷新即見。
+   token 只在代理服務端，絕不下發瀏覽器。 */
+window.SAVE_ENDPOINT = window.SAVE_ENDPOINT || '';
+</script>
 <title>物流比价 + 预算 · 可扩展骨架 v2（吸收旧方法论 + 补 ERP 三处 P0）</title>
 <style>
   :root{ --bg:#0e1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3340; --fg:#e6edf3; --mut:#9aa7b4; --acc:#3b82f6; --acc2:#22c55e; --warn:#f59e0b; --err:#ef4444; --red:#ef4444; --green:#22c55e; }
@@ -2055,7 +2062,19 @@ function rConfig(){
     document.querySelectorAll('.divInput').forEach(inp=>{ const v=parseFloat(inp.value); if(!isNaN(v)&&v>0) ov[inp.dataset.id]=v; });
     localStorage.setItem('jwpei_divisor_overrides', JSON.stringify(ov));
     applyDivisorOverrides(ov);
-    $("#divStat").innerHTML='<span class="ok">✓ 已保存 '+Object.keys(ov).length+' 条并生效（存于浏览器本地）</span>';
+    const n=Object.keys(ov).length;
+    if(!window.SAVE_ENDPOINT){
+      $("#divStat").innerHTML='<span class="ok">✓ 已保存 '+n+' 条并生效（存于浏览器本地）</span>';
+      return;
+    }
+    // 方案1：同步推送到团队（GitHub 仓库），让其他人也能用
+    const payload={channels:Object.keys(ov).map(id=>({id, volumetric_divisor:ov[id]}))};
+    fetch(window.SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(r=>r.json()).then(j=>{
+        if(j&&j.ok) $("#divStat").innerHTML='<span class="ok">✓ 已保存到团队（'+n+' 条）并生效，全员刷新即见</span>';
+        else $("#divStat").innerHTML='<span class="err">团队保存失败：'+((j&&j.error)||'未知错误')+'（本机已保存）</span>';
+      })
+      .catch(e=>$("#divStat").innerHTML='<span class="err">团队保存失败：'+e.message+'（本机已保存）</span>');
   };
   $("#saveCfg").onclick=()=>{ try{ S=JSON.parse($("#cfg").value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
   $("#resetCfg").onclick=()=>{ if(confirm("恢复默认配置？当前改动将丢失")){ S=JSON.parse(JSON.stringify(DEF)); saveState(); rConfig(); } };
