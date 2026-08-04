@@ -398,6 +398,8 @@ const CN2ISO = {
 </script>
 </head>
 <body>
+<!-- 密码保护已临时关闭：原逻辑每次刷新弹原生密码框，且在 iframe/部分浏览器中 prompt 受限会直接触发"密码错误"覆盖整页，导致页面不可用（疑似"点配置中心崩溃"根因）。
+     密码以明文写在源码中并无安全性，如需访问控制请改用服务端鉴权或 protected-dashboard-deploy 方案。原代码保留如下：
 <script>
 (function(){
   var pwd = "jwpei2026";
@@ -407,7 +409,8 @@ const CN2ISO = {
     throw new Error("password denied");
   }
 })();
-</script>
+<\/script>
+-->
 <header>
   <h1>物流比价 + 预算 · 可扩展骨架 v2</h1>
   <div class="sub">4 业务域模块（小包 / 商业快递 / toB头程 / 海外仓）共用「横向 + 环比」引擎 · 4 支柱归一内核不变 · 内容层吸收自 logistics-compare-normalize / small-parcel-calc / channel-compare / price-change</div>
