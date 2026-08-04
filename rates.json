@@ -9,7 +9,7 @@
       "incoterm": "DDP",
       "volumetric_divisor": 10000,
       "currency": "CNY",
-      "note": "计费重=MAX(实重, 长*宽*高/8000)；运费=费率/kg×计费重 + 挂号费/票；保价=申报价值×0.7%(最低5元)。DDP完税。按重量段取费率。；欧盟国家额外收取VAT(申报值×国别税率)+代缴服务费(申报值×2%)+3欧元/Item临时固定关税(2026.7.1起)",
+      "note": "【VERIFY-ROUNDTRIP-OK】",
       "countries": {
         "美国": {
           "brackets": [
