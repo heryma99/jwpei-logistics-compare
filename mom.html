@@ -14,14 +14,15 @@
   .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
   button{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
   button.on{background:var(--acc);color:#0e1117;border-color:var(--acc);font-weight:600}
-  .layout{display:grid;grid-template-columns:260px 1fr;gap:12px;min-height:500px}
+  .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:500px}
   .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-y:auto;max-height:calc(100vh - 140px)}
-  .group{margin-bottom:14px}
-  .gt{font-size:12px;font-weight:700;color:var(--mut);padding:4px 6px;margin-bottom:4px}
-  .ch{padding:7px 10px;font-size:13px;cursor:pointer;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin:3px 0}
+  .gt{font-size:12px;font-weight:700;color:var(--mut);padding:8px 6px 2px}
+  .ch{padding:7px 10px;font-size:13px;cursor:pointer;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin:3px 0;gap:8px}
   .ch:hover{background:#1c2533}
   .ch.on{background:#1a304d;color:var(--acc);font-weight:600}
-  .badge{font-size:10px;color:var(--mut);background:#0e1117;border:1px solid var(--line);padding:1px 6px;border-radius:4px}
+  .chname{flex:1;min-width:0}
+  .chname small{display:block;color:var(--mut);font-weight:400;font-size:11px}
+  .badge{font-size:10px;color:var(--mut);background:#0e1117;border:1px solid var(--line);padding:1px 6px;border-radius:4px;white-space:nowrap}
   .detail{min-height:400px}
   .dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;box-shadow:0 1px 10px rgba(0,0,0,.12)}
   .dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px}
@@ -55,7 +56,7 @@
 <h1>📊 报价环比分析</h1>
 <div class="sub" id="sub">加载中…</div>
 
-<div class="bar" id="carrierBar"></div>
+<div class="bar" id="catBar"></div>
 
 <div class="layout">
   <aside class="side" id="sidebar"></aside>
@@ -64,7 +65,8 @@
 
 <div class="note">
   数据来源：<code>versions.json</code>（上一期 <b id="bD"></b> → 本期 <b id="cD"></b>）。<br>
-  红＝涨价，绿＝降价，灰＝持平。逐（目的国/分区 × 重量段）比对运费。本期报价已随主站 <code>rates.js</code> 生效。
+  按业务域分组：<b>全部</b>（119 渠道）、<b>小包专线</b>（B2C 按件/按票）、<b>商业快递</b>（DHL/FedEx/UPS 分区总票价）、<b>2B头程</b>（FBA/专线头程）、<b>海外仓</b>（发往海外仓的头程/入仓渠道）。<br>
+  红＝涨价，绿＝降价，灰＝持平。逐（目的国/分区 × 重量段）比对运费。谷仓等海外仓操作费对比数据源未接入（另见 overseas_data.js）。
 </div>
 
 <script>
@@ -77,8 +79,10 @@ if (EMBED) {
 }
 
 let DATA = null;
-const carrierOrder = ["中运通达","亚丰(璞景/德翼)","云途"];
-let curCarrier = carrierOrder[0];
+const isOverseas = (c) => /海外仓|入仓|集货仓/.test(c.name || "");
+const catOf = (c) => isOverseas(c) ? "overseas" : (c.cat || "");
+const DOMAINS = [["all","全部"],["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]];
+let curCat = "all";
 let curId = null;
 
 fetch("versions.json?_=" + Date.now(), {cache:"no-store"})
@@ -92,15 +96,14 @@ function init(){
   document.getElementById("bD").textContent = DATA.baseline.date;
   document.getElementById("cD").textContent = DATA.current.date;
 
-  const carriers = carrierOrder.filter(c => Object.values(DATA.channels).some(ch => ch.carrier === c));
-  if (!carriers.includes(curCarrier)) curCarrier = carriers[0];
-
-  const bar = document.getElementById("carrierBar");
-  carriers.forEach(c => {
+  const bar = document.getElementById("catBar");
+  DOMAINS.forEach(([cat,label]) => {
+    const n = cat === "all" ? Object.keys(DATA.channels).length
+            : Object.values(DATA.channels).filter(c => catOf(c) === cat).length;
     const b = document.createElement("button");
-    b.textContent = c; b.dataset.c = c;
-    if (c === curCarrier) b.classList.add("on");
-    b.onclick = () => { curCarrier = c; renderBar(); buildSidebar(); };
+    b.textContent = label + " (" + n + ")"; b.dataset.c = cat;
+    if (cat === curCat) b.classList.add("on");
+    b.onclick = () => { curCat = cat; renderBar(); buildSidebar(); };
     bar.appendChild(b);
   });
 
@@ -108,7 +111,7 @@ function init(){
 }
 
 function renderBar(){
-  [...document.getElementById("carrierBar").children].forEach(x => x.classList.toggle("on", x.dataset.c === curCarrier));
+  [...document.getElementById("catBar").children].forEach(x => x.classList.toggle("on", x.dataset.c === curCat));
 }
 
 function joinRows(prev, cur){
@@ -129,22 +132,11 @@ function buildSidebar(){
   const sb = document.getElementById("sidebar");
   sb.innerHTML = "";
 
-  const chs = Object.entries(DATA.channels)
-    .filter(([id,c]) => c.carrier === curCarrier)
-    .sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
-
+  const all = Object.entries(DATA.channels).sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
+  const chs = curCat === "all" ? all : all.filter(([id,c]) => catOf(c) === curCat);
   if (!chs.length){ sb.innerHTML = '<div class="placeholder">无数据</div>'; return; }
 
-  // 按 category 分组
-  const cats = {b2b_air:"2B头程", small:"小包专线", express:"商业快递", overseas:"海外仓"};
-  const byCat = {};
-  chs.forEach(([id,c]) => { (byCat[c.cat] ||= []).push([id,c]); });
-
-  Object.entries(cats).forEach(([cat,label]) => {
-    const list = byCat[cat];
-    if (!list || !list.length) return;
-    const g = document.createElement("div"); g.className = "group";
-    g.innerHTML = `<div class="gt">${label} (${list.length})</div>`;
+  const renderList = (list) => {
     list.forEach(([id,c]) => {
       const rows = joinRows(c.prev, c.cur);
       let up=0,down=0,flat=0,na=0;
@@ -152,14 +144,26 @@ function buildSidebar(){
       const badgeText = `涨${up} 跌${down} 平${flat}`;
       const div = document.createElement("div");
       div.className = "ch" + (id === curId ? " on" : "");
-      div.innerHTML = `<span>${c.name}</span><span class="badge">${badgeText}</span>`;
+      div.innerHTML = `<span class="chname">${c.name}<small>${c.carrier}</small></span><span class="badge">${badgeText}</span>`;
       div.onclick = () => { curId = id; buildSidebar(); renderDetail(id); };
-      g.appendChild(div);
+      sb.appendChild(div);
     });
-    sb.appendChild(g);
-  });
+  };
 
-  if (!curId || DATA.channels[curId]?.carrier !== curCarrier) curId = chs[0][0];
+  if (curCat === "all"){
+    [["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]].forEach(([cat,label]) => {
+      const sub = all.filter(([id,c]) => catOf(c) === cat);
+      if (!sub.length) return;
+      const g = document.createElement("div");
+      g.className = "gt"; g.textContent = label + " (" + sub.length + ")";
+      sb.appendChild(g);
+      renderList(sub);
+    });
+  } else {
+    renderList(chs);
+  }
+
+  if (!curId || (curCat !== "all" && catOf(DATA.channels[curId] || {}) !== curCat)) curId = chs[0][0];
   renderDetail(curId);
 }
 
@@ -171,10 +175,10 @@ function renderDetail(id){
   let up=0,down=0,flat=0,na=0;
   rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
 
-  const catLabel = {b2b_air:"2B头程", small:"小包专线", express:"商业快递", overseas:"海外仓"}[c.cat] || c.cat;
+  const catLabel = ({small:"小包专线", express:"商业快递", "b2b-air":"2B头程", overseas:"海外仓"}[catOf(c)]) || catOf(c);
 
   let html = `<div class="dcard">`;
-  html += `<div class="dhead"><div><div class="dname">${c.name}</div><div class="dcar">${c.carrier} · ${catLabel}</div></div><span class="dtag">${c.cat}</span></div>`;
+  html += `<div class="dhead"><div><div class="dname">${c.name}</div><div class="dcar">${c.carrier} · ${catLabel}</div></div><span class="dtag">${catOf(c)}</span></div>`;
   html += `<div class="chips">`+
     `<span class="chip up">▲ 涨 ${up}</span>`+
     `<span class="chip down">▼ 跌 ${down}</span>`+
