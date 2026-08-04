@@ -248,8 +248,8 @@
   .split-note{margin-top:6px;font-size:11px;color:var(--mut);line-height:1.5}
 
 </style>
-  <script src="sku_master.js?v=1785850017"></script>
-  <script src="rates.js?v=1785850017"></script>
+  <script src="sku_master.js?v=__BUILD_TS__"></script>
+  <script src="rates.js?v=__BUILD_TS__"></script>
   <script>
 const CN2ISO = {
    "乌拉圭":"UY", "留尼汪岛":"RE", "哥斯达黎加":"CR", "孟加拉国":"BD", "危地马拉":"GT", "法属波利尼西亚":"PF", "萨尔瓦多":"SV", "巴布亚新几内亚":"PG", "贝宁":"BJ", "布基纳法索":"BF", "布隆迪":"BI", "赤道几内亚":"GQ", "多哥":"TG", "冈比亚":"GM", "刚果(布)":"CG", "刚果(金)":"CD", "吉布提":"DJ", "几内亚":"GN", "加蓬":"GA", "喀麦隆":"CM", "科摩罗":"KM", "科特迪瓦(象牙海岸)":"CI", "利比里亚":"LR", "马里":"ML", "毛里塔尼亚":"MR", "南苏丹共和国":"SS", "尼日尔":"NE", "塞拉利昂":"SL", "中非":"CF", "马其顿":"MK", "黑山共和国":"ME", "阿鲁巴":"AW", "巴拿马":"PA", "多米尼加":"DO", "厄瓜多尔":"EC", "法属圭亚那":"GF", "古巴":"CU", "库拉索岛(荷兰)":"CW", "特立尼达和多巴哥":"TT",
@@ -2005,7 +2005,7 @@ function rMom(){
   // 主站顶部 nav 已是 4 业务域切入口；这里只嵌入看板（默认 cat=all）+ 原两期环比折叠区
   let h=`<div class="card"><h2>⑦ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
     <div class="note">按主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）组织：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。看板上方 Tab 切换业务域，左栏选渠道、右栏看环比详情。</div>
-    <iframe id="mIframe" src="mom.html?embed=1&v=1785850017" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=__BUILD_TS__" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
     <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
       <div style="margin-top:10px">
         <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
