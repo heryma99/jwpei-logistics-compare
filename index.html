@@ -2017,6 +2017,15 @@ function rConfig(){
     <div class="note">各渠道计费重除数不同（云途10000 / 飞特7000 / 中运通达B2B 6000 / 亚丰美线6000·欧线5000 / 商业快递5000 …）。在此<b>按渠道维护除数</b>：保存后即时生效并记到浏览器本地，刷新不丢、<b>无需改 rates.json 或重新部署</b>。结果表「除数」列即读此值（②小包专线 / ⑨全渠道比价 / ③商业快递 / ④头程 全部同步）。</div>
     <div style="max-height:320px;overflow:auto;margin-top:6px"><table><thead><tr><th>物流商</th><th>渠道</th><th>当前除数</th><th>改为</th></tr></thead><tbody>${divRows}</tbody></table></div>
     <div style="margin-top:8px"><button class="act" id="saveDiv">保存除数</button> <span id="divStat" class="mut"></span></div>
+    <div style="margin-top:14px;padding:10px;background:#15202b;border-radius:6px;border:1px solid #2a3a4a">
+      <h3 style="margin:0 0 6px">团队共享（改了别人也能用）</h3>
+      <div class="note">粘贴「物流报价监控群」的<b>自定义机器人 Webhook</b>地址：点「保存除数」除存本机外，还会把改动推送到该群，由后台定时任务写回 GitHub 仓库，<b>全员刷新即见</b>。获取路径：飞书群设置 → 机器人 → 添加机器人 → 自定义机器人 → 复制 Webhook 地址。</div>
+      <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input id="teamHook" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxxx" value="${localStorage.getItem('jwpei_team_hook')||''}" style="flex:1;min-width:280px;padding:6px">
+        <button class="ghost" id="saveHook">记住</button>
+        <span id="hookStat" class="mut"></span>
+      </div>
+    </div>
     <h3 style="margin-top:20px">Per-Country 计费例外维护</h3>
     <div class="note">每个渠道可为特定国家设置<b>例外除数</b>和<b>例外计费规则</b>（如云途加拿大 2 倍泡比 /8000）。例外优先于渠道默认值。在此配置后点「保存」即生效，<b>无需改 rates.json 或重部署</b>。</div>
     ${(function(){
@@ -2063,19 +2072,19 @@ function rConfig(){
     localStorage.setItem('jwpei_divisor_overrides', JSON.stringify(ov));
     applyDivisorOverrides(ov);
     const n=Object.keys(ov).length;
-    if(!window.SAVE_ENDPOINT){
+    const hook=document.getElementById('teamHook')?document.getElementById('teamHook').value.trim():'';
+    if(!hook){
       $("#divStat").innerHTML='<span class="ok">✓ 已保存 '+n+' 条并生效（存于浏览器本地）</span>';
       return;
     }
-    // 方案1：同步推送到团队（GitHub 仓库），让其他人也能用
+    // 方案1：推送到飞书群 Webhook → 后台定时任务写回 GitHub 仓库（全员可见）
     const payload={channels:Object.keys(ov).map(id=>({id, volumetric_divisor:ov[id]}))};
-    fetch(window.SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-      .then(r=>r.json()).then(j=>{
-        if(j&&j.ok) $("#divStat").innerHTML='<span class="ok">✓ 已保存到团队（'+n+' 条）并生效，全员刷新即见</span>';
-        else $("#divStat").innerHTML='<span class="err">团队保存失败：'+((j&&j.error)||'未知错误')+'（本机已保存）</span>';
-      })
+    const body=JSON.stringify({msg_type:'text',content:{text:'[RATES-SAVE] '+JSON.stringify(payload)}});
+    fetch(hook,{method:'POST',headers:{'Content-Type':'application/json'},body})
+      .then(r=>{ if(r.ok) $("#divStat").innerHTML='<span class="ok">✓ 已推送到团队（'+n+' 条），后台将写回仓库，全员刷新即见</span>'; else throw new Error('HTTP '+r.status); })
       .catch(e=>$("#divStat").innerHTML='<span class="err">团队保存失败：'+e.message+'（本机已保存）</span>');
   };
+  $("#saveHook").onclick=()=>{ const v=document.getElementById('teamHook').value.trim(); localStorage.setItem('jwpei_team_hook',v); $("#hookStat").innerHTML=v?'<span class="ok">✓ 已记住团队 Webhook</span>':'<span class="mut">已清除</span>'; };
   $("#saveCfg").onclick=()=>{ try{ S=JSON.parse($("#cfg").value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
   $("#resetCfg").onclick=()=>{ if(confirm("恢复默认配置？当前改动将丢失")){ S=JSON.parse(JSON.stringify(DEF)); saveState(); rConfig(); } };
   $("#exp").onclick=()=>{ const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="logi_config.json"; a.click(); };
