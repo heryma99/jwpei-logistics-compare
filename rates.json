@@ -22700,8 +22700,8 @@
      "max_weight": 5
     },
     "美国": {
-     "per_piece": "/",
-     "per_kg": "/",
+     "per_piece": null,
+     "per_kg": null,
      "max_weight": 2
     },
     "墨西哥": {
