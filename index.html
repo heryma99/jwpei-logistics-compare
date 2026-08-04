@@ -2014,7 +2014,11 @@ function rConfig(){
       <input type="file" id="impFile" style="display:none">
       <span id="cStat" class="mut"></span>
     </div>
-    <textarea id="cfg">${JSON.stringify(S,null,2)}</textarea>
+    <div id="cfgWrap">
+      <div class="note">配置 JSON 约 ${(JSON.stringify(S,null,2).length/1024).toFixed(1)} KB，直接编辑可能影响运行，建议先导出备份。</div>
+      <button class="ghost" id="editCfg">展开编辑 JSON</button>
+    </div>
+    <textarea id="cfg" style="display:none">${JSON.stringify(S,null,2)}</textarea>
     <div style="margin-top:8px"><button class="act" id="saveCfg">保存配置</button> <button class="ghost" id="resetCfg">恢复默认</button></div>
     <h3 style="margin-top:16px">渠道体积重除数维护（per-channel）</h3>
     <div class="note">各渠道计费重除数不同（云途10000 / 飞特7000 / 中运通达B2B 6000 / 亚丰美线6000·欧线5000 / 商业快递5000 …）。在此<b>按渠道维护除数</b>：保存后即时生效并记到浏览器本地，刷新不丢、<b>无需改 rates.json 或重新部署</b>。结果表「除数」列即读此值（②小包专线 / ⑨全渠道比价 / ③商业快递 / ④头程 全部同步）。</div>
@@ -2043,8 +2047,9 @@ function rConfig(){
           return `<tr><td>${cn}</td><td>${d.volumetric_divisor||'—'}</td><td>${d.charge_rule||'—'}</td>
             <td><button class="ghost" onclick="delCountryOverride('${ch.id}','${cn}')">×删除</button></td></tr>`;
         }).join('');
-        return `<div style="margin:8px 0;padding:8px;background:#1a2330;border-radius:4px">
-          <b>${ch.name}</b> <span class="mut">渠道默认 div=${defDiv} · 规则=${defRule}</span>
+        const hasOv = Object.keys(chOv).length;
+        return `<details style="margin:8px 0;padding:8px;background:#1a2330;border-radius:4px">
+          <summary style="cursor:pointer;user-select:none"><b>${ch.name}</b> <span class="mut">渠道默认 div=${defDiv} · 规则=${defRule}${hasOv?' · 已设 '+hasOv+' 条例外':''}</span></summary>
           <table style="margin-top:4px;width:100%"><thead><tr><th>国家</th><th>例外除数</th><th>例外计费规则</th><th></th></tr></thead>
           <tbody>${coRows||'<tr><td colspan="4" class="mut">暂无例外</td></tr>'}</tbody></table>
           <div id="coForm${ch.id}" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -2057,7 +2062,7 @@ function rConfig(){
               <option value="vol_if_2x_actual">vol_if_2x_actual(2倍泡比)</option>
             </select>
             <button class="ghost" onclick="addCountryOverride('${ch.id}')">+添加</button>
-          </div></div>`;
+          </div></details>`;
       }).join('');
     })()}
 
@@ -2103,7 +2108,8 @@ function rConfig(){
     if(!res.ok){ const t=await res.text().catch(()=>''); throw new Error('写回仓库失败 HTTP '+res.status+' '+(t||'').slice(0,120)); }
     return true;
   }
-  $("#saveCfg").onclick=()=>{ try{ S=JSON.parse($("#cfg").value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
+  $("#editCfg").onclick=()=>{ const ta=$("#cfg"); ta.style.display='block'; ta.value=JSON.stringify(S,null,2); $("#cfgWrap").style.display='none'; };
+  $("#saveCfg").onclick=()=>{ const ta=$("#cfg"); if(ta.style.display==='none'){ $("#cStat").innerHTML='<span class="mut">请先点「展开编辑 JSON」再保存</span>'; return; } try{ S=JSON.parse(ta.value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
   $("#resetCfg").onclick=()=>{ if(confirm("恢复默认配置？当前改动将丢失")){ S=JSON.parse(JSON.stringify(DEF)); saveState(); rConfig(); } };
   $("#exp").onclick=()=>{ const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="logi_config.json"; a.click(); };
   $("#imp").onclick=()=> $("#impFile").click();
