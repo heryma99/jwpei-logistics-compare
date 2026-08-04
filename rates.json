@@ -12,1273 +12,1273 @@
    "note": "计费重=MAX(实重, 长*宽*高/8000)；运费=费率/kg×计费重 + 挂号费/票；保价=申报价值×0.7%(最低5元)。DDP完税。按重量段取费率。；欧盟国家额外收取VAT(申报值×国别税率)+代缴服务费(申报值×2%)+3欧元/Item临时固定关税(2026.7.1起)",
    "countries": {
     "美国": {
+     "min_charge_weight": 0.03,
      "brackets": [
       {
        "up": 0.1,
-       "rate": 107,
-       "reg": 23
+       "rate": 107.0,
+       "reg": 23.0
       },
       {
        "up": 0.2,
-       "rate": 102,
-       "reg": 21
+       "rate": 102.0,
+       "reg": 21.0
       },
       {
        "up": 0.3,
-       "rate": 100,
-       "reg": 19
+       "rate": 100.0,
+       "reg": 19.0
       },
       {
        "up": 0.45,
-       "rate": 99,
-       "reg": 19
+       "rate": 99.0,
+       "reg": 19.0
       },
       {
        "up": 0.7,
-       "rate": 98,
-       "reg": 19
+       "rate": 98.0,
+       "reg": 19.0
       },
       {
-       "up": 2,
-       "rate": 97,
-       "reg": 12
+       "up": 2.0,
+       "rate": 97.0,
+       "reg": 12.0
       },
       {
-       "up": 30,
-       "rate": 92,
-       "reg": 12
+       "up": 30.0,
+       "rate": 92.0,
+       "reg": 12.0
       }
-     ],
-     "min_charge_weight": 0.03
+     ]
     },
     "英国": {
      "brackets": [
       {
        "up": 0.3,
-       "rate": 39,
-       "reg": 16
+       "rate": 39.0,
+       "reg": 16.0
       },
       {
        "up": 0.5,
-       "rate": 41,
-       "reg": 16
+       "rate": 41.0,
+       "reg": 16.0
       },
       {
-       "up": 1,
-       "rate": 41,
-       "reg": 16
+       "up": 1.0,
+       "rate": 41.0,
+       "reg": 16.0
       },
       {
-       "up": 2,
-       "rate": 44,
-       "reg": 16
+       "up": 2.0,
+       "rate": 44.0,
+       "reg": 16.0
       },
       {
-       "up": 5,
-       "rate": 46,
-       "reg": 16
+       "up": 5.0,
+       "rate": 46.0,
+       "reg": 16.0
       },
       {
-       "up": 15,
-       "rate": 46,
-       "reg": 16
+       "up": 15.0,
+       "rate": 46.0,
+       "reg": 16.0
       },
       {
-       "up": 20,
-       "rate": 46,
-       "reg": 16
+       "up": 20.0,
+       "rate": 46.0,
+       "reg": 16.0
       }
      ]
     },
     "法国": {
+     "vat": 0.2,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 47,
-       "reg": 20
+       "rate": 42.0,
+       "reg": 20.0
       },
       {
        "up": 0.5,
-       "rate": 48,
-       "reg": 20
+       "rate": 43.0,
+       "reg": 20.0
       },
       {
-       "up": 1,
-       "rate": 47,
-       "reg": 23
+       "up": 1.0,
+       "rate": 42.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 47,
-       "reg": 23
+       "up": 2.0,
+       "rate": 42.0,
+       "reg": 23.0
       },
       {
-       "up": 5,
-       "rate": 46,
-       "reg": 23
+       "up": 5.0,
+       "rate": 41.0,
+       "reg": 23.0
       },
       {
-       "up": 30,
-       "rate": 46,
-       "reg": 23
+       "up": 30.0,
+       "rate": 41.0,
+       "reg": 23.0
       }
-     ],
-     "vat": 0.2,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "德国": {
+     "vat": 0.19,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.1,
-       "rate": 49,
-       "reg": 22
+       "rate": 46.0,
+       "reg": 22.0
       },
       {
        "up": 0.3,
-       "rate": 49,
-       "reg": 21
+       "rate": 46.0,
+       "reg": 21.0
       },
       {
-       "up": 1,
-       "rate": 46,
-       "reg": 22
+       "up": 1.0,
+       "rate": 43.0,
+       "reg": 22.0
       },
       {
-       "up": 2,
-       "rate": 46,
-       "reg": 22
+       "up": 2.0,
+       "rate": 43.0,
+       "reg": 22.0
       },
       {
-       "up": 5,
-       "rate": 46,
-       "reg": 22
+       "up": 5.0,
+       "rate": 43.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 46,
-       "reg": 22
+       "up": 30.0,
+       "rate": 43.0,
+       "reg": 22.0
       }
-     ],
-     "vat": 0.19,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "意大利": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 49,
-       "reg": 25
-      },
-      {
-       "up": 30,
-       "rate": 51,
-       "reg": 25
-      }
-     ],
      "vat": 0.22,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 43.0,
+       "reg": 25.0
+      },
+      {
+       "up": 30.0,
+       "rate": 45.0,
+       "reg": 25.0
+      }
+     ]
     },
     "西班牙": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 50,
-       "reg": 18
-      },
-      {
-       "up": 30,
-       "rate": 50,
-       "reg": 18
-      }
-     ],
      "vat": 0.21,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 45.0,
+       "reg": 18.0
+      },
+      {
+       "up": 30.0,
+       "rate": 45.0,
+       "reg": 18.0
+      }
+     ]
     },
     "荷兰": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 78,
-       "reg": 21
+       "rate": 73.0,
+       "reg": 21.0
       },
       {
        "up": 0.5,
-       "rate": 68,
-       "reg": 23
+       "rate": 63.0,
+       "reg": 23.0
       },
       {
-       "up": 1,
-       "rate": 66,
-       "reg": 23
+       "up": 1.0,
+       "rate": 61.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 66,
-       "reg": 23
+       "up": 2.0,
+       "rate": 61.0,
+       "reg": 23.0
       },
       {
-       "up": 20,
-       "rate": 56,
-       "reg": 23
+       "up": 20.0,
+       "rate": 51.0,
+       "reg": 23.0
       }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "比利时": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 76,
-       "reg": 23
+       "rate": 71.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 71,
-       "reg": 21
+       "up": 2.0,
+       "rate": 66.0,
+       "reg": 21.0
       },
       {
-       "up": 5,
-       "rate": 67,
-       "reg": 21
+       "up": 5.0,
+       "rate": 62.0,
+       "reg": 21.0
       },
       {
-       "up": 20,
-       "rate": 67,
-       "reg": 21
+       "up": 20.0,
+       "rate": 62.0,
+       "reg": 21.0
       }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "奥地利": {
+     "vat": 0.2,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.5,
-       "rate": 59,
-       "reg": 23
+       "rate": 51.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 59,
-       "reg": 23
+       "up": 2.0,
+       "rate": 52.0,
+       "reg": 23.0
       },
       {
-       "up": 30,
-       "rate": 59,
-       "reg": 23
+       "up": 30.0,
+       "rate": 52.0,
+       "reg": 23.0
       }
-     ],
-     "vat": 0.2,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "瑞典": {
+     "vat": 0.25,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.3,
-       "rate": 54,
-       "reg": 16
+       "rate": 49.0,
+       "reg": 16.0
       },
       {
-       "up": 2,
-       "rate": 49,
-       "reg": 21
+       "up": 2.0,
+       "rate": 44.0,
+       "reg": 21.0
       },
       {
-       "up": 20,
-       "rate": 52,
-       "reg": 21
+       "up": 20.0,
+       "rate": 47.0,
+       "reg": 21.0
       }
-     ],
-     "vat": 0.25,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "波兰": {
+     "vat": 0.23,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 67,
-       "reg": 11
+       "rate": 67.0,
+       "reg": 11.0
       },
       {
-       "up": 2,
-       "rate": 63,
-       "reg": 15
+       "up": 2.0,
+       "rate": 63.0,
+       "reg": 15.0
       },
       {
-       "up": 30,
-       "rate": 63,
-       "reg": 15
+       "up": 30.0,
+       "rate": 63.0,
+       "reg": 15.0
       }
-     ],
-     "vat": 0.23,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "南非": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.1,
      "brackets": [
       {
-       "up": 2,
-       "rate": 164,
-       "reg": 26
+       "up": 2.0,
+       "rate": 164.0,
+       "reg": 26.0
       },
       {
-       "up": 10,
-       "rate": 164,
-       "reg": 26
+       "up": 10.0,
+       "rate": 164.0,
+       "reg": 26.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.1
+     ]
     },
     "塞浦路斯": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 112,
-       "reg": 29
-      },
-      {
-       "up": 30,
-       "rate": 117,
-       "reg": 29
-      }
-     ],
      "vat": 0.19,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "爱尔兰": {
+     "duty_fixed_eur": 3,
      "brackets": [
       {
-       "up": 5,
-       "rate": 77,
-       "reg": 23
+       "up": 2.0,
+       "rate": 112.0,
+       "reg": 29.0
       },
       {
-       "up": 20,
-       "rate": 78,
-       "reg": 23
+       "up": 30.0,
+       "rate": 117.0,
+       "reg": 29.0
       }
-     ],
+     ]
+    },
+    "爱尔兰": {
      "vat": 0.23,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 5.0,
+       "rate": 72.0,
+       "reg": 23.0
+      },
+      {
+       "up": 20.0,
+       "rate": 73.0,
+       "reg": 23.0
+      }
+     ]
     },
     "希腊": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 81,
-       "reg": 18
-      }
-     ],
      "vat": 0.24,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 81.0,
+       "reg": 18.0
+      }
+     ]
     },
     "保加利亚": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 76,
-       "reg": 18
-      }
-     ],
      "vat": 0.2,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 76.0,
+       "reg": 18.0
+      }
+     ]
     },
     "葡萄牙": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 60,
-       "reg": 20
-      }
-     ],
      "vat": 0.23,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 55.0,
+       "reg": 20.0
+      }
+     ]
     },
     "匈牙利": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 65,
-       "reg": 21
-      }
-     ],
      "vat": 0.27,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "斯洛伐克": {
+     "duty_fixed_eur": 3,
      "brackets": [
       {
-       "up": 30,
-       "rate": 82,
-       "reg": 20
+       "up": 30.0,
+       "rate": 55.0,
+       "reg": 21.0
       }
-     ],
+     ]
+    },
+    "斯洛伐克": {
      "vat": 0.23,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 82.0,
+       "reg": 20.0
+      }
+     ]
     },
     "捷克": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.5,
-       "rate": 61,
-       "reg": 20
+       "rate": 54.0,
+       "reg": 20.0
       },
       {
-       "up": 2,
-       "rate": 61,
-       "reg": 20
+       "up": 2.0,
+       "rate": 55.0,
+       "reg": 20.0
       },
       {
-       "up": 30,
-       "rate": 67,
-       "reg": 20
+       "up": 30.0,
+       "rate": 61.0,
+       "reg": 20.0
       }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "罗马尼亚": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 79,
-       "reg": 20
-      }
-     ],
      "vat": 0.21,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "芬兰": {
+     "duty_fixed_eur": 3,
      "brackets": [
       {
-       "up": 30,
-       "rate": 74,
-       "reg": 26
+       "up": 30.0,
+       "rate": 79.0,
+       "reg": 20.0
       }
-     ],
+     ]
+    },
+    "芬兰": {
      "vat": 0.255,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 74.0,
+       "reg": 26.0
+      }
+     ]
     },
     "丹麦": {
+     "vat": 0.25,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.3,
-       "rate": 80,
-       "reg": 24
+       "rate": 75.0,
+       "reg": 24.0
       },
       {
-       "up": 2,
-       "rate": 64,
-       "reg": 24
+       "up": 2.0,
+       "rate": 59.0,
+       "reg": 24.0
       },
       {
-       "up": 15,
-       "rate": 60,
-       "reg": 24
+       "up": 15.0,
+       "rate": 55.0,
+       "reg": 24.0
       }
-     ],
-     "vat": 0.25,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "挪威": {
      "brackets": [
       {
        "up": 0.1,
-       "rate": 93,
-       "reg": 21
+       "rate": 93.0,
+       "reg": 21.0
       },
       {
        "up": 0.3,
-       "rate": 80,
-       "reg": 20
+       "rate": 80.0,
+       "reg": 20.0
       },
       {
-       "up": 5,
-       "rate": 72,
-       "reg": 20
+       "up": 5.0,
+       "rate": 72.0,
+       "reg": 20.0
       }
      ]
     },
     "墨西哥": {
+     "min_charge_weight": 0.02,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 65,
-       "reg": 17
+       "rate": 65.0,
+       "reg": 17.0
       },
       {
        "up": 0.5,
-       "rate": 65,
-       "reg": 18
+       "rate": 65.0,
+       "reg": 18.0
       },
       {
-       "up": 1,
-       "rate": 65,
-       "reg": 18
+       "up": 1.0,
+       "rate": 65.0,
+       "reg": 18.0
       },
       {
-       "up": 3,
-       "rate": 65,
-       "reg": 20
+       "up": 3.0,
+       "rate": 65.0,
+       "reg": 20.0
       },
       {
-       "up": 10,
-       "rate": 65,
-       "reg": 20
+       "up": 10.0,
+       "rate": 65.0,
+       "reg": 20.0
       }
-     ],
-     "min_charge_weight": 0.02
+     ]
     },
     "以色列": {
      "brackets": [
       {
        "up": 0.3,
-       "rate": 137,
-       "reg": 23
+       "rate": 137.0,
+       "reg": 23.0
       },
       {
-       "up": 5,
-       "rate": 137,
-       "reg": 26
+       "up": 5.0,
+       "rate": 137.0,
+       "reg": 26.0
       }
      ]
     },
     "巴西": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.05,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 102,
-       "reg": 46
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
        "up": 0.5,
-       "rate": 102,
-       "reg": 46
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
-       "up": 1,
-       "rate": 102,
-       "reg": 46
+       "up": 1.0,
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
        "up": 1.5,
-       "rate": 102,
-       "reg": 46
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
-       "up": 2,
-       "rate": 102,
-       "reg": 49
+       "up": 2.0,
+       "rate": 102.0,
+       "reg": 49.0
       },
       {
-       "up": 5,
-       "rate": 102,
-       "reg": 60
+       "up": 5.0,
+       "rate": 102.0,
+       "reg": 60.0
       },
       {
-       "up": 20,
-       "rate": 102,
-       "reg": 100
+       "up": 20.0,
+       "rate": 102.0,
+       "reg": 100.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.05
+     ]
     },
     "新加坡": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 30,
-       "reg": 16
+       "up": 30.0,
+       "rate": 30.0,
+       "reg": 16.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "泰国": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 25,
-       "rate": 43,
-       "reg": 14
+       "up": 25.0,
+       "rate": 43.0,
+       "reg": 14.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "新西兰": {
+     "charge_rule": "vol_if_2x_actual",
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 25,
-       "rate": 83,
-       "reg": 17
+       "up": 25.0,
+       "rate": 83.0,
+       "reg": 17.0
       }
-     ],
-     "charge_rule": "vol_if_2x_actual",
-     "volumetric_divisor": 6000
+     ]
     },
     "瑞士": {
      "brackets": [
       {
        "up": 0.1,
-       "rate": 123,
-       "reg": 22
+       "rate": 118.0,
+       "reg": 22.0
       },
       {
        "up": 0.2,
-       "rate": 98,
-       "reg": 22
+       "rate": 93.0,
+       "reg": 22.0
       },
       {
        "up": 0.5,
-       "rate": 112,
-       "reg": 18
+       "rate": 107.0,
+       "reg": 18.0
       },
       {
-       "up": 5,
-       "rate": 98,
-       "reg": 18
+       "up": 5.0,
+       "rate": 93.0,
+       "reg": 18.0
       }
      ]
     },
     "爱沙尼亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 68,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 68,
-       "reg": 20
-      }
-     ],
      "vat": 0.24,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 68.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 68.0,
+       "reg": 20.0
+      }
+     ]
     },
     "拉脱维亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 69,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 71,
-       "reg": 20
-      }
-     ],
      "vat": 0.21,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 69.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 71.0,
+       "reg": 20.0
+      }
+     ]
     },
     "立陶宛": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 66,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 69,
-       "reg": 20
-      }
-     ],
      "vat": 0.21,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 66.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 69.0,
+       "reg": 20.0
+      }
+     ]
     },
     "克罗地亚": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 94,
-       "reg": 26
-      }
-     ],
      "vat": 0.25,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 84.0,
+       "reg": 26.0
+      }
+     ]
     },
     "斯洛文尼亚": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 86,
-       "reg": 26
-      }
-     ],
      "vat": 0.22,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 76.0,
+       "reg": 26.0
+      }
+     ]
     },
     "巴基斯坦": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.05,
      "brackets": [
       {
-       "up": 2,
-       "rate": 88,
-       "reg": 8
+       "up": 2.0,
+       "rate": 88.0,
+       "reg": 8.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.05
+     ]
     },
     "尼日利亚": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.1,
      "brackets": [
       {
-       "up": 2,
-       "rate": 121,
-       "reg": 22
+       "up": 2.0,
+       "rate": 121.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 120,
-       "reg": 22
+       "up": 10.0,
+       "rate": 120.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 119,
-       "reg": 22
+       "up": 30.0,
+       "rate": 119.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.1
+     ]
     },
     "加纳": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 142,
-       "reg": 22
+       "up": 2.0,
+       "rate": 142.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 141,
-       "reg": 22
+       "up": 10.0,
+       "rate": 141.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 140,
-       "reg": 22
+       "up": 30.0,
+       "rate": 140.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "乌干达": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 146,
-       "reg": 22
+       "up": 2.0,
+       "rate": 146.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 145,
-       "reg": 22
+       "up": 10.0,
+       "rate": 145.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 144,
-       "reg": 22
+       "up": 30.0,
+       "rate": 144.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "肯尼亚": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 106,
-       "reg": 22
+       "up": 2.0,
+       "rate": 106.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 105,
-       "reg": 22
+       "up": 10.0,
+       "rate": 105.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 104,
-       "reg": 22
+       "up": 30.0,
+       "rate": 104.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "马约特": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 144,
-       "reg": 100
+       "up": 2.0,
+       "rate": 144.0,
+       "reg": 100.0
       },
       {
-       "up": 10,
-       "rate": 144,
-       "reg": 100
+       "up": 10.0,
+       "rate": 144.0,
+       "reg": 100.0
       },
       {
-       "up": 30,
-       "rate": 144,
-       "reg": 100
+       "up": 30.0,
+       "rate": 144.0,
+       "reg": 100.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "坦桑尼亚": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 115,
-       "reg": 18
+       "up": 2.0,
+       "rate": 115.0,
+       "reg": 18.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "卢旺达": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 113,
-       "reg": 18
+       "up": 2.0,
+       "rate": 113.0,
+       "reg": 18.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "安哥拉": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 117,
-       "reg": 24
+       "up": 2.0,
+       "rate": 117.0,
+       "reg": 24.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "摩洛哥": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 105,
-       "reg": 46
+       "up": 2.0,
+       "rate": 105.0,
+       "reg": 46.0
       },
       {
-       "up": 5,
-       "rate": 104,
-       "reg": 46
+       "up": 5.0,
+       "rate": 104.0,
+       "reg": 46.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "塞内加尔": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 178,
-       "reg": 90
+       "up": 2.0,
+       "rate": 178.0,
+       "reg": 90.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "毛里求斯": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 141,
-       "reg": 15
+       "up": 2.0,
+       "rate": 141.0,
+       "reg": 15.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "留尼汪": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 155,
-       "reg": 60
+       "up": 2.0,
+       "rate": 155.0,
+       "reg": 60.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "马达加斯加": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 144,
-       "reg": 60
+       "up": 2.0,
+       "rate": 144.0,
+       "reg": 60.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "塞舌尔": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 249,
-       "reg": 95
+       "up": 2.0,
+       "rate": 249.0,
+       "reg": 95.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "赞比亚": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 144,
-       "reg": 35
+       "up": 2.0,
+       "rate": 144.0,
+       "reg": 35.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "阿拉伯联合酋长国": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.1,
      "brackets": [
       {
-       "up": 2,
-       "rate": 65,
-       "reg": 22
+       "up": 2.0,
+       "rate": 65.0,
+       "reg": 22.0
       },
       {
-       "up": 5,
-       "rate": 65,
-       "reg": 22
+       "up": 5.0,
+       "rate": 65.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 65,
-       "reg": 26
+       "up": 10.0,
+       "rate": 65.0,
+       "reg": 26.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.1
+     ]
     },
     "沙特阿拉伯": {
      "brackets": [
       {
        "up": 0.5,
-       "rate": 72,
-       "reg": 40
+       "rate": 72.0,
+       "reg": 40.0
       },
       {
-       "up": 2,
-       "rate": 72,
-       "reg": 40
+       "up": 2.0,
+       "rate": 72.0,
+       "reg": 40.0
       },
       {
-       "up": 5,
-       "rate": 77,
-       "reg": 40
+       "up": 5.0,
+       "rate": 77.0,
+       "reg": 40.0
       },
       {
-       "up": 10,
-       "rate": 77,
-       "reg": 45
+       "up": 10.0,
+       "rate": 77.0,
+       "reg": 45.0
       }
      ]
     },
     "科威特": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.1,
      "brackets": [
       {
-       "up": 30,
-       "rate": 67,
-       "reg": 75
+       "up": 30.0,
+       "rate": 67.0,
+       "reg": 75.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.1
+     ]
     },
     "卡塔尔": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.1,
      "brackets": [
       {
-       "up": 30,
-       "rate": 72,
-       "reg": 45
+       "up": 30.0,
+       "rate": 72.0,
+       "reg": 45.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.1
+     ]
     },
     "巴林": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.1,
      "brackets": [
       {
-       "up": 30,
-       "rate": 68,
-       "reg": 61
+       "up": 30.0,
+       "rate": 68.0,
+       "reg": 61.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.1
+     ]
     },
     "约旦": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 15,
-       "rate": 108,
-       "reg": 30
+       "up": 15.0,
+       "rate": 108.0,
+       "reg": 30.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "越南": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 26,
-       "reg": 11
+       "up": 30.0,
+       "rate": 26.0,
+       "reg": 11.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "菲律宾": {
+     "charge_rule": "actual",
      "brackets": [
       {
-       "up": 1,
-       "rate": 30,
-       "reg": 15
+       "up": 1.0,
+       "rate": 30.0,
+       "reg": 15.0
       },
       {
-       "up": 10,
-       "rate": 32,
-       "reg": 50
+       "up": 10.0,
+       "rate": 32.0,
+       "reg": 50.0
       }
-     ],
-     "charge_rule": "actual"
+     ]
     },
     "秘鲁": {
      "brackets": [
       {
-       "up": 2,
-       "rate": 100,
-       "reg": 25
+       "up": 2.0,
+       "rate": 100.0,
+       "reg": 25.0
       }
      ]
     },
     "韩国": {
      "brackets": [
       {
-       "up": 2,
-       "rate": 16,
+       "up": 2.0,
+       "rate": 16.0,
        "reg": 17.5
       },
       {
-       "up": 20,
-       "rate": 17,
-       "reg": 20
+       "up": 20.0,
+       "rate": 17.0,
+       "reg": 20.0
       }
      ]
     },
     "加拿大": {
+     "charge_rule": "vol_if_2x_actual",
+     "volumetric_divisor": 8000,
+     "min_charge_weight": 0.05,
      "brackets": [
       {
        "up": 0.15,
-       "rate": 56,
-       "reg": 21
+       "rate": 56.0,
+       "reg": 21.0
       },
       {
        "up": 0.3,
-       "rate": 57,
-       "reg": 21
+       "rate": 57.0,
+       "reg": 21.0
       },
       {
        "up": 0.45,
-       "rate": 57,
-       "reg": 21
+       "rate": 57.0,
+       "reg": 21.0
       },
       {
        "up": 0.75,
-       "rate": 58,
-       "reg": 22
+       "rate": 58.0,
+       "reg": 22.0
       },
       {
-       "up": 1,
-       "rate": 59,
-       "reg": 22
+       "up": 1.0,
+       "rate": 59.0,
+       "reg": 22.0
       },
       {
        "up": 1.5,
-       "rate": 59,
-       "reg": 23
+       "rate": 59.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 59,
-       "reg": 23
+       "up": 2.0,
+       "rate": 59.0,
+       "reg": 23.0
       },
       {
-       "up": 30,
-       "rate": 63,
-       "reg": 23
+       "up": 30.0,
+       "rate": 63.0,
+       "reg": 23.0
       }
-     ],
-     "charge_rule": "vol_if_2x_actual",
-     "volumetric_divisor": 8000,
-     "min_charge_weight": 0.05
+     ]
     },
     "阿塞拜疆": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 130,
-       "reg": 26
+       "up": 2.0,
+       "rate": 130.0,
+       "reg": 26.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "马来西亚": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 20,
-       "reg": 16
+       "up": 30.0,
+       "rate": 20.0,
+       "reg": 16.0
       },
       {
-       "up": 30,
-       "rate": 23,
-       "reg": 28
+       "up": 30.0,
+       "rate": 23.0,
+       "reg": 28.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "澳大利亚": {
      "brackets": [
       {
        "up": 0.3,
-       "rate": 30,
-       "reg": 21
+       "rate": 30.0,
+       "reg": 21.0
       },
       {
        "up": 0.5,
-       "rate": 30,
-       "reg": 24
+       "rate": 30.0,
+       "reg": 24.0
       },
       {
-       "up": 1,
-       "rate": 30,
-       "reg": 25
+       "up": 1.0,
+       "rate": 30.0,
+       "reg": 25.0
       },
       {
-       "up": 3,
-       "rate": 30,
-       "reg": 27
+       "up": 3.0,
+       "rate": 30.0,
+       "reg": 27.0
       },
       {
-       "up": 20,
-       "rate": 30,
-       "reg": 42
+       "up": 20.0,
+       "rate": 30.0,
+       "reg": 42.0
       },
       {
        "up": 0.3,
-       "rate": 30,
-       "reg": 29
+       "rate": 30.0,
+       "reg": 29.0
       },
       {
        "up": 0.5,
-       "rate": 30,
-       "reg": 30
+       "rate": 30.0,
+       "reg": 30.0
       },
       {
-       "up": 1,
-       "rate": 30,
-       "reg": 34
+       "up": 1.0,
+       "rate": 30.0,
+       "reg": 34.0
       },
       {
-       "up": 3,
-       "rate": 30,
-       "reg": 36
+       "up": 3.0,
+       "rate": 30.0,
+       "reg": 36.0
       },
       {
-       "up": 20,
-       "rate": 30,
-       "reg": 53
+       "up": 20.0,
+       "rate": 30.0,
+       "reg": 53.0
       },
       {
        "up": 0.3,
-       "rate": 35,
-       "reg": 55
+       "rate": 35.0,
+       "reg": 55.0
       },
       {
        "up": 0.5,
-       "rate": 35,
-       "reg": 56
+       "rate": 35.0,
+       "reg": 56.0
       },
       {
-       "up": 1,
-       "rate": 35,
-       "reg": 79
+       "up": 1.0,
+       "rate": 35.0,
+       "reg": 79.0
       },
       {
-       "up": 3,
-       "rate": 35,
-       "reg": 81
+       "up": 3.0,
+       "rate": 35.0,
+       "reg": 81.0
       },
       {
-       "up": 20,
-       "rate": 35,
-       "reg": 120
+       "up": 20.0,
+       "rate": 35.0,
+       "reg": 120.0
       },
       {
        "up": 0.3,
-       "rate": 42,
-       "reg": 62
+       "rate": 42.0,
+       "reg": 62.0
       },
       {
        "up": 0.5,
-       "rate": 42,
-       "reg": 62
+       "rate": 42.0,
+       "reg": 62.0
       },
       {
-       "up": 1,
-       "rate": 42,
-       "reg": 105
+       "up": 1.0,
+       "rate": 42.0,
+       "reg": 105.0
       },
       {
-       "up": 3,
-       "rate": 50,
-       "reg": 130
+       "up": 3.0,
+       "rate": 50.0,
+       "reg": 130.0
       },
       {
-       "up": 20,
-       "rate": 50,
-       "reg": 160
+       "up": 20.0,
+       "rate": 50.0,
+       "reg": 160.0
       }
      ]
     },
     "日本": {
+     "volumetric_divisor": 9000,
+     "min_charge_weight": 0.5,
      "brackets": [
       {
-       "up": 2,
-       "rate": 30,
-       "reg": 5
+       "up": 2.0,
+       "rate": 30.0,
+       "reg": 5.0
       },
       {
-       "up": 10,
-       "rate": 30,
-       "reg": 6
+       "up": 10.0,
+       "rate": 30.0,
+       "reg": 6.0
       }
-     ],
-     "volumetric_divisor": 9000,
-     "min_charge_weight": 0.5
+     ]
     }
    },
    "dest": [
@@ -5044,704 +5044,704 @@
    "note": "计费重=MAX(实重, 长×宽×高/8000)；运费=费率/kg×计费重+挂号费/票；含带电(电池)普货，DDP。；欧盟国家额外收取VAT(申报值×国别税率)+代缴服务费(申报值×2%)+3欧元/Item临时固定关税(2026.7.1起)",
    "countries": {
     "美国": {
+     "min_charge_weight": 0.03,
      "brackets": [
       {
        "up": 0.1,
-       "rate": 114,
-       "reg": 23
+       "rate": 114.0,
+       "reg": 23.0
       },
       {
        "up": 0.2,
-       "rate": 108,
-       "reg": 21
+       "rate": 108.0,
+       "reg": 21.0
       },
       {
        "up": 0.3,
-       "rate": 109,
-       "reg": 19
+       "rate": 109.0,
+       "reg": 19.0
       },
       {
        "up": 0.45,
-       "rate": 108,
-       "reg": 19
+       "rate": 108.0,
+       "reg": 19.0
       },
       {
        "up": 0.7,
-       "rate": 105,
-       "reg": 19
+       "rate": 105.0,
+       "reg": 19.0
       },
       {
-       "up": 2,
-       "rate": 104,
-       "reg": 12
+       "up": 2.0,
+       "rate": 104.0,
+       "reg": 12.0
       },
       {
-       "up": 30,
-       "rate": 104,
-       "reg": 12
+       "up": 30.0,
+       "rate": 104.0,
+       "reg": 12.0
       }
-     ],
-     "min_charge_weight": 0.03
+     ]
     },
     "英国": {
      "brackets": [
       {
        "up": 0.3,
-       "rate": 50,
-       "reg": 16
+       "rate": 50.0,
+       "reg": 16.0
       },
       {
        "up": 0.5,
-       "rate": 52,
-       "reg": 16
+       "rate": 52.0,
+       "reg": 16.0
       },
       {
-       "up": 1,
-       "rate": 52,
-       "reg": 16
+       "up": 1.0,
+       "rate": 52.0,
+       "reg": 16.0
       },
       {
-       "up": 2,
-       "rate": 55,
-       "reg": 16
+       "up": 2.0,
+       "rate": 55.0,
+       "reg": 16.0
       },
       {
-       "up": 5,
-       "rate": 57,
-       "reg": 16
+       "up": 5.0,
+       "rate": 57.0,
+       "reg": 16.0
       },
       {
-       "up": 15,
-       "rate": 57,
-       "reg": 16
+       "up": 15.0,
+       "rate": 57.0,
+       "reg": 16.0
       },
       {
-       "up": 20,
-       "rate": 57,
-       "reg": 16
+       "up": 20.0,
+       "rate": 57.0,
+       "reg": 16.0
       }
      ]
     },
     "法国": {
+     "vat": 0.2,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.4,
-       "rate": 75,
-       "reg": 20
+       "rate": 70.0,
+       "reg": 20.0
       },
       {
-       "up": 1,
-       "rate": 67,
-       "reg": 23
+       "up": 1.0,
+       "rate": 62.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 67,
-       "reg": 23
+       "up": 2.0,
+       "rate": 62.0,
+       "reg": 23.0
       },
       {
-       "up": 5,
-       "rate": 67,
-       "reg": 23
+       "up": 5.0,
+       "rate": 62.0,
+       "reg": 23.0
       },
       {
-       "up": 30,
-       "rate": 67,
-       "reg": 23
+       "up": 30.0,
+       "rate": 62.0,
+       "reg": 23.0
       }
-     ],
-     "vat": 0.2,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
     "德国": {
-     "brackets": [
-      {
-       "up": 0.1,
-       "rate": 70,
-       "reg": 22
-      },
-      {
-       "up": 0.3,
-       "rate": 70,
-       "reg": 21
-      },
-      {
-       "up": 1,
-       "rate": 70,
-       "reg": 22
-      },
-      {
-       "up": 2,
-       "rate": 70,
-       "reg": 22
-      },
-      {
-       "up": 5,
-       "rate": 70,
-       "reg": 22
-      },
-      {
-       "up": 30,
-       "rate": 70,
-       "reg": 22
-      }
-     ],
      "vat": 0.19,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "意大利": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 76,
-       "reg": 25
-      },
-      {
-       "up": 30,
-       "rate": 78,
-       "reg": 25
-      }
-     ],
-     "vat": 0.22,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "西班牙": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 73,
-       "reg": 18
-      },
-      {
-       "up": 30,
-       "rate": 76,
-       "reg": 18
-      }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "荷兰": {
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.1,
-       "rate": 105,
-       "reg": 21
+       "rate": 66.0,
+       "reg": 22.0
       },
       {
-       "up": 0.2,
-       "rate": 98,
-       "reg": 23
+       "up": 0.3,
+       "rate": 66.0,
+       "reg": 21.0
       },
       {
-       "up": 0.5,
-       "rate": 95,
-       "reg": 23
+       "up": 1.0,
+       "rate": 66.0,
+       "reg": 22.0
       },
       {
-       "up": 1,
-       "rate": 95,
-       "reg": 23
+       "up": 2.0,
+       "rate": 66.0,
+       "reg": 22.0
       },
       {
-       "up": 2,
-       "rate": 95,
-       "reg": 23
+       "up": 5.0,
+       "rate": 66.0,
+       "reg": 22.0
       },
       {
-       "up": 20,
-       "rate": 85,
-       "reg": 23
+       "up": 30.0,
+       "rate": 66.0,
+       "reg": 22.0
       }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
-    "比利时": {
-     "brackets": [
-      {
-       "up": 0.2,
-       "rate": 93,
-       "reg": 23
-      },
-      {
-       "up": 2,
-       "rate": 91,
-       "reg": 21
-      },
-      {
-       "up": 5,
-       "rate": 82,
-       "reg": 21
-      },
-      {
-       "up": 20,
-       "rate": 82,
-       "reg": 21
-      }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "卢森堡": {
-     "brackets": [
-      {
-       "up": 0.2,
-       "rate": 122,
-       "reg": 27
-      },
-      {
-       "up": 2,
-       "rate": 119,
-       "reg": 26
-      },
-      {
-       "up": 5,
-       "rate": 115,
-       "reg": 26
-      },
-      {
-       "up": 20,
-       "rate": 115,
-       "reg": 26
-      }
-     ],
-     "vat": 0.17,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "爱尔兰": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 89,
-       "reg": 23
-      },
-      {
-       "up": 5,
-       "rate": 89,
-       "reg": 23
-      },
-      {
-       "up": 20,
-       "rate": 90,
-       "reg": 23
-      }
-     ],
-     "vat": 0.23,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "保加利亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 90,
-       "reg": 18
-      },
-      {
-       "up": 30,
-       "rate": 90,
-       "reg": 18
-      }
-     ],
-     "vat": 0.2,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "克罗地亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 107,
-       "reg": 26
-      },
-      {
-       "up": 30,
-       "rate": 107,
-       "reg": 26
-      }
-     ],
-     "vat": 0.25,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "捷克": {
-     "brackets": [
-      {
-       "up": 0.5,
-       "rate": 78,
-       "reg": 20
-      },
-      {
-       "up": 2,
-       "rate": 78,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 84,
-       "reg": 20
-      }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "爱沙尼亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 85,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 89,
-       "reg": 20
-      }
-     ],
-     "vat": 0.24,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "芬兰": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 98,
-       "reg": 26
-      },
-      {
-       "up": 30,
-       "rate": 96,
-       "reg": 26
-      }
-     ],
-     "vat": 0.255,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "匈牙利": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 82,
-       "reg": 21
-      },
-      {
-       "up": 30,
-       "rate": 88,
-       "reg": 21
-      }
-     ],
-     "vat": 0.27,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "拉脱维亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 89,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 90,
-       "reg": 20
-      }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "立陶宛": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 86,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 89,
-       "reg": 20
-      }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "马耳他": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 152,
-       "reg": 30
-      },
-      {
-       "up": 30,
-       "rate": 152,
-       "reg": 30
-      }
-     ],
-     "vat": 0.18,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "波兰": {
-     "brackets": [
-      {
-       "up": 0.2,
-       "rate": 86,
-       "reg": 13
-      },
-      {
-       "up": 2,
-       "rate": 83,
-       "reg": 15
-      },
-      {
-       "up": 30,
-       "rate": 83,
-       "reg": 15
-      }
-     ],
-     "vat": 0.23,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "葡萄牙": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 86,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 89,
-       "reg": 20
-      }
-     ],
-     "vat": 0.23,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "罗马尼亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 97,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 97,
-       "reg": 20
-      }
-     ],
-     "vat": 0.21,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "斯洛伐克": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 101,
-       "reg": 20
-      },
-      {
-       "up": 30,
-       "rate": 104,
-       "reg": 20
-      }
-     ],
-     "vat": 0.23,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "斯洛文尼亚": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 102,
-       "reg": 26
-      },
-      {
-       "up": 30,
-       "rate": 102,
-       "reg": 26
-      }
-     ],
+    "意大利": {
      "vat": 0.22,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "瑞典": {
+     "duty_fixed_eur": 3,
      "brackets": [
       {
-       "up": 0.3,
-       "rate": 76,
-       "reg": 16
+       "up": 2.0,
+       "rate": 71.0,
+       "reg": 25.0
       },
       {
-       "up": 2,
-       "rate": 78,
-       "reg": 21
-      },
-      {
-       "up": 20,
-       "rate": 78,
-       "reg": 21
+       "up": 30.0,
+       "rate": 73.0,
+       "reg": 25.0
       }
-     ],
-     "vat": 0.25,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     ]
     },
-    "奥地利": {
+    "西班牙": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
      "brackets": [
+      {
+       "up": 2.0,
+       "rate": 68.0,
+       "reg": 18.0
+      },
+      {
+       "up": 30.0,
+       "rate": 71.0,
+       "reg": 18.0
+      }
+     ]
+    },
+    "荷兰": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 0.1,
+       "rate": 100.0,
+       "reg": 21.0
+      },
+      {
+       "up": 0.2,
+       "rate": 93.0,
+       "reg": 23.0
+      },
       {
        "up": 0.5,
-       "rate": 85,
-       "reg": 23
+       "rate": 90.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 85,
-       "reg": 23
+       "up": 1.0,
+       "rate": 90.0,
+       "reg": 23.0
       },
       {
-       "up": 30,
-       "rate": 85,
-       "reg": 23
+       "up": 2.0,
+       "rate": 90.0,
+       "reg": 23.0
+      },
+      {
+       "up": 20.0,
+       "rate": 80.0,
+       "reg": 23.0
       }
-     ],
-     "vat": 0.2,
+     ]
+    },
+    "比利时": {
+     "vat": 0.21,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "丹麦": {
-     "brackets": [
-      {
-       "up": 0.3,
-       "rate": 105,
-       "reg": 24
-      },
-      {
-       "up": 2,
-       "rate": 89,
-       "reg": 24
-      },
-      {
-       "up": 15,
-       "rate": 80,
-       "reg": 24
-      }
-     ],
-     "vat": 0.25,
-     "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
-    },
-    "南非": {
-     "brackets": [
-      {
-       "up": 2,
-       "rate": 166,
-       "reg": 28
-      },
-      {
-       "up": 10,
-       "rate": 166,
-       "reg": 28
-      }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.1
-    },
-    "巴西": {
+     "duty_fixed_eur": 3,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 102,
-       "reg": 46
+       "rate": 88.0,
+       "reg": 23.0
+      },
+      {
+       "up": 2.0,
+       "rate": 86.0,
+       "reg": 21.0
+      },
+      {
+       "up": 5.0,
+       "rate": 77.0,
+       "reg": 21.0
+      },
+      {
+       "up": 20.0,
+       "rate": 77.0,
+       "reg": 21.0
+      }
+     ]
+    },
+    "卢森堡": {
+     "vat": 0.17,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 0.2,
+       "rate": 122.0,
+       "reg": 27.0
+      },
+      {
+       "up": 2.0,
+       "rate": 119.0,
+       "reg": 26.0
+      },
+      {
+       "up": 5.0,
+       "rate": 115.0,
+       "reg": 26.0
+      },
+      {
+       "up": 20.0,
+       "rate": 115.0,
+       "reg": 26.0
+      }
+     ]
+    },
+    "爱尔兰": {
+     "vat": 0.23,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 84.0,
+       "reg": 23.0
+      },
+      {
+       "up": 5.0,
+       "rate": 84.0,
+       "reg": 23.0
+      },
+      {
+       "up": 20.0,
+       "rate": 85.0,
+       "reg": 23.0
+      }
+     ]
+    },
+    "保加利亚": {
+     "vat": 0.2,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 90.0,
+       "reg": 18.0
+      },
+      {
+       "up": 30.0,
+       "rate": 90.0,
+       "reg": 18.0
+      }
+     ]
+    },
+    "克罗地亚": {
+     "vat": 0.25,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 97.0,
+       "reg": 26.0
+      },
+      {
+       "up": 30.0,
+       "rate": 97.0,
+       "reg": 26.0
+      }
+     ]
+    },
+    "捷克": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 0.5,
+       "rate": 71.0,
+       "reg": 20.0
+      },
+      {
+       "up": 2.0,
+       "rate": 72.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 78.0,
+       "reg": 20.0
+      }
+     ]
+    },
+    "爱沙尼亚": {
+     "vat": 0.24,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 85.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 89.0,
+       "reg": 20.0
+      }
+     ]
+    },
+    "芬兰": {
+     "vat": 0.255,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 98.0,
+       "reg": 26.0
+      },
+      {
+       "up": 30.0,
+       "rate": 96.0,
+       "reg": 26.0
+      }
+     ]
+    },
+    "匈牙利": {
+     "vat": 0.27,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 72.0,
+       "reg": 21.0
+      },
+      {
+       "up": 30.0,
+       "rate": 78.0,
+       "reg": 21.0
+      }
+     ]
+    },
+    "拉脱维亚": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 89.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 90.0,
+       "reg": 20.0
+      }
+     ]
+    },
+    "立陶宛": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 86.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 89.0,
+       "reg": 20.0
+      }
+     ]
+    },
+    "马耳他": {
+     "vat": 0.18,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 152.0,
+       "reg": 30.0
+      },
+      {
+       "up": 30.0,
+       "rate": 152.0,
+       "reg": 30.0
+      }
+     ]
+    },
+    "波兰": {
+     "vat": 0.23,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 0.2,
+       "rate": 86.0,
+       "reg": 13.0
+      },
+      {
+       "up": 2.0,
+       "rate": 83.0,
+       "reg": 15.0
+      },
+      {
+       "up": 30.0,
+       "rate": 83.0,
+       "reg": 15.0
+      }
+     ]
+    },
+    "葡萄牙": {
+     "vat": 0.23,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 81.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 84.0,
+       "reg": 20.0
+      }
+     ]
+    },
+    "罗马尼亚": {
+     "vat": 0.21,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 97.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 97.0,
+       "reg": 20.0
+      }
+     ]
+    },
+    "斯洛伐克": {
+     "vat": 0.23,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 101.0,
+       "reg": 20.0
+      },
+      {
+       "up": 30.0,
+       "rate": 104.0,
+       "reg": 20.0
+      }
+     ]
+    },
+    "斯洛文尼亚": {
+     "vat": 0.22,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 92.0,
+       "reg": 26.0
+      },
+      {
+       "up": 30.0,
+       "rate": 92.0,
+       "reg": 26.0
+      }
+     ]
+    },
+    "瑞典": {
+     "vat": 0.25,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 0.3,
+       "rate": 71.0,
+       "reg": 16.0
+      },
+      {
+       "up": 2.0,
+       "rate": 73.0,
+       "reg": 21.0
+      },
+      {
+       "up": 20.0,
+       "rate": 73.0,
+       "reg": 21.0
+      }
+     ]
+    },
+    "奥地利": {
+     "vat": 0.2,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 0.5,
+       "rate": 77.0,
+       "reg": 23.0
+      },
+      {
+       "up": 2.0,
+       "rate": 78.0,
+       "reg": 23.0
+      },
+      {
+       "up": 30.0,
+       "rate": 78.0,
+       "reg": 23.0
+      }
+     ]
+    },
+    "丹麦": {
+     "vat": 0.25,
+     "service_fee_pct": 0.02,
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 0.3,
+       "rate": 100.0,
+       "reg": 24.0
+      },
+      {
+       "up": 2.0,
+       "rate": 84.0,
+       "reg": 24.0
+      },
+      {
+       "up": 15.0,
+       "rate": 75.0,
+       "reg": 24.0
+      }
+     ]
+    },
+    "南非": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.1,
+     "brackets": [
+      {
+       "up": 2.0,
+       "rate": 166.0,
+       "reg": 28.0
+      },
+      {
+       "up": 10.0,
+       "rate": 166.0,
+       "reg": 28.0
+      }
+     ]
+    },
+    "巴西": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.05,
+     "brackets": [
+      {
+       "up": 0.2,
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
        "up": 0.5,
-       "rate": 102,
-       "reg": 46
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
-       "up": 1,
-       "rate": 102,
-       "reg": 46
+       "up": 1.0,
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
        "up": 1.5,
-       "rate": 102,
-       "reg": 46
+       "rate": 102.0,
+       "reg": 46.0
       },
       {
-       "up": 2,
-       "rate": 102,
-       "reg": 49
+       "up": 2.0,
+       "rate": 102.0,
+       "reg": 49.0
       },
       {
-       "up": 5,
-       "rate": 102,
-       "reg": 60
+       "up": 5.0,
+       "rate": 102.0,
+       "reg": 60.0
       },
       {
-       "up": 20,
-       "rate": 102,
-       "reg": 100
+       "up": 20.0,
+       "rate": 102.0,
+       "reg": 100.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.05
+     ]
     },
     "希腊": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 95,
-       "reg": 18
-      }
-     ],
      "vat": 0.24,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 95.0,
+       "reg": 18.0
+      }
+     ]
     },
     "瑞士": {
      "brackets": [
       {
        "up": 0.1,
-       "rate": 150,
-       "reg": 22
+       "rate": 145.0,
+       "reg": 22.0
       },
       {
        "up": 0.2,
-       "rate": 115,
-       "reg": 22
+       "rate": 110.0,
+       "reg": 22.0
       },
       {
        "up": 0.5,
-       "rate": 122,
-       "reg": 18
+       "rate": 117.0,
+       "reg": 18.0
       },
       {
-       "up": 5,
-       "rate": 113,
-       "reg": 18
+       "up": 5.0,
+       "rate": 108.0,
+       "reg": 18.0
       }
      ]
     },
@@ -5749,812 +5749,812 @@
      "brackets": [
       {
        "up": 0.1,
-       "rate": 114,
-       "reg": 21
+       "rate": 114.0,
+       "reg": 21.0
       },
       {
        "up": 0.3,
-       "rate": 99,
-       "reg": 20
+       "rate": 99.0,
+       "reg": 20.0
       },
       {
-       "up": 5,
-       "rate": 94,
-       "reg": 20
+       "up": 5.0,
+       "rate": 94.0,
+       "reg": 20.0
       }
      ]
     },
     "墨西哥": {
+     "min_charge_weight": 0.02,
      "brackets": [
       {
        "up": 0.2,
-       "rate": 70,
-       "reg": 17
+       "rate": 70.0,
+       "reg": 17.0
       },
       {
        "up": 0.5,
-       "rate": 70,
-       "reg": 18
+       "rate": 70.0,
+       "reg": 18.0
       },
       {
-       "up": 1,
-       "rate": 70,
-       "reg": 18
+       "up": 1.0,
+       "rate": 70.0,
+       "reg": 18.0
       },
       {
-       "up": 3,
-       "rate": 70,
-       "reg": 20
+       "up": 3.0,
+       "rate": 70.0,
+       "reg": 20.0
       },
       {
-       "up": 10,
-       "rate": 70,
-       "reg": 20
+       "up": 10.0,
+       "rate": 70.0,
+       "reg": 20.0
       }
-     ],
-     "min_charge_weight": 0.02
+     ]
     },
     "新加坡": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 39,
-       "reg": 16
+       "up": 30.0,
+       "rate": 39.0,
+       "reg": 16.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "泰国": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 25,
-       "rate": 44,
-       "reg": 14
+       "up": 25.0,
+       "rate": 44.0,
+       "reg": 14.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "越南": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 27,
-       "reg": 11
+       "up": 30.0,
+       "rate": 27.0,
+       "reg": 11.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "菲律宾": {
+     "charge_rule": "actual",
      "brackets": [
       {
-       "up": 1,
-       "rate": 52,
-       "reg": 15
+       "up": 1.0,
+       "rate": 52.0,
+       "reg": 15.0
       },
       {
-       "up": 10,
-       "rate": 49,
-       "reg": 50
+       "up": 10.0,
+       "rate": 49.0,
+       "reg": 50.0
       }
-     ],
-     "charge_rule": "actual"
+     ]
     },
     "智利": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
        "up": 0.5,
-       "rate": 88,
-       "reg": 23
+       "rate": 88.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 98,
-       "reg": 25
+       "up": 2.0,
+       "rate": 98.0,
+       "reg": 25.0
       },
       {
-       "up": 10,
-       "rate": 98,
-       "reg": 25
+       "up": 10.0,
+       "rate": 98.0,
+       "reg": 25.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "哥伦比亚": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 20,
-       "rate": 136,
-       "reg": 27
+       "up": 20.0,
+       "rate": 136.0,
+       "reg": 27.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "以色列": {
      "brackets": [
       {
-       "up": 5,
-       "rate": 150,
-       "reg": 26
+       "up": 5.0,
+       "rate": 150.0,
+       "reg": 26.0
       }
      ]
     },
     "塞浦路斯": {
-     "brackets": [
-      {
-       "up": 30,
-       "rate": 133,
-       "reg": 29
-      }
-     ],
      "vat": 0.19,
      "service_fee_pct": 0.02,
-     "duty_fixed_eur": 3
+     "duty_fixed_eur": 3,
+     "brackets": [
+      {
+       "up": 30.0,
+       "rate": 133.0,
+       "reg": 29.0
+      }
+     ]
     },
     "韩国": {
      "brackets": [
       {
-       "up": 2,
-       "rate": 40,
+       "up": 2.0,
+       "rate": 40.0,
        "reg": 17.5
       },
       {
-       "up": 20,
-       "rate": 40,
-       "reg": 20
+       "up": 20.0,
+       "rate": 40.0,
+       "reg": 20.0
       }
      ]
     },
     "新西兰": {
+     "charge_rule": "vol_if_2x_actual",
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 25,
-       "rate": 97,
-       "reg": 17
+       "up": 25.0,
+       "rate": 97.0,
+       "reg": 17.0
       }
-     ],
-     "charge_rule": "vol_if_2x_actual",
-     "volumetric_divisor": 6000
+     ]
     },
     "巴基斯坦": {
+     "volumetric_divisor": 6000,
+     "min_charge_weight": 0.05,
      "brackets": [
       {
-       "up": 2,
-       "rate": 98,
-       "reg": 8
+       "up": 2.0,
+       "rate": 98.0,
+       "reg": 8.0
       }
-     ],
-     "volumetric_divisor": 6000,
-     "min_charge_weight": 0.05
+     ]
     },
     "尼日利亚": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 132,
-       "reg": 22
+       "up": 2.0,
+       "rate": 132.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 131,
-       "reg": 22
+       "up": 10.0,
+       "rate": 131.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 130,
-       "reg": 22
+       "up": 30.0,
+       "rate": 130.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "加纳": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 153,
-       "reg": 22
+       "up": 2.0,
+       "rate": 153.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 152,
-       "reg": 22
+       "up": 10.0,
+       "rate": 152.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 151,
-       "reg": 22
+       "up": 30.0,
+       "rate": 151.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "乌干达": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 158,
-       "reg": 22
+       "up": 2.0,
+       "rate": 158.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 157,
-       "reg": 22
+       "up": 10.0,
+       "rate": 157.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 156,
-       "reg": 22
+       "up": 30.0,
+       "rate": 156.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "肯尼亚": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 116,
-       "reg": 22
+       "up": 2.0,
+       "rate": 116.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 115,
-       "reg": 22
+       "up": 10.0,
+       "rate": 115.0,
+       "reg": 22.0
       },
       {
-       "up": 30,
-       "rate": 114,
-       "reg": 22
+       "up": 30.0,
+       "rate": 114.0,
+       "reg": 22.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "马约特": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 154,
-       "reg": 100
+       "up": 2.0,
+       "rate": 154.0,
+       "reg": 100.0
       },
       {
-       "up": 10,
-       "rate": 154,
-       "reg": 100
+       "up": 10.0,
+       "rate": 154.0,
+       "reg": 100.0
       },
       {
-       "up": 30,
-       "rate": 154,
-       "reg": 100
+       "up": 30.0,
+       "rate": 154.0,
+       "reg": 100.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "坦桑尼亚": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 127,
-       "reg": 18
+       "up": 2.0,
+       "rate": 127.0,
+       "reg": 18.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "卢旺达": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 124,
-       "reg": 18
+       "up": 2.0,
+       "rate": 124.0,
+       "reg": 18.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "安哥拉": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 128,
-       "reg": 24
+       "up": 2.0,
+       "rate": 128.0,
+       "reg": 24.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "摩洛哥": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 115,
-       "reg": 46
+       "up": 2.0,
+       "rate": 115.0,
+       "reg": 46.0
       },
       {
-       "up": 5,
-       "rate": 114,
-       "reg": 46
+       "up": 5.0,
+       "rate": 114.0,
+       "reg": 46.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "塞内加尔": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 186,
-       "reg": 90
+       "up": 2.0,
+       "rate": 186.0,
+       "reg": 90.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "毛里求斯": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 151,
-       "reg": 15
+       "up": 2.0,
+       "rate": 151.0,
+       "reg": 15.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "留尼汪": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 166,
-       "reg": 60
+       "up": 2.0,
+       "rate": 166.0,
+       "reg": 60.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "马达加斯加": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 154,
-       "reg": 60
+       "up": 2.0,
+       "rate": 154.0,
+       "reg": 60.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "塞舌尔": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 260,
-       "reg": 95
+       "up": 2.0,
+       "rate": 260.0,
+       "reg": 95.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "赞比亚": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 155,
-       "reg": 35
+       "up": 2.0,
+       "rate": 155.0,
+       "reg": 35.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "阿拉伯联合酋长国": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 2,
-       "rate": 69,
-       "reg": 22
+       "up": 2.0,
+       "rate": 69.0,
+       "reg": 22.0
       },
       {
-       "up": 5,
-       "rate": 69,
-       "reg": 22
+       "up": 5.0,
+       "rate": 69.0,
+       "reg": 22.0
       },
       {
-       "up": 10,
-       "rate": 69,
-       "reg": 26
+       "up": 10.0,
+       "rate": 69.0,
+       "reg": 26.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "沙特阿拉伯": {
      "brackets": [
       {
        "up": 0.5,
-       "rate": 77,
-       "reg": 40
+       "rate": 77.0,
+       "reg": 40.0
       },
       {
-       "up": 2,
-       "rate": 77,
-       "reg": 40
+       "up": 2.0,
+       "rate": 77.0,
+       "reg": 40.0
       },
       {
-       "up": 5,
-       "rate": 82,
-       "reg": 40
+       "up": 5.0,
+       "rate": 82.0,
+       "reg": 40.0
       },
       {
-       "up": 10,
-       "rate": 82,
-       "reg": 45
+       "up": 10.0,
+       "rate": 82.0,
+       "reg": 45.0
       }
      ]
     },
     "科威特": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 69,
-       "reg": 75
+       "up": 30.0,
+       "rate": 69.0,
+       "reg": 75.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "卡塔尔": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 74,
-       "reg": 45
+       "up": 30.0,
+       "rate": 74.0,
+       "reg": 45.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "巴林": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 70,
-       "reg": 61
+       "up": 30.0,
+       "rate": 70.0,
+       "reg": 61.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "约旦": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 15,
-       "rate": 110,
-       "reg": 30
+       "up": 15.0,
+       "rate": 110.0,
+       "reg": 30.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "秘鲁": {
      "brackets": [
       {
-       "up": 2,
-       "rate": 110,
-       "reg": 25
+       "up": 2.0,
+       "rate": 110.0,
+       "reg": 25.0
       }
      ]
     },
     "加拿大": {
+     "charge_rule": "vol_if_2x_actual",
+     "volumetric_divisor": 8000,
+     "min_charge_weight": 0.05,
      "brackets": [
       {
        "up": 0.15,
-       "rate": 70,
-       "reg": 21
+       "rate": 70.0,
+       "reg": 21.0
       },
       {
        "up": 0.3,
-       "rate": 71,
-       "reg": 21
+       "rate": 71.0,
+       "reg": 21.0
       },
       {
        "up": 0.45,
-       "rate": 71,
-       "reg": 21
+       "rate": 71.0,
+       "reg": 21.0
       },
       {
        "up": 0.75,
-       "rate": 73,
-       "reg": 22
+       "rate": 73.0,
+       "reg": 22.0
       },
       {
-       "up": 1,
-       "rate": 73,
-       "reg": 22
+       "up": 1.0,
+       "rate": 73.0,
+       "reg": 22.0
       },
       {
        "up": 1.5,
-       "rate": 73,
-       "reg": 23
+       "rate": 73.0,
+       "reg": 23.0
       },
       {
-       "up": 2,
-       "rate": 78,
-       "reg": 23
+       "up": 2.0,
+       "rate": 78.0,
+       "reg": 23.0
       },
       {
-       "up": 30,
-       "rate": 80,
-       "reg": 23
+       "up": 30.0,
+       "rate": 80.0,
+       "reg": 23.0
       }
-     ],
-     "charge_rule": "vol_if_2x_actual",
-     "volumetric_divisor": 8000,
-     "min_charge_weight": 0.05
+     ]
     },
     "中国香港": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 1,
-       "rate": 10,
-       "reg": 30
+       "up": 1.0,
+       "rate": 10.0,
+       "reg": 30.0
       },
       {
        "up": 2.5,
-       "rate": 8,
-       "reg": 30
+       "rate": 8.0,
+       "reg": 30.0
       },
       {
-       "up": 20,
-       "rate": 4,
-       "reg": 45
+       "up": 20.0,
+       "rate": 4.0,
+       "reg": 45.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "中国澳门": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
-       "up": 1,
-       "rate": 10,
-       "reg": 30
+       "up": 1.0,
+       "rate": 10.0,
+       "reg": 30.0
       },
       {
        "up": 2.5,
-       "rate": 15,
-       "reg": 25
+       "rate": 15.0,
+       "reg": 25.0
       },
       {
-       "up": 20,
-       "rate": 15,
-       "reg": 25
+       "up": 20.0,
+       "rate": 15.0,
+       "reg": 25.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "马来西亚": {
+     "volumetric_divisor": 5000,
      "brackets": [
       {
-       "up": 30,
-       "rate": 27,
-       "reg": 16
+       "up": 30.0,
+       "rate": 27.0,
+       "reg": 16.0
       },
       {
-       "up": 30,
-       "rate": 22,
-       "reg": 28
+       "up": 30.0,
+       "rate": 22.0,
+       "reg": 28.0
       }
-     ],
-     "volumetric_divisor": 5000
+     ]
     },
     "印度尼西亚": {
+     "charge_rule": "actual",
      "brackets": [
       {
-       "up": 1,
-       "rate": 120,
-       "reg": 20
+       "up": 1.0,
+       "rate": 120.0,
+       "reg": 20.0
       },
       {
-       "up": 10,
-       "rate": 130,
-       "reg": 50
+       "up": 10.0,
+       "rate": 130.0,
+       "reg": 50.0
       },
       {
-       "up": 1,
-       "rate": 140,
-       "reg": 30
+       "up": 1.0,
+       "rate": 140.0,
+       "reg": 30.0
       },
       {
-       "up": 10,
-       "rate": 140,
-       "reg": 60
+       "up": 10.0,
+       "rate": 140.0,
+       "reg": 60.0
       }
-     ],
-     "charge_rule": "actual"
+     ]
     },
     "澳大利亚": {
      "brackets": [
       {
        "up": 0.3,
-       "rate": 39,
-       "reg": 21
+       "rate": 39.0,
+       "reg": 21.0
       },
       {
        "up": 0.5,
-       "rate": 39,
-       "reg": 24
+       "rate": 39.0,
+       "reg": 24.0
       },
       {
-       "up": 1,
-       "rate": 39,
-       "reg": 25
+       "up": 1.0,
+       "rate": 39.0,
+       "reg": 25.0
       },
       {
-       "up": 3,
-       "rate": 39,
-       "reg": 27
+       "up": 3.0,
+       "rate": 39.0,
+       "reg": 27.0
       },
       {
-       "up": 20,
-       "rate": 39,
-       "reg": 42
+       "up": 20.0,
+       "rate": 39.0,
+       "reg": 42.0
       },
       {
        "up": 0.3,
-       "rate": 39,
-       "reg": 29
+       "rate": 39.0,
+       "reg": 29.0
       },
       {
        "up": 0.5,
-       "rate": 39,
-       "reg": 30
+       "rate": 39.0,
+       "reg": 30.0
       },
       {
-       "up": 1,
-       "rate": 39,
-       "reg": 34
+       "up": 1.0,
+       "rate": 39.0,
+       "reg": 34.0
       },
       {
-       "up": 3,
-       "rate": 39,
-       "reg": 36
+       "up": 3.0,
+       "rate": 39.0,
+       "reg": 36.0
       },
       {
-       "up": 20,
-       "rate": 39,
-       "reg": 53
+       "up": 20.0,
+       "rate": 39.0,
+       "reg": 53.0
       },
       {
        "up": 0.3,
-       "rate": 39,
-       "reg": 55
+       "rate": 39.0,
+       "reg": 55.0
       },
       {
        "up": 0.5,
-       "rate": 39,
-       "reg": 56
+       "rate": 39.0,
+       "reg": 56.0
       },
       {
-       "up": 1,
-       "rate": 39,
-       "reg": 79
+       "up": 1.0,
+       "rate": 39.0,
+       "reg": 79.0
       },
       {
-       "up": 3,
-       "rate": 39,
-       "reg": 81
+       "up": 3.0,
+       "rate": 39.0,
+       "reg": 81.0
       },
       {
-       "up": 20,
-       "rate": 39,
-       "reg": 120
+       "up": 20.0,
+       "rate": 39.0,
+       "reg": 120.0
       },
       {
        "up": 0.3,
-       "rate": 50,
-       "reg": 62
+       "rate": 50.0,
+       "reg": 62.0
       },
       {
        "up": 0.5,
-       "rate": 50,
-       "reg": 62
+       "rate": 50.0,
+       "reg": 62.0
       },
       {
-       "up": 1,
-       "rate": 50,
-       "reg": 105
+       "up": 1.0,
+       "rate": 50.0,
+       "reg": 105.0
       },
       {
-       "up": 3,
-       "rate": 50,
-       "reg": 130
+       "up": 3.0,
+       "rate": 50.0,
+       "reg": 130.0
       },
       {
-       "up": 20,
-       "rate": 50,
-       "reg": 160
+       "up": 20.0,
+       "rate": 50.0,
+       "reg": 160.0
       }
      ]
     },
     "阿根廷": {
+     "volumetric_divisor": 6000,
      "brackets": [
       {
        "up": 0.25,
-       "rate": 107,
-       "reg": 70
+       "rate": 107.0,
+       "reg": 70.0
       },
       {
        "up": 0.5,
-       "rate": 110,
-       "reg": 70
+       "rate": 110.0,
+       "reg": 70.0
       },
       {
        "up": 0.75,
-       "rate": 111,
-       "reg": 75
+       "rate": 111.0,
+       "reg": 75.0
       },
       {
-       "up": 1,
-       "rate": 111,
-       "reg": 75
+       "up": 1.0,
+       "rate": 111.0,
+       "reg": 75.0
       },
       {
        "up": 1.25,
-       "rate": 113,
-       "reg": 85
+       "rate": 113.0,
+       "reg": 85.0
       },
       {
        "up": 1.5,
-       "rate": 113,
-       "reg": 85
+       "rate": 113.0,
+       "reg": 85.0
       },
       {
        "up": 1.75,
-       "rate": 113,
-       "reg": 85
+       "rate": 113.0,
+       "reg": 85.0
       },
       {
-       "up": 2,
-       "rate": 113,
-       "reg": 85
+       "up": 2.0,
+       "rate": 113.0,
+       "reg": 85.0
       },
       {
        "up": 0.25,
-       "rate": 107,
-       "reg": 85
+       "rate": 107.0,
+       "reg": 85.0
       },
       {
        "up": 0.5,
-       "rate": 110,
-       "reg": 85
+       "rate": 110.0,
+       "reg": 85.0
       },
       {
        "up": 0.75,
-       "rate": 111,
-       "reg": 95
+       "rate": 111.0,
+       "reg": 95.0
       },
       {
-       "up": 1,
-       "rate": 111,
-       "reg": 95
+       "up": 1.0,
+       "rate": 111.0,
+       "reg": 95.0
       },
       {
        "up": 1.25,
-       "rate": 113,
-       "reg": 108
+       "rate": 113.0,
+       "reg": 108.0
       },
       {
        "up": 1.5,
-       "rate": 113,
-       "reg": 108
+       "rate": 113.0,
+       "reg": 108.0
       },
       {
        "up": 1.75,
-       "rate": 113,
-       "reg": 108
+       "rate": 113.0,
+       "reg": 108.0
       },
       {
-       "up": 2,
-       "rate": 113,
-       "reg": 108
+       "up": 2.0,
+       "rate": 113.0,
+       "reg": 108.0
       }
-     ],
-     "volumetric_divisor": 6000
+     ]
     },
     "日本": {
+     "volumetric_divisor": 9000,
+     "min_charge_weight": 0.5,
      "brackets": [
       {
-       "up": 2,
-       "rate": 32,
-       "reg": 8
+       "up": 2.0,
+       "rate": 32.0,
+       "reg": 8.0
       },
       {
-       "up": 10,
-       "rate": 32,
-       "reg": 9
+       "up": 10.0,
+       "rate": 32.0,
+       "reg": 9.0
       }
-     ],
-     "volumetric_divisor": 9000,
-     "min_charge_weight": 0.5
+     ]
     }
    },
    "dest": [
