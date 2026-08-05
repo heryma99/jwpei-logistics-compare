@@ -2476,7 +2476,7 @@ function rAll(){
     if(below.length) html+=`<div class="mut" style="margin-top:8px">⚠️ 低于起收重量（未计入）：${below.map(b=>`${b.ch.name}（${b.min}kg起）`).join('、')}</div>`;
     if(na.length) html+=`<div class="mut" style="margin-top:4px">该目的国无报价（不在渠道服务范围）：${na.map(n=>n.ch.name).join('、')}</div>`;
     $("#acResults").innerHTML=html;
-    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，结果表已显示各渠道除数；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + 产品附加费；④ <b>捷邮中东</b>已计入战争附加费(kg)、海关资料处理费(票)、VAT/DUTY(申报值×比例)；⑤ <b>云途欧盟</b>已计入 VAT(申报值×国别税率)+代缴服务费(2%)+3欧元/Item临时固定关税(汇率按上方输入框)；⑥ 仍未计入：磁检费、偏远费、超品名费、旺季附加费。最终以承运商账单为准。';
+    $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，结果表已显示各渠道除数；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + 产品附加费；④ <b>捷邮中东</b>已计入战争附加费(kg)、海关资料处理费(票)、VAT/DUTY(申报值×比例)；⑤ <b>云途欧盟</b>已计入 VAT(申报值×国别税率)+代缴服务费(2%)+3欧元/Item临时固定关税(汇率按上方输入框)；⑥ 勾选「完整预算」后计入偏远/磁检/商业清关等附加费（渠道 surcharges）；超品名/旺季等未计入。最终以承运商账单为准。';
   }
   $("#acCalc").addEventListener('click',calc);
   function setFilter(act){
