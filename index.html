@@ -2431,12 +2431,11 @@ function rAll(){
         const acCons=typeof document!=='undefined' && document.getElementById('acConservative')?.checked;
         if(acCons){
           const s=ch.surcharges; const ext=[];
-          const oneTime=ch.cat==='b2b-air'?1:boxes;                    // 每票费：b2b 整票收1次，small/express 按箱
           const totW=ch.cat==='b2b-air'?(bwBox*boxes):bwBox;          // 总计费重
-          if(s.remote_per_shipment){ const v=s.remote_per_shipment*oneTime; total+=v; ext.push(`偏远附加 ¥${v.toFixed(2)}`); }
+          if(s.remote_per_shipment){ const v=s.remote_per_shipment*boxes; total+=v; ext.push(`偏远附加 ¥${v.toFixed(2)}`); }
           if(s.remote_per_kg){ const v=Math.max((s.remote_per_kg||0)*totW, s.remote_min||0); total+=v; ext.push(`偏远附加(按重) ¥${v.toFixed(2)}`); }
-          if(s.magnetic_per_shipment){ const v=s.magnetic_per_shipment*oneTime; total+=v; ext.push(`磁检费 ¥${v.toFixed(2)}`); }
-          if(s.magnetic_per_kg){ const v=s.magnetic_per_kg*totW; total+=v; ext.push(`磁检费(按重) ¥${v.toFixed(2)}`); }
+          if(s.magnetic_per_shipment){ const v=s.magnetic_per_shipment*boxes; total+=v; ext.push(`磁检费 ¥${v.toFixed(2)}`); }
+          if(s.magnetic_per_kg){ const v=Math.max((s.magnetic_per_kg||0)*totW, s.magnetic_min||0); total+=v; ext.push(`磁检费(按重) ¥${v.toFixed(2)}`); }
           if(s.commercial_clearance_cad){ const v=s.commercial_clearance_cad*eurFx; total+=v; ext.push(`商业清关费 ¥${v.toFixed(2)}`); }
           if(ext.length){ perUnitNote = perUnitNote? perUnitNote+' + '+ext.join(' + ') : ext.join(' + '); }
         }
