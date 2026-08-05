@@ -2396,8 +2396,8 @@
     "韩国"
    ],
    "surcharges": {
-    "remote_per_kg": 5,
-    "remote_min": 250,
+    "remote_per_kg": 3.8,
+    "remote_min": 180,
     "oversize_per_event": 170,
     "heavy_per_event": 920
    },
@@ -5031,6 +5031,11 @@
     "addr_change": {
      "per_event": 80
     }
+   },
+   "surcharges": {
+    "remote_per_kg": 4.5,
+    "remote_min": 230,
+    "magnetic_per_shipment": 30
    }
   },
   {
@@ -12665,7 +12670,9 @@
     "declare": 350
    },
    "surcharges": {
-    "magnetic_per_shipment": 480
+    "magnetic_per_shipment": 500,
+    "remote_per_kg": 4,
+    "remote_min": 193
    }
   },
   {
@@ -14291,7 +14298,12 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "magnetic_per_shipment": 400,
+    "remote_per_kg": 2,
+    "remote_min": 180
+   }
   },
   {
    "id": "zy_us_hp_clx",
@@ -14424,7 +14436,10 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30
+   }
   },
   {
    "id": "zy_us_hp_max",
@@ -14557,7 +14572,10 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30
+   }
   },
   {
    "id": "zy_us_hp_cosco",
@@ -14690,7 +14708,10 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30
+   }
   },
   {
    "id": "zy_us_hk_clx",
@@ -14796,7 +14817,10 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30
+   }
   },
   {
    "id": "zy_us_hk_max",
@@ -14902,7 +14926,10 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30
+   }
   },
   {
    "id": "zy_us_hk_cosco",
@@ -15008,7 +15035,10 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30
+   }
   },
   {
    "id": "zy_ca_hp_ts_ups",
@@ -15949,7 +15979,10 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "magnetic_per_shipment": 380
+   }
   },
   {
    "id": "zy_uk_air_mx",
@@ -16002,7 +16035,10 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "magnetic_per_shipment": 380
+   }
   },
   {
    "id": "zy_uk_kahang",
@@ -22358,6 +22394,11 @@
     "addr_change": {
      "per_event": 80
     }
+   },
+   "surcharges": {
+    "remote_per_kg": 6.5,
+    "magnetic_per_kg": 1,
+    "magnetic_min": 60
    }
   },
   {
