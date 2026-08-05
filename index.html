@@ -2246,26 +2246,28 @@ function rAll(){
       <div><label>申报值/件 USD</label><input id="acDecl" type="number" step="1" value="50" title="申报价均为USD，计算时自动×USD/CNY转人民币"></div>
     </div>
     <div class="row" style="margin-top:8px">
-      <div><label>货物类型（B2B产品附加费）</label><select id="acCargo">
+      <div><label>包装方式</label><select id="acPack" title="小包/快递默认快递袋（不套纸箱），toB头程选纸箱">
+        <option value="快递袋" selected>快递袋（小包/快递）</option>
+        <option value="纸箱">纸箱（toB头程）</option>
+      </select></div>
+      <div><label>袋余量cm</label><input id="acPackGap" type="number" step="0.5" value="2" style="width:60px" title="快递袋包装每边增加余量(计入体积重)，仅袋模式生效"></div>
+      <div><label>货物/产品类型（附加费）</label><select id="acCargo" title="同时驱动 B2B品类附加费 + 产品附加费(product_fees)">
         <option value="箱包皮革" selected>箱包/皮革（JW PEI 默认）</option>
         <option value="普货">普货</option>
         <option value="鞋类">鞋类</option>
-        <option value="服装">服装/纺织</option>
-      </select></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acConservative"> 完整预算（含偏远/磁检等）</label></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut">产品类别 <select id="acProductCat" style="padding:2px 4px;font-size:12px;background:#fff;border:1px solid #bbb;border-radius:4px">
-        <option value="普货">普货</option>
         <option value="服装">服装</option>
-        <option value="鞋包">鞋包/箱包</option>
+        <option value="纺织品">纺织品</option>
+        <option value="鞋包">鞋包</option>
         <option value="带电">带电</option>
         <option value="带磁">带磁</option>
         <option value="竹木">竹木制品</option>
         <option value="灯具FDA">灯具/FDA</option>
         <option value="汽车配件">汽车配件</option>
-      </select></label></div>
+      </select></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acConservative"> 完整预算（含偏远/磁检等）</label></div>
     </div>
     ${buildFilterHTML()}
     <div class="row" style="margin-top:10px;align-items:center">
@@ -2285,9 +2287,23 @@ function rAll(){
     const key=v.split(' · ')[0];
     const s=skuMap[key]||skus.find(x=>(x.sku||'').toLowerCase()===v||(x.name||'').toLowerCase()===v);
     if(s){
-      if(s.weight)$("#acW").value=s.weight; if(s.l)$("#acL").value=s.l; if(s.w)$("#acWd").value=s.w; if(s.h)$("#acH").value=s.h;
+      if(s.weight)$("#acW").value=s.weight;
+      const pack=$("#acPack")?$("#acPack").value:'快递袋';
+      if(pack==='纸箱'){
+        // 纸箱模式：单件尺寸=产品尺寸；建议每箱装几个 = 标准箱50×40×30×0.7 ÷ 单件体积
+        if(s.l)$("#acL").value=s.l; if(s.w)$("#acWd").value=s.w; if(s.h)$("#acH").value=s.h;
+        const vol=(s.l*s.w*s.h)||1;
+        $("#acQty").value=Math.max(1, Math.floor(60000*0.7/vol));
+      } else {
+        // 快递袋模式：尺寸=产品尺寸+包装余量(默认2cm/边)；每袋1件(一票一件)
+        const gap=parseFloat($("#acPackGap")?$("#acPackGap").value:2)||2;
+        if(s.l)$("#acL").value=+((s.l+gap).toFixed(1)); if(s.w)$("#acWd").value=+((s.w+gap).toFixed(1)); if(s.h)$("#acH").value=+((s.h+gap).toFixed(1));
+        $("#acQty").value=1;
+      }
+      $("#acBl").value=''; $("#acBw").value=''; $("#acBh").value='';  // 箱尺寸回退单件
       const vol=s.l*s.w*s.h;
-      $("#acSkuInfo").innerHTML=`已带出：${s.sku} · ${s.name||''} · ${s.weight}kg · ${s.l}×${s.w}×${s.h}cm · 单件体积<b>${vol}cm³</b>`+(s.hs?` · HS:${s.hs}`:'');
+      const note=pack==='纸箱' ? ` · 建议每箱 ${$("#acQty").value} 个（请填箱型尺寸）` : ` · 袋余量${$("#acPackGap").value}cm/边，每袋1件`;
+      $("#acSkuInfo").innerHTML=`已带出：${s.sku} · ${s.name||''} · ${s.weight}kg · ${pack}${note} · 单件体积<b>${vol}cm³</b>`+(s.hs?` · HS:${s.hs}`:'');
     } else { $("#acSkuInfo").innerHTML=''; }
   }
   $("#acSku").addEventListener('change',fillFromSku);
@@ -2449,7 +2465,7 @@ function rAll(){
           if(s.magnetic_per_shipment){ const v=s.magnetic_per_shipment*boxes; total+=v; ext.push(`磁检费 ¥${v.toFixed(2)}`); }
           if(s.magnetic_per_kg){ const v=Math.max((s.magnetic_per_kg||0)*totW, s.magnetic_min||0); total+=v; ext.push(`磁检费(按重) ¥${v.toFixed(2)}`); }
           if(s.commercial_clearance_cad){ const v=s.commercial_clearance_cad*eurFx; total+=v; ext.push(`商业清关费 ¥${v.toFixed(2)}`); }
-          if(s.product_fees){ const cat=(typeof document!=='undefined'&&document.getElementById('acProductCat'))?.value; if(cat&&cat!=='普货'&&s.product_fees[cat]){ const v=s.product_fees[cat]*totW; total+=v; ext.push(`产品附加费(${cat}) ¥${v.toFixed(2)}`); } }
+          if(s.product_fees){ if(cargoCat&&cargoCat!=='普货'&&s.product_fees[cargoCat]){ const v=s.product_fees[cargoCat]*totW; total+=v; ext.push(`产品附加费(${cargoCat}) ¥${v.toFixed(2)}`); } }
           if(ext.length){ perUnitNote = perUnitNote? perUnitNote+' + '+ext.join(' + ') : ext.join(' + '); }
         }
       }
