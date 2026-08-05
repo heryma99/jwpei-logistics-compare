@@ -7987,7 +7987,9 @@
     "remote_min": 250,
     "oversize_per_event": 170,
     "heavy_per_event": 920
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_eu_baoshui_1",
@@ -9095,7 +9097,9 @@
     "magnetic_per_shipment": 480,
     "remote_per_kg": 5,
     "remote_min": 250
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_eu_baoshui_2",
@@ -10347,7 +10351,9 @@
     "magnetic_per_shipment": 480,
     "remote_per_kg": 5,
     "remote_min": 250
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_eu_baoshui_3",
@@ -10829,7 +10835,9 @@
    },
    "surcharges": {
     "magnetic_per_shipment": 480
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_eu_baoshui_4",
@@ -12079,7 +12087,9 @@
    },
    "surcharges": {
     "magnetic_per_shipment": 480
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_eu_baoshui_5",
@@ -12561,7 +12571,9 @@
    },
    "surcharges": {
     "magnetic_per_shipment": 480
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_ca_baoshui_0",
@@ -12673,7 +12685,9 @@
     "magnetic_per_shipment": 500,
     "remote_per_kg": 4,
     "remote_min": 193
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_eu_kx",
@@ -14141,9 +14155,15 @@
     }
    },
    "surcharges": {
-    "remote_per_shipment": 30
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "服装": 8,
+     "鞋包": 7
+    }
    },
-   "note": ""
+   "note": "",
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "zy_us_air",
@@ -14305,7 +14325,9 @@
     "magnetic_per_shipment": 400,
     "remote_per_kg": 2,
     "remote_min": 180
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_us_hp_clx",
@@ -14441,7 +14463,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_us_hp_max",
@@ -14577,7 +14601,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_us_hp_cosco",
@@ -14713,7 +14739,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_us_hk_clx",
@@ -14822,7 +14850,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_us_hk_max",
@@ -14931,7 +14961,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_us_hk_cosco",
@@ -15040,7 +15072,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_ca_hp_ts_ups",
@@ -15095,7 +15129,9 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_ca_hp_ts_ka",
@@ -15142,7 +15178,9 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_ca_hp_dt_ups",
@@ -15197,7 +15235,9 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_ca_hp_dt_ka",
@@ -15244,7 +15284,9 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_ca_hp_hy_ups",
@@ -15299,7 +15341,9 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_ca_hp_hy_ka",
@@ -15346,7 +15390,9 @@
    },
    "incoterm": "DDP",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_au_sea",
@@ -15534,7 +15580,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_eu_vat_air",
@@ -15672,7 +15720,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 51
   },
   {
    "id": "zy_eu_vat_kahang",
@@ -15790,7 +15840,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 51
   },
   {
    "id": "zy_eu_vat_sea",
@@ -15928,7 +15980,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 51
   },
   {
    "id": "zy_uk_air_kx",
@@ -15984,7 +16038,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "magnetic_per_shipment": 380
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_uk_air_mx",
@@ -16040,7 +16096,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "magnetic_per_shipment": 380
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_uk_kahang",
@@ -16093,7 +16151,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_uk_sea",
@@ -16146,7 +16206,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_uk_hk_bhx",
@@ -16199,7 +16261,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "zy_uk_hk_lpl",
@@ -16252,7 +16316,9 @@
    },
    "incoterm": "DDU",
    "currency": "CNY",
-   "volumetric_divisor": 6000
+   "volumetric_divisor": 6000,
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_us_hk",
@@ -16447,8 +16513,17 @@
    "currency": "CNY",
    "volumetric_divisor": 6000,
    "surcharges": {
-    "remote_per_shipment": 30
-   }
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "服装": 2,
+     "鞋包": 2,
+     "带电": 2,
+     "竹木": 2,
+     "灯具FDA": 2
+    }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_us_kx",
@@ -16660,8 +16735,14 @@
    "surcharges": {
     "magnetic_per_kg": 1,
     "magnetic_min": 400,
-    "remote_per_shipment": 30
-   }
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "竹木": 2,
+     "灯具FDA": 2,
+     "汽车配件": 2
+    }
+   },
+   "min_box": 10
   },
   {
    "id": "yf_us_jj",
@@ -16873,8 +16954,14 @@
    "surcharges": {
     "magnetic_per_kg": 1,
     "magnetic_min": 400,
-    "remote_per_shipment": 30
-   }
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "竹木": 2,
+     "灯具FDA": 2,
+     "汽车配件": 2
+    }
+   },
+   "min_box": 10
   },
   {
    "id": "yf_us_ms",
@@ -17073,7 +17160,8 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12
   },
   {
    "id": "yf_eu_sea",
@@ -18078,8 +18166,14 @@
    "currency": "CNY",
    "volumetric_divisor": 6000,
    "surcharges": {
-    "remote_per_shipment": 30
-   }
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "服装": 8,
+     "鞋包": 7
+    }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_eu_rail",
@@ -19084,8 +19178,14 @@
    "currency": "CNY",
    "volumetric_divisor": 6000,
    "surcharges": {
-    "remote_per_shipment": 30
-   }
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "服装": 8,
+     "鞋包": 7
+    }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_eu_kahang",
@@ -20090,8 +20190,14 @@
    "currency": "CNY",
    "volumetric_divisor": 6000,
    "surcharges": {
-    "remote_per_shipment": 30
-   }
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "服装": 8,
+     "鞋包": 7
+    }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_eu_kahang_tx",
@@ -21096,8 +21202,14 @@
    "currency": "CNY",
    "volumetric_divisor": 6000,
    "surcharges": {
-    "remote_per_shipment": 30
-   }
+    "remote_per_shipment": 30,
+    "product_fees": {
+     "服装": 8,
+     "鞋包": 7
+    }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_eu_self_ck0",
@@ -21383,7 +21495,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "yf_eu_self_nq0",
@@ -21669,7 +21783,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "yf_eu_self_wd",
@@ -21775,7 +21891,9 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30
-   }
+   },
+   "min_box": 12,
+   "min_ticket": 21
   },
   {
    "id": "yf_uk_air_self",
@@ -21831,7 +21949,9 @@
    "surcharges": {
     "remote_per_shipment": 30,
     "magnetic_per_shipment": 350
-   }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "yf_uk_air_bao",
@@ -21890,8 +22010,14 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30,
-    "magnetic_per_shipment": 350
-   }
+    "magnetic_per_shipment": 350,
+    "product_fees": {
+     "服装": 5,
+     "鞋包": 5
+    }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "yf_uk_sea_self",
@@ -21947,7 +22073,9 @@
    "surcharges": {
     "remote_per_shipment": 30,
     "magnetic_per_shipment": 350
-   }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "yf_uk_sea_bao",
@@ -22006,8 +22134,14 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30,
-    "magnetic_per_shipment": 350
-   }
+    "magnetic_per_shipment": 350,
+    "product_fees": {
+     "服装": 5,
+     "鞋包": 5
+    }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "yf_uk_kahang_self",
@@ -22063,7 +22197,9 @@
    "surcharges": {
     "remote_per_shipment": 30,
     "magnetic_per_shipment": 350
-   }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "yf_uk_kahang_bao",
@@ -22122,8 +22258,14 @@
    "volumetric_divisor": 6000,
    "surcharges": {
     "remote_per_shipment": 30,
-    "magnetic_per_shipment": 350
-   }
+    "magnetic_per_shipment": 350,
+    "product_fees": {
+     "服装": 5,
+     "鞋包": 5
+    }
+   },
+   "min_box": 10,
+   "min_ticket": 21
   },
   {
    "id": "zy_ups_us",
