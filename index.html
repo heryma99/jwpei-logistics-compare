@@ -2256,6 +2256,16 @@ function rAll(){
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acConservative"> 完整预算（含偏远/磁检等）</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut">产品类别 <select id="acProductCat" style="padding:2px 4px;font-size:12px;background:#fff;border:1px solid #bbb;border-radius:4px">
+        <option value="普货">普货</option>
+        <option value="服装">服装</option>
+        <option value="鞋包">鞋包/箱包</option>
+        <option value="带电">带电</option>
+        <option value="带磁">带磁</option>
+        <option value="竹木">竹木制品</option>
+        <option value="灯具FDA">灯具/FDA</option>
+        <option value="汽车配件">汽车配件</option>
+      </select></label></div>
     </div>
     ${buildFilterHTML()}
     <div class="row" style="margin-top:10px;align-items:center">
@@ -2415,7 +2425,9 @@ function rAll(){
       else {
         const s=ch.sur||null;
         if(s&&s.minpc) bwBox=Math.max(bwBox,s.minpc);          // 单件最低计费重
-        const totalBw=bwBox*boxes; const t=findTier(ch.countries[country].tiers,totalBw);
+        if(ch.min_box) bwBox=Math.max(bwBox,ch.min_box);            // ★ 单箱最低计费重（报价单：不足按12KG等）
+        let totalBw=bwBox*boxes; if(ch.min_ticket) totalBw=Math.max(totalBw,ch.min_ticket); // ★ 单票最低计费重（21KG起收）
+        const t=findTier(ch.countries[country].tiers,totalBw);
         if(!t){ results.push({ch,status:'below',min:ch.countries[country].tiers[0].min}); return; }
         let base=t.rate*totalBw; let surTxt='';
         if(s){
@@ -2437,6 +2449,7 @@ function rAll(){
           if(s.magnetic_per_shipment){ const v=s.magnetic_per_shipment*boxes; total+=v; ext.push(`磁检费 ¥${v.toFixed(2)}`); }
           if(s.magnetic_per_kg){ const v=Math.max((s.magnetic_per_kg||0)*totW, s.magnetic_min||0); total+=v; ext.push(`磁检费(按重) ¥${v.toFixed(2)}`); }
           if(s.commercial_clearance_cad){ const v=s.commercial_clearance_cad*eurFx; total+=v; ext.push(`商业清关费 ¥${v.toFixed(2)}`); }
+          if(s.product_fees){ const cat=(typeof document!=='undefined'&&document.getElementById('acProductCat'))?.value; if(cat&&cat!=='普货'&&s.product_fees[cat]){ const v=s.product_fees[cat]*totW; total+=v; ext.push(`产品附加费(${cat}) ¥${v.toFixed(2)}`); } }
           if(ext.length){ perUnitNote = perUnitNote? perUnitNote+' + '+ext.join(' + ') : ext.join(' + '); }
         }
       }
