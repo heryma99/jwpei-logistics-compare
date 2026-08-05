@@ -2356,13 +2356,6 @@ function rAll(){
         if(co.duty_fixed_eur) parts.push(`临时关税 ${co.duty_fixed_eur}EUR×${opt.eurFx||7.8} ${duty.toFixed(2)}`);
       }
       if(ins) parts.push(`保价 ${ins.toFixed(2)}`);
-      // ★ 完整预算：加补充附加费
-      const acCons=typeof document!=='undefined' && document.getElementById('acConservative')?.checked;
-      if(acCons && ch.surcharges){
-        const s=ch.surcharges;
-        if(s.remote_per_shipment){ base+=s.remote_per_shipment; parts.push(`偏远附加 ${s.remote_per_shipment}/票`); }
-        if(s.commercial_clearance_cad){ const v=s.commercial_clearance_cad*(opt.eurFx||7.8); base+=v; parts.push(`商业清关费(上限) ${v.toFixed(2)}`); }
-      }
       const detail=parts.join(' + ')+(ins?` + 保价 ${ins.toFixed(2)}`:'');
       return {cost:base+ins,bw,detail};
     }
@@ -2432,6 +2425,21 @@ function rAll(){
           if(wantDecl&&s.declare){ base+=s.declare; surTxt+=` + 单独报关 ${s.declare}/票`; }
         }
         total=base; perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`+surTxt;
+      }
+      // ★ 完整预算（含偏远/磁检/商业清关）：勾选 acConservative 时，对全部 cat 统一补计渠道 surcharges
+      if(ch.surcharges){
+        const acCons=typeof document!=='undefined' && document.getElementById('acConservative')?.checked;
+        if(acCons){
+          const s=ch.surcharges; const ext=[];
+          const oneTime=ch.cat==='b2b-air'?1:boxes;                    // 每票费：b2b 整票收1次，small/express 按箱
+          const totW=ch.cat==='b2b-air'?(bwBox*boxes):bwBox;          // 总计费重
+          if(s.remote_per_shipment){ const v=s.remote_per_shipment*oneTime; total+=v; ext.push(`偏远附加 ¥${v.toFixed(2)}`); }
+          if(s.remote_per_kg){ const v=Math.max((s.remote_per_kg||0)*totW, s.remote_min||0); total+=v; ext.push(`偏远附加(按重) ¥${v.toFixed(2)}`); }
+          if(s.magnetic_per_shipment){ const v=s.magnetic_per_shipment*oneTime; total+=v; ext.push(`磁检费 ¥${v.toFixed(2)}`); }
+          if(s.magnetic_per_kg){ const v=s.magnetic_per_kg*totW; total+=v; ext.push(`磁检费(按重) ¥${v.toFixed(2)}`); }
+          if(s.commercial_clearance_cad){ const v=s.commercial_clearance_cad*eurFx; total+=v; ext.push(`商业清关费 ¥${v.toFixed(2)}`); }
+          if(ext.length){ perUnitNote = perUnitNote? perUnitNote+' + '+ext.join(' + ') : ext.join(' + '); }
+        }
       }
       results.push({ch,status:'ok',cost:total,bw:bwBox,detail:r.detail||('计费重 '+bwBox.toFixed(2)+'kg'),perUnitNote});
     });
