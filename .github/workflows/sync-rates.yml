@@ -37,7 +37,6 @@ jobs:
             git push
           fi
       - name: 飞书群通知（报价更新）
-        if: ${{ secrets.FEISHU_WEBHOOK != '' }}
         env:
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
           COMMITTER: ${{ github.event.head_commit.author.name }}
