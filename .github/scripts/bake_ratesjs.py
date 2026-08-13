@@ -12,7 +12,7 @@ VERSION = os.path.join(REPO_ROOT, "version.json")
 with open(RATES, encoding="utf-8") as f:
     d = json.load(f)
 
-BANNER = r"""
+BANNER = """
 ;(function(){
   function render(){
     var R = window.RATES || {};
