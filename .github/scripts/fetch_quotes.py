@@ -75,7 +75,8 @@ def load_token():
         log("[skip] WL02_MAIL_TOKEN 解析失败")
         return None
     now = int(time.time())
-    if now < tok.get("got_at", 0) + int(tok.get("expires_in", 7200)) - 300:
+    expires_in = int(tok.get("expires_in") or 7200)
+    if now < tok.get("got_at", 0) + expires_in - 300:
         return tok["access_token"]
     # refresh: authen v1 OIDC 要求在 Authorization 头传 app_access_token
     try:
@@ -85,8 +86,10 @@ def load_token():
             "refresh_token": tok["refresh_token"],
         })
         if r.get("code") == 0:
-            tok["access_token"] = r["access_token"]
-            tok["refresh_token"] = r.get("refresh_token", tok["refresh_token"])
+            data = r.get("data", r)
+            tok["access_token"] = data["access_token"]
+            tok["refresh_token"] = data.get("refresh_token", tok["refresh_token"])
+            tok["expires_in"] = data.get("expires_in", 7200)
             tok["got_at"] = now
             log("refresh 成功（新 token 未回写 secret，30 天后续期需重跑 oauth_authorize.py）")
             return tok["access_token"]
