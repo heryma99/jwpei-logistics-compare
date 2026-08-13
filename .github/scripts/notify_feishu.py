@@ -116,7 +116,10 @@ def diff_channel(old_c, new_c):
 
 # ---------- 全量 diff ----------
 def compute_diff(old_d, new_d):
-    old_ch = {c["id"]: c for c in old_d["channels"]} if old_d else {}
+    if old_d is None:
+        # 无前序版本可对比，不臆造“新增/移除”，仅提示已更新
+        return [], [], []
+    old_ch = {c["id"]: c for c in old_d["channels"]}
     new_ch = {c["id"]: c for c in new_d["channels"]}
     added = [cid for cid in new_ch if cid not in old_ch]
     removed = [cid for cid in old_ch if cid not in new_ch]
@@ -129,7 +132,7 @@ def compute_diff(old_d, new_d):
 
 
 # ---------- 构建卡片 ----------
-def build_card(committer, ctime, added, removed, changed):
+def build_card(committer, ctime, added, removed, changed, no_baseline=False):
     n_ch = len(changed) + len(added) + len(removed)
     lines = []
     lines.append(f"**更新人**：{committer}")
@@ -161,7 +164,10 @@ def build_card(committer, ctime, added, removed, changed):
             lines.append(f"\n…共 {len(changed)} 个渠道变动，完整见 rates.json")
     else:
         if not added and not removed:
-            lines.append("（仅结构/说明微调，无价格数值变化）")
+            if no_baseline:
+                lines.append("（本次无前序版本可对比，仅提示已更新；下次真实改价将自动附变更明细）")
+            else:
+                lines.append("（仅结构/说明微调，无价格数值变化）")
 
     # 飞书 markdown 文本
     text = "\n".join(lines)
@@ -248,7 +254,7 @@ def main():
     if old_d is None:
         log("无前序版本可对比（首次/手动触发），卡片仅含摘要")
     added, removed, changed = compute_diff(old_d, new_d)
-    card = build_card(COMMITTER, COMMIT_TIME, added, removed, changed)
+    card = build_card(COMMITTER, COMMIT_TIME, added, removed, changed, no_baseline=(old_d is None))
     log(f"变更统计: 新增{len(added)} 移除{len(removed)} 价格变动{len(changed)}")
     if DRY_RUN:
         print("=== DRY_RUN 卡片 JSON ===")
