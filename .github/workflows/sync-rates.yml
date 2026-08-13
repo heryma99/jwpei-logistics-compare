@@ -1,6 +1,7 @@
-name: 配置中心改价 -> 自动烘焙 rates.js
+name: 配置中心改价 -> 自动烘焙 rates.js + 飞书通知
 # 触发：团队在配置中心网页改 rates.json (push 到 main) 时自动跑
 # 动作：用最新 rates.json 重新生成 rates.js + bump version.json，回推 main -> Pages 自动重建
+#       + 若配置了 FEISHU_WEBHOOK 密钥，则向飞书群推送「报价已更新」卡片（纯云端，不依赖用户电脑）
 on:
   push:
     branches: [main]
@@ -35,3 +36,10 @@ jobs:
             git commit -m "chore: 自动烘焙 rates.js（配置中心 rates.json 变更）[skip ci]"
             git push
           fi
+      - name: 飞书群通知（报价更新）
+        if: ${{ secrets.FEISHU_WEBHOOK != '' }}
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          COMMITTER: ${{ github.event.head_commit.author.name }}
+          RATES_SHA: ${{ github.sha }}
+        run: python .github/scripts/notify_feishu.py
