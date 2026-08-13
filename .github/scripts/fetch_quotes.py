@@ -94,13 +94,50 @@ def load_token():
             tok["refresh_token"] = data.get("refresh_token", tok["refresh_token"])
             tok["expires_in"] = data.get("expires_in", 7200)
             tok["got_at"] = now
-            log("refresh 成功（新 token 未回写 secret，30 天后续期需重跑 oauth_authorize.py）")
+            log("refresh 成功")
+            save_token_to_secret(tok)
             return tok["access_token"]
         else:
             log(f"refresh 失败: {r}")
     except Exception as e:
         log(f"refresh 失败: {e}")
     return None
+
+
+def save_token_to_secret(tok):
+    """刷新成功后把新 token 写回 GitHub secret，实现零维护自动续期。
+    需 workflow 提供 GITHUB_TOKEN + actions:write 权限；失败仅告警不影响本次抓取。"""
+    gt = os.environ.get("GITHUB_TOKEN")
+    repo = os.environ.get("GITHUB_REPO")
+    if not gt or not repo:
+        log("[skip] 未配置 GITHUB_TOKEN/GITHUB_REPO，跳过写回 secret（后续过期需手动重授权）")
+        return
+    try:
+        import base64 as _b64
+        from nacl.public import PublicKey, SealedBox
+        import nacl.encoding
+        H = {"Authorization": f"Bearer {gt}", "Accept": "application/vnd.github+json",
+             "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28"}
+        def _api(method, path, body=None):
+            data = json.dumps(body).encode() if body is not None else None
+            req = urllib.request.Request("https://api.github.com" + path, data=data, headers=H, method=method)
+            with urllib.request.urlopen(req, timeout=30) as r:
+                b = r.read().decode()
+                return r.status, (json.loads(b) if b.strip() else {})
+        st, keyinfo = _api("GET", f"/repos/{repo}/actions/secrets/public-key")
+        if st != 200:
+            log(f"[warn] 获取 public-key 失败 {st}"); return
+        pk = PublicKey(keyinfo["key"].encode(), encoder=nacl.encoding.Base64Encoder)
+        box = SealedBox(pk)
+        enc = nacl.encoding.Base64Encoder.encode(box.encrypt(json.dumps(tok).encode())).decode()
+        st2, _ = _api("PUT", f"/repos/{repo}/actions/secrets/WL02_MAIL_TOKEN",
+                      {"encrypted_value": enc, "key_id": keyinfo["key_id"]})
+        if st2 in (201, 204):
+            log("✅ 新 token 已自动写回 WL02_MAIL_TOKEN secret（零维护自动续期生效）")
+        else:
+            log(f"[warn] 写回 secret 返回 {st2}")
+    except Exception as e:
+        log(f"[warn] 写回 secret 失败（不影响本次抓取）: {e}")
 
 
 # ---------- 邮件 ----------
