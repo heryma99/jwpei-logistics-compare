@@ -1,0 +1,37 @@
+name: 配置中心改价 -> 自动烘焙 rates.js
+# 触发：团队在配置中心网页改 rates.json (push 到 main) 时自动跑
+# 动作：用最新 rates.json 重新生成 rates.js + bump version.json，回推 main -> Pages 自动重建
+on:
+  push:
+    branches: [main]
+    paths: ['rates.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: bake-rates
+  cancel-in-progress: false
+jobs:
+  bake-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 烘焙 rates.js (rates.json -> rates.js + version.json)
+        run: python .github/scripts/bake_ratesjs.py
+      - name: 提交并推送 (触发 Pages 自动重建)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add rates.js version.json
+          if git diff --cached --quiet; then
+            echo "无变化，跳过提交"
+          else
+            git commit -m "chore: 自动烘焙 rates.js（配置中心 rates.json 变更）[skip ci]"
+            git push
+          fi
