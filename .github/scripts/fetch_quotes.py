@@ -79,7 +79,7 @@ def load_token():
         return None
     now = int(time.time())
     expires_in = int(tok.get("expires_in") or 7200)
-    if now < tok.get("got_at", 0) + expires_in - 300:
+    if tok.get("access_token") and now < tok.get("got_at", 0) + expires_in - 300:
         return tok["access_token"]
     # refresh: authen v1 OIDC 要求在 Authorization 头传 app_access_token
     try:
