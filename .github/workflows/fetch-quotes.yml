@@ -28,6 +28,7 @@ jobs:
         env:
           WL02_MAIL_TOKEN: ${{ secrets.WL02_MAIL_TOKEN }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FETCH_DIAG: ${{ secrets.FETCH_DIAG }}
         run: python .github/scripts/fetch_quotes.py
       - name: 提交价格变动（[skip ci] 避免重复触发 sync-rates 发卡片）
         run: |
