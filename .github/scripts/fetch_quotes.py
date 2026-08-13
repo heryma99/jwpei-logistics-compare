@@ -37,6 +37,9 @@ REFRESH_URL = "https://open.feishu.cn/open-apis/authen/v1/oidc/refresh_access_to
 FETCH_LOCAL = os.environ.get("FETCH_LOCAL", "") == "1"
 LOCAL_XLSX_DIR = os.environ.get("LOCAL_XLSX_DIR", os.path.join(REPO_ROOT, "quote_pull"))
 
+# 每趟运行对各承运商的处理结果汇总（用于诊断卡片 / 日志）
+REPORT = []
+
 
 def log(m):
     print(f"[fetch] {m}", flush=True)
@@ -106,11 +109,15 @@ def search_mail(token, kw):
         r = req_json(MAIL_API + "/messages/search", "POST", token, {"query": kw, "page_size": 5})
     except Exception as e:
         log(f"search '{kw}' 异常: {e}")
+        REPORT.append(f"❌ 搜索「{kw}」异常: {e}")
         return []
     if r.get("code") != 0:
         log(f"search '{kw}' 错误: {r.get('code')} {r.get('msg')}")
+        REPORT.append(f"❌ 搜索「{kw}」错误码 {r.get('code')}: {r.get('msg')}")
         return []
-    return r.get("data", {}).get("messages", []) or []
+    msgs = r.get("data", {}).get("messages", []) or []
+    REPORT.append(f"· 搜索「{kw}」: 命中 {len(msgs)} 封")
+    return msgs
 
 
 def get_attachments(token, mid):
@@ -184,6 +191,7 @@ def process_carrier(token, name, cfg):
             return False
         shutil.copy(src, final)
         log(f"[{name}] 本地回归用 {src}")
+        REPORT.append(f"· [{name}] 本地回归用 {src}")
         return True
     # 联网抓取
     for kw in cfg["kw"]:
@@ -193,6 +201,7 @@ def process_carrier(token, name, cfg):
             break
     else:
         log(f"[{name}] 未搜到相关邮件")
+        REPORT.append(f"· [{name}] 所有关键词均未搜到报价邮件")
         return False
     for em in items:
         mid = em.get("message_id") or em.get("id")
@@ -203,6 +212,7 @@ def process_carrier(token, name, cfg):
         url = download_url(token, mid, tgt["attachment_id"])
         if not url:
             log(f"[{name}] 拿不到下载链接")
+            REPORT.append(f"❌ [{name}] 邮件有附件但拿不到下载链接")
             return False
         raw = os.path.join(outdir, "raw_" + re.sub(r"[^\w.]", "_", str(tgt.get("filename", "x"))))
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -217,8 +227,10 @@ def process_carrier(token, name, cfg):
             shutil.copy(raw, final)
             os.remove(raw)
         log(f"[{name}] 已落盘 {final} ({len(data)} bytes)")
+        REPORT.append(f"✅ [{name}] 已下载报价单 {tgt.get('filename')} ({len(data)} bytes) 并落盘")
         return True
     log(f"[{name}] 候选邮件均无报价附件")
+    REPORT.append(f"· [{name}] 候选邮件均无报价附件")
     return False
 
 
@@ -403,7 +415,8 @@ def main():
     old = json.load(open(RATES, encoding="utf-8"))
     token = load_token()
     if token is None and not FETCH_LOCAL:
-        return
+        log("❌ 无法获取 wl02 邮箱 token，本次运行直接失败（不会静默跳过）")
+        sys.exit(1)
     # 抓取各承运商报价单
     got_any = False
     for name, cfg in CARRIERS.items():
@@ -431,6 +444,16 @@ def main():
     added, removed, changed = compute_diff(old, new)
     if not (added or removed or changed):
         log("✅ 无价格数值变化，跳过提交与通知")
+        if os.environ.get("FETCH_DIAG") == "1":
+            dlog = ["**【诊断模式】本次自动抓单明细**", ""]
+            dlog += REPORT or ["（无各承运商处理记录）"]
+            dlog += ["", "结论：邮箱抓取/解析均执行完毕，当前 rates.json 与最新报价单相比无价格数值变化。"]
+            send_card({
+                "config": {"wide_screen_mode": True},
+                "header": {"title": {"tag": "plain_text", "content": "比价易 · 抓单诊断"}, "template": "grey"},
+                "elements": [{"tag": "div",
+                              "text": {"tag": "lark_md", "content": "\n".join(dlog)}}],
+            })
         return
     # 重新烘焙 + 发卡片
     bake_ratesjs()
