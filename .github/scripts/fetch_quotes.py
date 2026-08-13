@@ -24,7 +24,7 @@ SITE_URL = "https://heryma99.github.io/jwpei-logistics-compare/"
 CARRIERS = {
     "云途":     {"kw": ["云途", "客户报价单"], "main": "云途全球专线挂号（特惠普货）", "prefer_ext": "zip"},
     "中运通达": {"kw": ["中运通达", "中运"],    "main": None, "prefer_ext": "xlsx"},
-    "亚丰":     {"kw": ["德翼供应链", "德翼价格表", "德翼", "亚丰"], "main": None, "prefer_ext": "xlsx"},
+    "亚丰":     {"kw": ["璞景", "德翼供应链", "德翼价格表", "德翼", "亚丰"], "main": None, "prefer_ext": "xlsx"},
 }
 BAKE = {
     "云途":     ["bake_yuntu.py"],
