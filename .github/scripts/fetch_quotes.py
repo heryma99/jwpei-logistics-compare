@@ -117,7 +117,7 @@ def search_mail(token, kw):
         log(f"search '{kw}' 错误: {r.get('code')} {r.get('msg')}")
         REPORT.append(f"❌ 搜索「{kw}」错误码 {r.get('code')}: {r.get('msg')}")
         return []
-    msgs = r.get("data", {}).get("messages", []) or []
+    msgs = r.get("data", {}).get("items", []) or []
     REPORT.append(f"· 搜索「{kw}」: 命中 {len(msgs)} 封")
     return msgs
 
@@ -130,18 +130,20 @@ def get_attachments(token, mid):
 
 
 def download_url(token, mid, aid):
-    q = urllib.parse.urlencode({"attachment_ids": json.dumps([aid], ensure_ascii=False)}, safe="[]")
-    r = req_json(MAIL_API + f"/messages/{mid}/attachments/download_url?{q}", "GET", token)
+    # 飞书下载接口：单个 id 直接拼在 query 上（不要传 JSON 数组）；
+    # 响应字段是 data.download_urls[]（不是 url_list）
+    r = req_json(MAIL_API + f"/messages/{mid}/attachments/download_url?attachment_ids={aid}", "GET", token)
     if r.get("code") != 0:
         return None
-    for d in r.get("data", {}).get("url_list", []):
+    for d in r.get("data", {}).get("download_urls", []):
         if d.get("attachment_id") == aid and d.get("download_url"):
             return d["download_url"]
     return None
 
 
 def pick_target(atts, prefer_ext):
-    real = [a for a in atts if not (a.get("is_inline") or str(a.get("filename", "")).lower().startswith("image"))]
+    # 真实附件 attachment_type 为真（如 1）；内联图片 attachment_type 为 None
+    real = [a for a in atts if a.get("attachment_type") and not str(a.get("filename", "")).lower().startswith("image")]
     if prefer_ext:
         t = next((a for a in real if str(a.get("filename", "")).lower().endswith(prefer_ext)), None)
         if t:
@@ -154,32 +156,28 @@ def pick_target(atts, prefer_ext):
 
 
 def pick_main_xlsx(zippath, main_sheet):
-    import openpyxl
-    tmp = zippath + ".d"
-    shutil.rmtree(tmp, ignore_errors=True)
-    os.makedirs(tmp, exist_ok=True)
+    import openpyxl, io
+    # 直接内存读取 zip 内 xlsx 成员，避免 Windows 解压中文文件名乱码导致路径找不到
     with zipfile.ZipFile(zippath) as z:
-        z.extractall(tmp)
-    xlsxs = []
-    for root, _, files in os.walk(tmp):
-        for fn in files:
-            if fn.lower().endswith(".xlsx"):
-                xlsxs.append(os.path.join(root, fn))
-    chosen = None
-    if main_sheet:
-        best = -1
-        for xp in xlsxs:
-            try:
-                wb = openpyxl.load_workbook(xp, read_only=True)
-                if main_sheet in wb.sheetnames and len(wb.sheetnames) > best:
-                    chosen, best = xp, len(wb.sheetnames)
-                wb.close()
-            except Exception:
-                pass
-    if not chosen and xlsxs:
-        chosen = max(xlsxs, key=os.path.getmtime)
-    shutil.rmtree(tmp, ignore_errors=True)
-    return chosen
+        names = [n for n in z.namelist() if n.lower().endswith(".xlsx")]
+        chosen = None
+        if main_sheet:
+            best = -1
+            for n in names:
+                try:
+                    wb = openpyxl.load_workbook(io.BytesIO(z.read(n)), read_only=True)
+                    if main_sheet in wb.sheetnames and len(wb.sheetnames) > best:
+                        chosen, best = n, len(wb.sheetnames)
+                    wb.close()
+                except Exception:
+                    pass
+        if not chosen and names:
+            chosen = max(names, key=lambda n: z.getinfo(n).date_time)
+        if not chosen:
+            return None
+        tmp = zippath + ".x"
+        open(tmp, "wb").write(z.read(chosen))
+        return tmp
 
 
 def process_carrier(token, name, cfg):
@@ -211,7 +209,7 @@ def process_carrier(token, name, cfg):
         tgt = pick_target(atts, cfg["prefer_ext"])
         if not tgt:
             continue
-        url = download_url(token, mid, tgt["attachment_id"])
+        url = download_url(token, mid, tgt["id"])
         if not url:
             log(f"[{name}] 拿不到下载链接")
             REPORT.append(f"❌ [{name}] 邮件有附件但拿不到下载链接")
@@ -224,6 +222,8 @@ def process_carrier(token, name, cfg):
             cx = pick_main_xlsx(raw, cfg["main"])
             if cx:
                 shutil.copy(cx, final)
+                if cx != raw:
+                    os.remove(cx)
             os.remove(raw)
         else:
             shutil.copy(raw, final)
