@@ -27,21 +27,9 @@ BANNER = """
       el.style.cssText = "margin-top:8px;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:#0e1117;background:linear-gradient(90deg,#ffd479,#ffb347);box-shadow:0 1px 4px rgba(0,0,0,.25);display:inline-block";
       h.appendChild(el);
     }
-    el.textContent = "\uD83D\uDCC5 " + note;
+    el.textContent = "\U0001F4C5 " + note;
   }
   if(document.readyState !== "loading") render();
   else document.addEventListener("DOMContentLoaded", render);
 })();
 """
-
-with open(RATES_JS, "w", encoding="utf-8") as f:
-    f.write("window.RATES = ")
-    json.dump(d, f, ensure_ascii=False)
-    f.write(";")
-    f.write(BANNER)
-
-build = str(int(time.time()))
-with open(VERSION, "w", encoding="utf-8") as f:
-    json.dump({"build": build}, f)
-
-print("baked %d channels | build=%s | generated=%s" % (len(d["channels"]), build, d.get("generated")))
