@@ -53,6 +53,17 @@ def req_json(url, method="GET", token=None, body=None):
 
 
 # ---------- token ----------
+def get_app_access_token():
+    """用 App Secret 换取 app_access_token，供 authen 系列接口鉴权。"""
+    if not APP_SECRET:
+        raise RuntimeError("FEISHU_APP_SECRET 未配置")
+    url = "https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal"
+    r = req_json(url, "POST", body={"app_id": APP_ID, "app_secret": APP_SECRET})
+    if r.get("code") != 0:
+        raise RuntimeError(f"获取 app_access_token 失败: {r}")
+    return r["app_access_token"]
+
+
 def load_token():
     raw = os.environ.get("WL02_MAIL_TOKEN", "")
     if not raw:
@@ -66,17 +77,21 @@ def load_token():
     now = int(time.time())
     if now < tok.get("got_at", 0) + int(tok.get("expires_in", 7200)) - 300:
         return tok["access_token"]
-    # refresh
+    # refresh: authen v1 OIDC 要求在 Authorization 头传 app_access_token
     try:
-        r = req_json(REFRESH_URL, "POST", body={
-            "grant_type": "refresh_token", "refresh_token": tok["refresh_token"],
-            "app_id": APP_ID, "app_secret": APP_SECRET})
+        app_token = get_app_access_token()
+        r = req_json(REFRESH_URL, "POST", token=app_token, body={
+            "grant_type": "refresh_token",
+            "refresh_token": tok["refresh_token"],
+        })
         if r.get("code") == 0:
             tok["access_token"] = r["access_token"]
             tok["refresh_token"] = r.get("refresh_token", tok["refresh_token"])
             tok["got_at"] = now
             log("refresh 成功（新 token 未回写 secret，30 天后续期需重跑 oauth_authorize.py）")
             return tok["access_token"]
+        else:
+            log(f"refresh 失败: {r}")
     except Exception as e:
         log(f"refresh 失败: {e}")
     return None
