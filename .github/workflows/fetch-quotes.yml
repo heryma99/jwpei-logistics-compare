@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: fetch-quotes
   cancel-in-progress: false
@@ -23,12 +24,14 @@ jobs:
         with:
           python-version: '3.11'
       - name: 安装依赖
-        run: python -m pip install --quiet openpyxl
+        run: python -m pip install --quiet openpyxl pynacl
       - name: 抓取并解析报价单（只改价格数值 + 白名单校验）
         env:
           WL02_MAIL_TOKEN: ${{ secrets.WL02_MAIL_TOKEN }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FETCH_DIAG: ${{ secrets.FETCH_DIAG }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
         run: python .github/scripts/fetch_quotes.py
       - name: 提交价格变动（[skip ci] 避免重复触发 sync-rates 发卡片）
         run: |
