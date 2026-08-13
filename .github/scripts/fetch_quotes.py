@@ -105,8 +105,10 @@ def load_token():
 
 # ---------- 邮件 ----------
 def search_mail(token, kw):
+    # 飞书邮件搜索正确端点：POST /open-apis/mail/v1/user_mailboxes/{MBOX}/search
+    # （注意：不是 /messages/search，那个路径返回 404）
     try:
-        r = req_json(MAIL_API + "/messages/search", "POST", token, {"query": kw, "page_size": 5})
+        r = req_json(MAIL_API + "/search", "POST", token, {"query": kw, "page_size": 15})
     except Exception as e:
         log(f"search '{kw}' 异常: {e}")
         REPORT.append(f"❌ 搜索「{kw}」异常: {e}")
