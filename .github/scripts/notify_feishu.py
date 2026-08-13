@@ -3,16 +3,16 @@
 # 优先用「应用 API」(tenant_access_token) 发到指定群；未配 APP_SECRET 时回退 webhook。
 import os, json, sys, urllib.request, urllib.error
 
-APP_ID = os.environ.get("FEISHU_APP_ID", "").strip()
+APP_ID = os.environ.get("FEISHU_APP_ID", "").strip() or "cli_aab6341b78f95be9"
 APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "").strip()
-CHAT_ID = os.environ.get("FEISHU_CHAT_ID", "").strip()
+CHAT_ID = os.environ.get("FEISHU_CHAT_ID", "").strip() or "oc_cd9a6f072cdd348a08c29d09e8c9143a"
 WEBHOOK = os.environ.get("FEISHU_WEBHOOK", "").strip()
-committer = os.environ.get("COMMITTER", "团队")
+committer = os.environ.get("COMMITTER", "团队") or "团队"
 site = "https://heryma99.github.io/jwpei-logistics-compare/"
 sha = os.environ.get("RATES_SHA", "")[:8]
 
 def http_post(url, payload, headers=None, timeout=15):
-    data = json.dumps(payload).encode("utf-8") if isinstance(payload, (dict, list)) else payload
+    data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
     if headers:
@@ -21,7 +21,6 @@ def http_post(url, payload, headers=None, timeout=15):
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
-# 交互卡片
 CARD = {
     "header": {"template": "blue", "title": {"tag": "plain_text", "content": "比价易 · 报价已更新"}},
     "elements": [
@@ -51,7 +50,7 @@ if APP_ID and APP_SECRET and CHAT_ID:
     except Exception as e:
         print("[notify] 应用API路径异常:", e)
 
-# 路径二：兜底 webhook（群自定义机器人）
+# 路径二：兜底 webhook
 if WEBHOOK:
     try:
         data = json.dumps({"msg_type": "interactive", "card": CARD}).encode("utf-8")
