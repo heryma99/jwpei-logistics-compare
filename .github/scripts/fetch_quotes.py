@@ -408,7 +408,29 @@ def bake_ratesjs():
     log(f"rates.js 重新烘焙 | effective_date={eff}")
 
 
+def send_error_card(title, msg):
+    send_card({
+        "config": {"wide_screen_mode": True},
+        "header": {"title": {"tag": "plain_text", "content": title}, "template": "red"},
+        "elements": [{"tag": "div", "text": {"tag": "lark_md",
+                  "content": "**自动抓单运行异常**（需人工排查）\n```\n" + msg[-1800:] + "\n```"}}],
+    })
+
+
 def main():
+    try:
+        _main_impl()
+    except SystemExit:
+        raise
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        log("❌ 运行异常: " + str(e))
+        send_error_card("比价易 · 抓单异常", tb)
+        raise
+
+
+def _main_impl():
     if not os.path.exists(RATES):
         log("[skip] 无 rates.json")
         return
@@ -416,6 +438,7 @@ def main():
     token = load_token()
     if token is None and not FETCH_LOCAL:
         log("❌ 无法获取 wl02 邮箱 token，本次运行直接失败（不会静默跳过）")
+        send_error_card("比价易 · 抓单失败", "无法获取 wl02 邮箱 user token：access_token 已过期且 refresh_token 续期失败。\n请在本机重跑 quote_pull/oauth_authorize.py 让用户在浏览器点一次「允许」，重新写入 WL02_MAIL_TOKEN secret。")
         sys.exit(1)
     # 抓取各承运商报价单
     got_any = False
