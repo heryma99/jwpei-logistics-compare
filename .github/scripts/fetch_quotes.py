@@ -32,7 +32,7 @@ BAKE = {
     "亚丰":     ["bake_yf.py"],
 }
 MAIL_API = "https://open.feishu.cn/open-apis/mail/v1/user_mailboxes/" + MBOX
-REFRESH_URL = "https://open.feishu.cn/open-apis/authen/v1/oidc/refresh_access_token"
+REFRESH_URL = "https://open.feishu.cn/open-apis/authen/v2/oauth/token"
 
 FETCH_LOCAL = os.environ.get("FETCH_LOCAL", "") == "1"
 LOCAL_XLSX_DIR = os.environ.get("LOCAL_XLSX_DIR", os.path.join(REPO_ROOT, "quote_pull"))
@@ -87,6 +87,8 @@ def load_token():
         r = req_json(REFRESH_URL, "POST", token=app_token, body={
             "grant_type": "refresh_token",
             "refresh_token": tok["refresh_token"],
+            "client_id": APP_ID,
+            "client_secret": APP_SECRET,
         })
         if r.get("code") == 0:
             data = r.get("data", r)
