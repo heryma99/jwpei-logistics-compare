@@ -109,8 +109,9 @@ def load_token():
 
 def save_token_to_secret(tok):
     """刷新成功后把新 token 写回 GitHub secret，实现零维护自动续期。
-    需 workflow 提供 GITHUB_TOKEN + actions:write 权限；失败仅告警不影响本次抓取。"""
-    gt = os.environ.get("GITHUB_TOKEN")
+    需 workflow 提供 GH_PAT（Personal Access Token，含 repo scope）才能写 secrets；
+    GITHUB_TOKEN 默认无写 secret 权限，故仅作为 fallback。失败仅告警不影响本次抓取。"""
+    gt = os.environ.get("GH_PAT") or os.environ.get("GITHUB_TOKEN")
     repo = os.environ.get("GITHUB_REPO")
     if not gt or not repo:
         log("[skip] 未配置 GITHUB_TOKEN/GITHUB_REPO，跳过写回 secret（后续过期需手动重授权）")
