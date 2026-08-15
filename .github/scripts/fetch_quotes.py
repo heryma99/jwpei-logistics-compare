@@ -24,7 +24,7 @@ SITE_URL = "https://heryma99.github.io/jwpei-logistics-compare/"
 CARRIERS = {
     "云途":     {"kw": ["云途", "客户报价单"], "main": "云途全球专线挂号（特惠普货）", "prefer_ext": "zip"},
     "中运通达": {"kw": ["中运通达", "中运"],    "main": None, "prefer_ext": "xlsx"},
-    "亚丰":     {"kw": ["璞景", "德翼供应链", "德翼价格表", "德翼", "亚丰"], "main": None, "prefer_ext": "xlsx"},
+    "亚丰":     {"kw": ["德翼供应链", "德翼价格表", "德翼", "亚丰"], "main": None, "prefer_ext": "xlsx"},
 }
 BAKE = {
     "云途":     ["bake_yuntu.py"],
@@ -32,7 +32,7 @@ BAKE = {
     "亚丰":     ["bake_yf.py"],
 }
 MAIL_API = "https://open.feishu.cn/open-apis/mail/v1/user_mailboxes/" + MBOX
-REFRESH_URL = "https://open.feishu.cn/open-apis/authen/v2/oauth/token"
+REFRESH_URL = "https://open.feishu.cn/open-apis/authen/v1/oidc/refresh_access_token"
 
 FETCH_LOCAL = os.environ.get("FETCH_LOCAL", "") == "1"
 LOCAL_XLSX_DIR = os.environ.get("LOCAL_XLSX_DIR", os.path.join(REPO_ROOT, "quote_pull"))
@@ -87,8 +87,6 @@ def load_token():
         r = req_json(REFRESH_URL, "POST", token=app_token, body={
             "grant_type": "refresh_token",
             "refresh_token": tok["refresh_token"],
-            "client_id": APP_ID,
-            "client_secret": APP_SECRET,
         })
         if r.get("code") == 0:
             data = r.get("data", r)
