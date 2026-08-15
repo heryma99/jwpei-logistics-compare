@@ -77,30 +77,33 @@ def load_token():
     except Exception:
         log("[skip] WL02_MAIL_TOKEN 解析失败")
         return None
-    now = int(time.time())
-    expires_in = int(tok.get("expires_in") or 7200)
-    if tok.get("access_token") and now < tok.get("got_at", 0) + expires_in - 300:
+    # 不再信任 access_token 的过期时间：飞书 access_token 可能提前失效，
+    # 因此每次运行都先用 refresh_token 换一个新的 access_token，确保可用。
+    if tok.get("refresh_token"):
+        try:
+            app_token = get_app_access_token()
+            r = req_json(REFRESH_URL, "POST", token=app_token, body={
+                "grant_type": "refresh_token",
+                "refresh_token": tok["refresh_token"],
+            })
+            if r.get("code") == 0:
+                data = r.get("data", r)
+                tok["access_token"] = data["access_token"]
+                tok["refresh_token"] = data.get("refresh_token", tok["refresh_token"])
+                tok["expires_in"] = data.get("expires_in", 7200)
+                tok["got_at"] = int(time.time())
+                log("refresh 成功")
+                save_token_to_secret(tok)
+                return tok["access_token"]
+            else:
+                log(f"refresh 失败: {r}")
+        except Exception as e:
+            log(f"refresh 失败: {e}")
+    # refresh 失败时，如果仍有一个 access_token 就先拿来用（大概率也会失败，但至少能试）
+    if tok.get("access_token"):
+        log("[warn] refresh 失败，回退使用现有 access_token")
         return tok["access_token"]
-    # refresh: authen v1 OIDC 要求在 Authorization 头传 app_access_token
-    try:
-        app_token = get_app_access_token()
-        r = req_json(REFRESH_URL, "POST", token=app_token, body={
-            "grant_type": "refresh_token",
-            "refresh_token": tok["refresh_token"],
-        })
-        if r.get("code") == 0:
-            data = r.get("data", r)
-            tok["access_token"] = data["access_token"]
-            tok["refresh_token"] = data.get("refresh_token", tok["refresh_token"])
-            tok["expires_in"] = data.get("expires_in", 7200)
-            tok["got_at"] = now
-            log("refresh 成功")
-            save_token_to_secret(tok)
-            return tok["access_token"]
-        else:
-            log(f"refresh 失败: {r}")
-    except Exception as e:
-        log(f"refresh 失败: {e}")
+    log("[skip] 无可用 access_token")
     return None
 
 
