@@ -11,36 +11,31 @@
   body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;padding:16px}
   h1{font-size:18px;margin:0 0 4px}
   .sub{color:var(--mut);font-size:12px;margin-bottom:12px}
-  .ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px}
-  .ctrl label{font-size:12px;color:var(--mut)}
-  .ctrl select{background:#0e1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:13px;max-width:240px}
-  .ctrl .arrow{color:var(--acc);font-weight:700;font-size:15px}
-  #modeHint{font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(88,166,255,.15);color:var(--acc);white-space:nowrap}
-  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-  .banner{margin:2px 0 12px;padding:9px 14px;border-radius:10px;font-size:13px;line-height:1.5;
-          background:rgba(139,148,158,.12);border:1px solid var(--line);color:var(--mut)}
-  .banner.warn{background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#ffb3ad}
-  #carBar button{padding:5px 11px;font-size:12px}
-  #carBar button.on{background:var(--acc);color:#0e1117}
-  button{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
-  button.on{background:var(--acc);color:#0e1117;border-color:var(--acc);font-weight:600}
-  .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:500px}
-  .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-y:auto;max-height:calc(100vh - 200px)}
-  .gt{font-size:12px;font-weight:700;color:var(--mut);padding:8px 6px 2px}
-  .gt2{font-size:12px;font-weight:600;color:var(--acc);padding:6px 8px 2px 18px;border-top:1px dashed var(--line);margin-top:6px}
-  .ch{padding:7px 10px;font-size:13px;cursor:pointer;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin:3px 0;gap:8px}
+  .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:520px}
+  .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;overflow-y:auto;max-height:calc(100vh - 120px)}
+  .allbtn{display:inline-block;font-size:12px;color:var(--acc);cursor:pointer;padding:4px 10px;border:1px solid var(--line);border-radius:8px;margin:2px 4px 8px}
+  .allbtn.on{background:var(--acc);color:#0e1117;font-weight:600}
+  .ct{font-size:12px;font-weight:700;color:var(--mut);padding:8px 10px 4px;cursor:pointer}
+  .ct.on{color:var(--acc)}
+  .cr{padding:5px 10px 5px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between}
+  .cr:hover{background:#1c2533}
+  .cr .cnt{font-size:11px;color:var(--mut);font-weight:400}
+  .ch{padding:6px 10px 6px 34px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;border-radius:8px;margin:2px 0}
   .ch:hover{background:#1c2533}
   .ch.on{background:#1a304d;color:var(--acc);font-weight:600}
-  .chname{flex:1;min-width:0}
-  .chname small{display:block;color:var(--mut);font-weight:400;font-size:11px}
   .badge{font-size:10px;color:var(--mut);background:#0e1117;border:1px solid var(--line);padding:1px 6px;border-radius:4px;white-space:nowrap}
   .detail{min-height:400px}
-  .dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;box-shadow:0 1px 10px rgba(0,0,0,.12)}
-  .dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px}
+  .dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .dname{font-size:17px;font-weight:700}
   .dcar{font-size:12px;color:var(--mut);margin-top:2px}
-  .dtag{font-size:11px;border-radius:6px;padding:2px 8px;background:#0e1117;border:1px solid var(--line);color:var(--mut)}
-  .chips{display:flex;gap:10px;margin:10px 0 14px;flex-wrap:wrap}
+  .dtag{font-size:11px;border-radius:6px;padding:2px 8px;background:#0e1117;border:1px solid var(--line);color:var(--mut);white-space:nowrap}
+  .sech{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+  .sech h3{font-size:13px;margin:0 0 8px;color:var(--acc);font-weight:600}
+  .sech .ctx{font-size:12px;color:var(--mut);margin-bottom:8px}
+  .histctrl{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .histctrl select{background:#0e1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:13px;max-width:260px}
+  .chips{display:flex;gap:10px;margin:4px 0 12px;flex-wrap:wrap}
   .chip{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}
   .chip.up{background:rgba(248,81,73,.15);color:var(--up)}
   .chip.down{background:rgba(63,185,80,.15);color:var(--down)}
@@ -67,31 +62,15 @@
 <h1>📊 报价环比分析</h1>
 <div class="sub" id="sub">加载中…</div>
 
-<div class="ctrl" id="ctrl">
-  <label>对比基准</label>
-  <select id="selBase"></select>
-  <span class="arrow">→</span>
-  <label>本期</label>
-  <select id="selCur"></select>
-  <span id="modeHint"></span>
-  <button id="btnLastChange" type="button">↺ 看最近一次变动</button>
-</div>
-
-<div id="banner" class="banner" style="display:none"></div>
-
-<div class="bar" id="catBar"></div>
-<div class="bar" id="carBar" style="margin-top:-4px"></div>
-
 <div class="layout">
   <aside class="side" id="sidebar"></aside>
   <main class="detail" id="detail"></main>
 </div>
 
 <div class="note">
-  数据来源：<code>versions.json</code>。用上方下拉可切换：默认显示 <b>环比</b>（本期 vs 上一期）；
-  把"对比基准"选成更早的版本即变为 <b>基期对比</b>（本期 vs 选定基期）。<br>
-  按业务域分组：<b>全部</b>、<b>小包专线</b>（B2C 按件/按票）、<b>商业快递</b>（DHL/FedEx/UPS 分区总票价）、<b>2B头程</b>（FBA/专线头程）、<b>海外仓</b>（发往海外仓的头程/入仓渠道）。<br>
-  红＝涨价，绿＝降价，灰＝持平。逐（目的国/分区 × 重量段）比对运费。谷仓等海外仓操作费对比数据源未接入（另见 overseas_data.js）。
+  交互：左侧 <b>树形导航</b> —— 点「全部」展开所有物流商与其渠道；点某个<b>分类</b>（小包专线 / 商业快递 / to B 头程）收拢到该分类；点<b>物流商</b>展开/收起其渠道；点<b>渠道</b>，右侧出它的明细。<br>
+  右侧明细含两块：① <b>最新环比</b>（上一期 → 本期，逐目的国/分区 × 重量段）；② <b>历史对比</b>下拉，选任意已有报价日期，立即算「最新价 vs 该日」逐段涨跌。<br>
+  红＝涨价，绿＝降价，灰＝持平。数据来源 <code>versions.json</code>，已含系统里全部历史报价版本。
 </div>
 
 <script>
@@ -104,248 +83,198 @@ if (EMBED) {
 }
 
 let VERS = [];
-let selBase = 0;
-let selCur = 0;
-let CH = {};
-let curCat = "all";
-let curCar = "all";
+let LATEST = null;          // 最新版本（当前价）
+let TREE = {};              // cat -> carrier -> [cid]
+let CATS = [];              // 分类顺序
+let CAT_LABEL = {small:"小包专线", express:"商业快递", "b2b-air":"to B 头程", overseas:"海外仓"};
+let filterCat = null;       // null=全部
+let collapsed = new Set();  // 收起的物流商 key（cat||carrier）
 let curId = null;
 
-const isOverseas = (c) => /海外仓|入仓|集货仓/.test(c.name || "");
-const catOf = (c) => isOverseas(c) ? "overseas" : (c.cat || "");
-const normCarrier = (c) => {
-  const n = c.carrier || "—";
-  if (n.startsWith("云途")) return "云途";
-  if (n.startsWith("亚丰")) return "亚丰";
-  return n;
-};
-const DOMAINS = [["all","全部"],["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]];
-
-function modeLabel(){
-  if (selCur === selBase) return "同一版本";
-  if (selCur === selBase + 1) return "环比(本期 vs 上一期)";
-  return "基期对比";
-}
+function catLabel(c){ return CAT_LABEL[c] || c; }
 
 fetch("versions.json?_=" + Date.now(), {cache:"no-store"})
   .then(r => r.json())
   .then(d => {
     VERS = (d.versions || []).slice().sort((a,b) => a.date.localeCompare(b.date));
-    selCur = VERS.length - 1;
-    selBase = Math.max(0, VERS.length - 2);
-    init();
+    LATEST = VERS[VERS.length - 1];
+    buildTree();
+    document.getElementById("sub").textContent =
+      `共 ${VERS.length} 个报价版本（${VERS[0].date} ~ ${LATEST.date}）｜ 当前价基准 ${LATEST.date}`;
+    // 默认选中第一个渠道
+    const first = firstChannelId();
+    if (first) selectChannel(first);
+    else document.getElementById("detail").innerHTML = '<div class="placeholder">无渠道数据</div>';
   })
   .catch(e => { document.getElementById("sub").textContent = "加载 versions.json 失败：" + e; });
 
-function init(){
-  const sB = document.getElementById("selBase");
-  const sC = document.getElementById("selCur");
-  sB.innerHTML = ""; sC.innerHTML = "";
-  VERS.forEach((v,i) => {
-    sB.appendChild(new Option(v.label, i));
-    sC.appendChild(new Option(v.label, i));
-  });
-  sB.value = selBase; sC.value = selCur;
-  sB.onchange = () => { selBase = +sB.value; if (selBase > selCur){ selCur = selBase; sC.value = selCur; } rebuild(); };
-  sC.onchange = () => { selCur = +sC.value; if (selCur < selBase){ selBase = selCur; sB.value = selBase; } rebuild(); };
-
-  document.getElementById("btnLastChange").onclick = () => {
-    selBase = 0; selCur = VERS.length - 1;
-    sB.value = selBase; sC.value = selCur;
-    rebuild();
-  };
-
-  buildCarrierBar();
-  buildCatBar();
-  rebuild();
-}
-
-// 物流商筛选条：让"对比基准/本期"明确绑定到所选物流商/渠道
-function buildCarrierBar(){
-  const bar = document.getElementById("carBar");
-  bar.innerHTML = "";
-  const cars = Array.from(new Set(Object.values(CH).map(c => normCarrier(c)))).sort((a,b)=>a.localeCompare(b,'zh'));
-  [["all","全部物流商"]].concat(cars.map(c => [c, c])).forEach(([v,label]) => {
-    const b = document.createElement("button");
-    b.textContent = label; b.dataset.c = v;
-    if (v === curCar) b.classList.add("on");
-    b.onclick = () => { curCar = v; renderCarBar(); buildSidebar(); };
-    bar.appendChild(b);
-  });
-}
-function renderCarBar(){
-  [...document.getElementById("carBar").children].forEach(x => x.classList.toggle("on", x.dataset.c === curCar));
-}
-
-function compareChannels(){
-  const base = VERS[selBase], cur = VERS[selCur], out = {};
-  const ids = new Set([...Object.keys(base.channels), ...Object.keys(cur.channels)]);
-  ids.forEach(id => {
-    const cc = cur.channels[id];
-    if (!cc) return;
-    const bc = base.channels[id];
-    out[id] = {
-      cat: cc.cat, name: cc.name, carrier: cc.carrier,
-      prev: bc ? bc.rows : [],
-      cur: cc.rows
-    };
-  });
-  return out;
-}
-
-function rebuild(){
-  CH = compareChannels();
-  updateSub();
-  // 物流商筛选随渠道集合变化重建一次
-  buildCarrierBar();
-  buildSidebar();
-}
-
-function totalChanges(){
-  let up=0,down=0,na=0;
-  for (const id in CH){
-    if (curCar !== "all" && normCarrier(CH[id]) !== curCar) continue;
-    const rows = joinRows(CH[id].prev, CH[id].cur);
-    rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; });
+function buildTree(){
+  TREE = {};
+  for (const [cid, ch] of Object.entries(LATEST.channels)){
+    const cat = ch.cat || "other";
+    (TREE[cat] = TREE[cat] || {});
+    (TREE[cat][ch.carrier] = TREE[cat][ch.carrier] || []).push(cid);
   }
-  return {up,down,na};
+  CATS = Object.keys(TREE).sort((a,b) => (CAT_LABEL[a]||a).localeCompare(CAT_LABEL[b]||b,'zh'));
+  renderTree();
 }
 
-function updateSub(){
-  const base = VERS[selBase], cur = VERS[selCur];
-  const chN = Object.keys(CH).length;
-  document.getElementById("sub").textContent =
-    `${modeLabel()} ｜ 对比基准 ${base.date} → 本期 ${cur.date} ｜ 共 ${chN} 渠道可比`;
-  document.getElementById("modeHint").textContent = modeLabel();
-
-  // 无变动提示横幅
-  const banner = document.getElementById("banner");
-  const {up,down} = totalChanges();
-  if (up === 0 && down === 0){
-    banner.className = "banner warn";
-    banner.style.display = "block";
-    if (selCur === selBase + 1){
-      banner.innerHTML = `ℹ 本期(${cur.date})与对比基准(${base.date})之间<b>无价格变动</b>——${cur.date} 为同步日，价格与 ${base.date} 完全一致。点「↺ 看最近一次变动」可查看 ${VERS[0].date} → ${cur.date} 的真实涨跌幅。`;
-    } else {
-      banner.innerHTML = `ℹ 当前所选对比基准(${base.date})与本期(${cur.date})之间<b>无价格变动</b>。可把"对比基准"改到 ${VERS[0].date} 查看真实涨跌幅。`;
-    }
-  } else {
-    banner.style.display = "none";
+function firstChannelId(){
+  for (const cat of CATS){
+    if (filterCat && cat !== filterCat) continue;
+    const cars = Object.keys(TREE[cat]);
+    if (cars.length) return TREE[cat][cars[0]][0];
   }
+  return null;
 }
 
-function buildCatBar(){
-  const bar = document.getElementById("catBar");
-  bar.innerHTML = "";
-  const scoped = Object.values(CH).filter(c => curCar === "all" || normCarrier(c) === curCar);
-  DOMAINS.forEach(([cat,label]) => {
-    const n = cat === "all" ? scoped.length
-            : scoped.filter(c => catOf(c) === cat).length;
-    const b = document.createElement("button");
-    b.textContent = label + " (" + n + ")"; b.dataset.c = cat;
-    if (cat === curCat) b.classList.add("on");
-    b.onclick = () => { curCat = cat; renderBar(); buildSidebar(); };
-    bar.appendChild(b);
-  });
-}
-
-function renderBar(){
-  [...document.getElementById("catBar").children].forEach(x => x.classList.toggle("on", x.dataset.c === curCat));
-}
-
-function joinRows(prev, cur){
-  const pm = {};
-  prev.forEach(r => pm[r.dim+"|"+r.w] = r.rate);
-  const out = [];
-  cur.forEach(r => {
-    const pv = pm[r.dim+"|"+r.w];
-    const rate = r.rate;
-    let d = null, dir = "flat";
-    if (pv != null){ d = +(rate - pv).toFixed(2); dir = d>0?"up":(d<0?"down":"flat"); }
-    out.push({dim:r.dim, w:r.w, prev:pv, cur:rate, d, dir});
-  });
-  return out;
-}
-
-function buildSidebar(){
+function renderTree(){
   const sb = document.getElementById("sidebar");
   sb.innerHTML = "";
 
-  const all = Object.entries(CH)
-    .filter(([id,c]) => curCar === "all" || normCarrier(c) === curCar)
-    .sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
+  const allBtn = document.createElement("span");
+  allBtn.className = "allbtn" + (filterCat === null ? " on" : "");
+  allBtn.textContent = "全部";
+  allBtn.onclick = () => { filterCat = null; renderTree(); };
+  sb.appendChild(allBtn);
 
-  const renderByCarrier = (list) => {
-    const groups = {};
-    list.forEach(([id,c]) => {
-      const k = normCarrier(c);
-      (groups[k] = groups[k] || []).push([id,c]);
-    });
-    Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0],'zh')).forEach(([car,sub]) => {
-      const g2 = document.createElement("div");
-      g2.className = "gt2"; g2.textContent = car + " (" + sub.length + ")";
-      sb.appendChild(g2);
-      sub.forEach(([id,c]) => {
-        const rows = joinRows(c.prev, c.cur);
-        let up=0,down=0,flat=0,na=0;
-        rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
-        const badgeText = `涨${up} 跌${down} 平${flat}`;
+  const cats = filterCat ? [filterCat] : CATS;
+  for (const cat of cats){
+    if (!TREE[cat]) continue;
+    const ct = document.createElement("div");
+    ct.className = "ct" + (filterCat === cat ? " on" : "");
+    const catCount = Object.values(TREE[cat]).reduce((s,a)=>s+a.length,0);
+    ct.textContent = `${catLabel(cat)} (${catCount})`;
+    ct.onclick = () => { filterCat = (filterCat === cat ? null : cat); renderTree(); };
+    sb.appendChild(ct);
+
+    for (const car of Object.keys(TREE[cat]).sort((a,b)=>a.localeCompare(b,'zh'))){
+      const ckey = cat + "||" + car;
+      const cr = document.createElement("div");
+      cr.className = "cr";
+      cr.innerHTML = `<span>${car}</span><span class="cnt">${TREE[cat][car].length}</span>`;
+      cr.onclick = () => { if (collapsed.has(ckey)) collapsed.delete(ckey); else collapsed.add(ckey); renderTree(); if (curId) selectChannel(curId); };
+      sb.appendChild(cr);
+
+      if (collapsed.has(ckey)) continue;
+      for (const cid of TREE[cat][car]){
+        const ch = LATEST.channels[cid];
+        const {up,down} = channelChange(cid);
         const div = document.createElement("div");
-        div.className = "ch" + (id === curId ? " on" : "");
-        div.innerHTML = `<span class="chname">${c.name}<small>${c.carrier}</small></span><span class="badge">${badgeText}</span>`;
-        div.onclick = () => { curId = id; buildSidebar(); renderDetail(id); };
+        div.className = "ch" + (cid === curId ? " on" : "");
+        const badge = (up||down) ? `涨${up} 跌${down}` : "持平";
+        div.innerHTML = `<span>${ch.name}</span><span class="badge">${badge}</span>`;
+        div.onclick = () => selectChannel(cid);
         sb.appendChild(div);
-      });
-    });
-  };
-
-  if (curCat === "all"){
-    [["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]].forEach(([cat,label]) => {
-      const sub = all.filter(([id,c]) => catOf(c) === cat);
-      if (!sub.length) return;
-      const g = document.createElement("div");
-      g.className = "gt"; g.textContent = label + " (" + sub.length + ")";
-      sb.appendChild(g);
-      renderByCarrier(sub);
-    });
-  } else {
-    const chs = all.filter(([id,c]) => catOf(c) === curCat);
-    if (!chs.length){ sb.innerHTML = '<div class="placeholder">无数据</div>'; return; }
-    renderByCarrier(chs);
+      }
+    }
   }
-
-  const pool = curCat === "all" ? all : all.filter(([id,c]) => catOf(c) === curCat);
-  if (!curId || (curCat !== "all" && catOf(CH[curId] || {}) !== curCat)) curId = (pool[0]||[])[0];
-  renderDetail(curId);
 }
 
-function renderDetail(id){
-  const det = document.getElementById("detail");
-  if (!id || !CH[id]){ det.innerHTML = '<div class="placeholder">请选择左侧渠道</div>'; return; }
-  const c = CH[id];
-  const rows = joinRows(c.prev, c.cur);
-  let up=0,down=0,flat=0,na=0;
-  rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
+// 某渠道相对「上一期」的涨跌计数（用于左侧 badge）
+function channelChange(cid){
+  const prev = VERS.length >= 2 ? (VERS[VERS.length-2].channels[cid] || {}).rows : null;
+  const cur = (LATEST.channels[cid] || {}).rows;
+  let up=0,down=0;
+  if (prev && cur){
+    const pm = {};
+    prev.forEach(r => pm[r.dim+"|"+r.w] = r.rate);
+    cur.forEach(r => { const pv = pm[r.dim+"|"+r.w]; if (pv==null) return; const d=r.rate-pv; if(d>0)up++; else if(d<0)down++; });
+  }
+  return {up,down};
+}
 
-  const catLabel = ({small:"小包专线", express:"商业快递", "b2b-air":"2B头程", overseas:"海外仓"}[catOf(c)]) || catOf(c);
+function selectChannel(cid){
+  curId = cid;
+  // 高亮
+  [...document.getElementById("sidebar").querySelectorAll(".ch")].forEach(x => x.classList.remove("on"));
+  // 重新渲染树以更新高亮 + 明细
+  renderTree();
+  renderDetail(cid);
+}
 
-  let html = `<div class="dcard">`;
-  html += `<div class="dhead"><div><div class="dname">${c.name}</div><div class="dcar">${c.carrier} · ${catLabel} ｜ 对比基准 ${VERS[selBase].date} → 本期 ${VERS[selCur].date}</div></div><span class="dtag">${catOf(c)}</span></div>`;
-  html += `<div class="chips">`+
-    `<span class="chip up">▲ 涨 ${up}</span>`+
-    `<span class="chip down">▼ 跌 ${down}</span>`+
-    `<span class="chip flat">＝ 持平 ${flat}</span>`+
-    (na?`<span class="chip na">· 仅本期 ${na}</span>`:"") +
-    `</div>`;
-  html += `<table><thead><tr><th>目的国/分区</th><th>重量段</th><th>上期 ¥/kg</th><th>本期 ¥/kg</th><th>Δ</th><th>方向</th></tr></thead><tbody>`;
+function joinRows(baseRows, curRows){
+  const pm = {};
+  (baseRows||[]).forEach(r => pm[r.dim+"|"+r.w] = r.rate);
+  return (curRows||[]).map(r => {
+    const pv = pm[r.dim+"|"+r.w];
+    let d=null, dir="flat";
+    if (pv != null){ d = +(r.rate - pv).toFixed(2); dir = d>0?"up":(d<0?"down":"flat"); }
+    return {dim:r.dim, w:r.w, prev:pv, cur:r.rate, d, dir};
+  });
+}
+
+function tableHTML(rows){
+  let html = `<table><thead><tr><th>目的国/分区</th><th>重量段</th><th>上期</th><th>本期</th><th>Δ</th><th>方向</th></tr></thead><tbody>`;
+  if (!rows.length){ html += `<tr><td colspan="6" style="text-align:center;color:var(--mut)">该渠道在此对比版本中无数据</td></tr>`; }
   rows.forEach(r => {
     const prevTxt = r.prev==null ? "—" : r.prev;
     const dTxt = r.d==null ? "—" : (r.d>0?"+":"")+r.d;
     const dirTxt = r.dir==="up"?"▲ 涨":r.dir==="down"?"▼ 跌":"＝ 持平";
     html += `<tr><td>${r.dim}</td><td>${r.w}</td><td>${prevTxt}</td><td>${r.cur}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${dirTxt}</td></tr>`;
   });
-  html += `</tbody></table></div>`;
+  return html + `</tbody></table>`;
+}
+
+function chipsHTML(rows){
+  let up=0,down=0,flat=0,na=0;
+  rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
+  return `<div class="chips">`+
+    `<span class="chip up">▲ 涨 ${up}</span>`+
+    `<span class="chip down">▼ 跌 ${down}</span>`+
+    `<span class="chip flat">＝ 持平 ${flat}</span>`+
+    (na?`<span class="chip na">· 仅本期 ${na}</span>`:"")+`</div>`;
+}
+
+function renderDetail(cid){
+  const det = document.getElementById("detail");
+  const ch = LATEST.channels[cid];
+  if (!ch){ det.innerHTML = '<div class="placeholder">请选择左侧渠道</div>'; return; }
+
+  const prevIdx = Math.max(0, VERS.length - 2);
+  const baseRows0 = (VERS[prevIdx].channels[cid] || {}).rows || null;
+  const curRows = ch.rows;
+  const rowsMoM = joinRows(baseRows0, curRows);
+
+  let html = `<div class="dcard">`;
+  html += `<div class="dhead"><div><div class="dname">${ch.name}</div>`+
+          `<div class="dcar">${ch.carrier} · ${catLabel(ch.cat)}</div></div>`+
+          `<span class="dtag">${ch.cat}</span></div>`;
+
+  // ① 最新环比
+  html += `<div class="sech"><h3>最新环比</h3>`+
+          `<div class="ctx">上一期 ${VERS[prevIdx].date} → 本期 ${LATEST.date}</div>`+
+          chipsHTML(rowsMoM) + tableHTML(rowsMoM) + `</div>`;
+
+  // ② 历史对比
+  html += `<div class="sech"><h3>历史对比</h3>`+
+          `<div class="histctrl"><span class="ctx" style="margin:0">选一个历史报价日期，看最新价 vs 该日逐段涨跌：</span>`+
+          `<select id="selHist"></select></div>`+
+          `<div id="histBody"></div></div>`;
+
+  html += `</div>`;
   det.innerHTML = html;
+
+  // 历史下拉：除当前外所有版本
+  const sel = document.getElementById("selHist");
+  const histVers = VERS.map((v,i)=>({v,i})).filter(x => x.i !== VERS.length-1);
+  histVers.forEach(({v,i}) => {
+    const opt = new Option(v.date + (i===prevIdx ? "（上一期）" : ""), i);
+    sel.appendChild(opt);
+  });
+  sel.value = prevIdx;
+  sel.onchange = () => renderHistory(cid, +sel.value);
+  renderHistory(cid, prevIdx);
+}
+
+function renderHistory(cid, baseIdx){
+  const body = document.getElementById("histBody");
+  if (!body) return;
+  const baseRows = (VERS[baseIdx].channels[cid] || {}).rows || null;
+  const curRows = (LATEST.channels[cid] || {}).rows;
+  const rows = joinRows(baseRows, curRows);
+  body.innerHTML = `<div class="ctx">最新价（${LATEST.date}） vs ${VERS[baseIdx].date}</div>` +
+                   chipsHTML(rows) + tableHTML(rows);
 }
 </script>
 </body>
