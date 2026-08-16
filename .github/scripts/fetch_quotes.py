@@ -932,6 +932,8 @@ def _main_impl():
         log("❌ 白名单 FAIL：结构/渠道被改动，禁止提交！已恢复原 rates.json")
         json.dump(old, open(RATES, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         return
+    # 每次抓单都重新烘焙 rates.js：刷新 generated(同步日)/baked_at/banner（即使价格无变化也更新日期）
+    bake_ratesjs()
     # 计算变更（白名单已确保只改数值；有变化才继续）
     added, removed, changed = compute_diff(old, new)
     if not (added or removed or changed):
@@ -949,8 +951,7 @@ def _main_impl():
         return
     # 计算价格环比（仅运费/kg / 挂号费 / 燃油率 三类价格数值）
     ringbi = compute_ringbi(old, new)
-    # 重新烘焙 rates.js
-    bake_ratesjs()
+    # （rates.js 已在上方抓单阶段统一重新烘焙，此处不再重复）
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     _raw_prev = (old.get("meta") or {}).get("baked_at") or (old.get("meta") or {}).get("effective_date") or "上一版"
     prev_label = _raw_prev[:10] if isinstance(_raw_prev, str) and len(_raw_prev) >= 10 else _raw_prev
