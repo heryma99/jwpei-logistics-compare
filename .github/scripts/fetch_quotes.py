@@ -221,55 +221,18 @@ def pick_main_xlsx(zippath, main_sheet):
         return tmp
 
 
+def is_price_mail(subj, fname):
+    """判断是否为报价单邮件：排除账单/发票/对账单等，且需含价格/报价字样。"""
+    s = (subj + " " + (fname or "")).lower()
+    if any(k in s for k in ("账单", "对账单", "发票", "invoice", "明细", "statement", "请款", "月结")):
+        return False
+    return any(k in s for k in ("价格", "报价", "vip", "价目", "价格表", "价表"))
+
+
 def process_carrier(token, name, cfg):
     outdir = os.path.join(HERE, name)
     os.makedirs(outdir, exist_ok=True)
     final = os.path.join(outdir, "latest.xlsx")
-    # ---- 诊断模式（FETCH_DIAG=1）：只读列出所有匹配邮件的日期/主题/附件，不下载不改动 ----
-    if os.environ.get("FETCH_DIAG") == "1":
-        log(f"[diag] === {name}：全关键词邮件清单（含分页，最多 6 页/关键词）===")
-        seen = set()
-        first_dumped = False
-        for kw in cfg["kw"]:
-            page, pt = 1, None
-            while page <= 6:
-                body = {"query": kw, "page_size": 15}
-                if pt:
-                    body["page_token"] = pt
-                r = req_json(MAIL_API + "/search", "POST", token, body)
-                if r.get("code") != 0:
-                    log(f"[diag] search '{kw}' 错误: {r.get('code')} {r.get('msg')}")
-                    break
-                items = r.get("data", {}).get("items", []) or []
-                if not items:
-                    break
-                for em in items:
-                    mid = em.get("message_id") or em.get("id")
-                    if mid in seen:
-                        continue
-                    seen.add(mid)
-                    try:
-                        d = req_json(MAIL_API + f"/messages/{mid}", "GET", token)
-                        msg = (d.get("data") or {}).get("message", {}) if d.get("code") == 0 else {}
-                        date = msg.get("date") or em.get("date")
-                        subj = msg.get("subject") or em.get("subject") or "(无主题)"
-                        atts = [a.get("filename") for a in (msg.get("attachments") or [])]
-                        if not first_dumped:
-                            first_dumped = True
-                            log(f"[diag-raw] item_keys={list(em.keys())}")
-                            log(f"[diag-raw] msg_keys={list(msg.keys())}")
-                            log(f"[diag-raw] msg_sample={json.dumps(msg, ensure_ascii=False)[:1500]}")
-                    except Exception as e:
-                        date, subj, atts = em.get("date"), "(详情获取失败)", str(e)
-                    line = f"  [diag] kw={kw} | date={date} | subj={subj[:60]} | atts={atts}"
-                    log(line)
-                    REPORT.append(f"· [diag] {name}/{kw} | {date} | {subj[:60]} | {atts}")
-                pt = r.get("data", {}).get("page_token")
-                if not pt:
-                    break
-                page += 1
-        log(f"[diag] {name} 诊断结束（只读，未下载/未改动）")
-        return False
     if FETCH_LOCAL:
         src = os.path.join(LOCAL_XLSX_DIR, name, "latest.xlsx")
         if not os.path.exists(src):
@@ -279,47 +242,62 @@ def process_carrier(token, name, cfg):
         log(f"[{name}] 本地回归用 {src}")
         REPORT.append(f"· [{name}] 本地回归用 {src}")
         return True
-    # 联网抓取
+    # 联网抓取：收集所有关键词命中邮件（去重），按收件时间(internal_date)取最新且含报价附件的一封
+    candidates = []
+    seen = set()
     for kw in cfg["kw"]:
         items = search_mail(token, kw)
-        if items:
-            log(f"[{name}] 关键词「{kw}」命中 {len(items)} 封")
-            break
-    else:
-        log(f"[{name}] 未搜到相关邮件")
-        REPORT.append(f"· [{name}] 所有关键词均未搜到报价邮件")
+        for em in items:
+            mid = em.get("message_id") or em.get("id")
+            if mid in seen:
+                continue
+            seen.add(mid)
+            atts = get_attachments(token, mid)
+            tgt = pick_target(atts, cfg["prefer_ext"])
+            if not tgt:
+                continue
+            d = req_json(MAIL_API + f"/messages/{mid}", "GET", token)
+            msg = (d.get("data") or {}).get("message", {}) if d.get("code") == 0 else {}
+            subj = msg.get("subject") or em.get("subject") or ""
+            internal = str(msg.get("internal_date") or "")
+            candidates.append({
+                "mid": mid, "tgt": tgt, "subj": subj,
+                "internal": internal,
+                "is_price": is_price_mail(subj, tgt.get("filename", "")),
+            })
+    if not candidates:
+        log(f"[{name}] 候选邮件均无报价附件")
+        REPORT.append(f"· [{name}] 候选邮件均无报价附件")
         return False
-    for em in items:
-        mid = em.get("message_id") or em.get("id")
-        atts = get_attachments(token, mid)
-        tgt = pick_target(atts, cfg["prefer_ext"])
-        if not tgt:
-            continue
-        url = download_url(token, mid, tgt["id"])
-        if not url:
-            log(f"[{name}] 拿不到下载链接")
-            REPORT.append(f"❌ [{name}] 邮件有附件但拿不到下载链接")
-            return False
-        raw = os.path.join(outdir, "raw_" + re.sub(r"[^\w.]", "_", str(tgt.get("filename", "x"))))
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        data = urllib.request.urlopen(req, timeout=180).read()
-        open(raw, "wb").write(data)
-        if raw.lower().endswith(".zip"):
-            cx = pick_main_xlsx(raw, cfg["main"])
-            if cx:
-                shutil.copy(cx, final)
-                if cx != raw:
-                    os.remove(cx)
-            os.remove(raw)
-        else:
-            shutil.copy(raw, final)
-            os.remove(raw)
-        log(f"[{name}] 已落盘 {final} ({len(data)} bytes)")
-        REPORT.append(f"✅ [{name}] 已下载报价单 {tgt.get('filename')} ({len(data)} bytes) 并落盘")
-        return True
-    log(f"[{name}] 候选邮件均无报价附件")
-    REPORT.append(f"· [{name}] 候选邮件均无报价附件")
-    return False
+    # 优先取「报价单」类，其次退化为全部候选；都按收件时间倒序取最新
+    price_cands = [c for c in candidates if c["is_price"]]
+    pool = price_cands if price_cands else candidates
+    pool.sort(key=lambda c: c["internal"], reverse=True)
+    best = pool[0]
+    mid, tgt, subj = best["mid"], best["tgt"], best["subj"]
+    log(f"[{name}] 选定最新报价邮件: {subj[:40]} (internal={best['internal']})")
+    url = download_url(token, mid, tgt["id"])
+    if not url:
+        log(f"[{name}] 拿不到下载链接")
+        REPORT.append(f"❌ [{name}] 邮件有附件但拿不到下载链接")
+        return False
+    raw = os.path.join(outdir, "raw_" + re.sub(r"[^\w.]", "_", str(tgt.get("filename", "x"))))
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    data = urllib.request.urlopen(req, timeout=180).read()
+    open(raw, "wb").write(data)
+    if raw.lower().endswith(".zip"):
+        cx = pick_main_xlsx(raw, cfg["main"])
+        if cx:
+            shutil.copy(cx, final)
+            if cx != raw:
+                os.remove(cx)
+        os.remove(raw)
+    else:
+        shutil.copy(raw, final)
+        os.remove(raw)
+    log(f"[{name}] 已落盘 {final} ({len(data)} bytes)")
+    REPORT.append(f"✅ [{name}] 已下载报价单 {tgt.get('filename')} ({len(data)} bytes) 并落盘")
+    return True
 
 
 # ---------- 白名单 diff（守铁律：只允许数值变化） ----------
