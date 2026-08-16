@@ -440,6 +440,145 @@ def build_card(committer, ctime, added, removed, changed):
                                                        "type": "primary", "url": SITE_URL}]}]}
 
 
+# ---------- 环比通知（纯文本，可直接转发） ----------
+def extract_price_rows(ch):
+    """归一为 {(dim, w, kind): rate}：rate 为运费/kg（元）。覆盖 3 家自动抓单渠道的真实价格字段。
+    - 云途 small/专线：countries.<国>.brackets[] {up, rate, reg}
+    - 中运/亚丰 b2b-air 专线包税：countries.<国>.tiers[] {min, rate}
+    - 中运 express：matrix[重量段][区] + fuel 燃油率
+    其它结构无价格行则返回空，不影响。"""
+    rows = {}
+    ctry = ch.get("countries")
+    if isinstance(ctry, dict):
+        for country, v in ctry.items():
+            if not isinstance(v, dict):
+                continue
+            for bk in ("brackets", "tiers"):
+                arr = v.get(bk)
+                if isinstance(arr, list):
+                    for i, seg in enumerate(arr):
+                        if not isinstance(seg, dict):
+                            continue
+                        up = seg.get("up"); mn = seg.get("min")
+                        wlabel = f"≤{up}kg" if up is not None else (f"≥{mn}kg" if mn is not None else f"第{i+1}段")
+                        if seg.get("rate") is not None:
+                            rows[(country, wlabel, "rate")] = float(seg["rate"])
+                        if seg.get("reg") is not None:
+                            rows[(country, "挂号费", "reg")] = float(seg["reg"])
+    if "matrix" in ch and isinstance(ch["matrix"], dict):
+        zones = ch.get("zones", [])
+        zlabel = {i: (z.get("label", f"区{i+1}") if isinstance(z, dict) else f"区{i+1}") for i, z in enumerate(zones)}
+        for w, arr in ch["matrix"].items():
+            if not isinstance(arr, list):
+                continue
+            for zi, rate in enumerate(arr):
+                if rate is None:
+                    continue
+                rows[(f"区{zlabel.get(zi, zi+1)}", f"{w}kg", "rate")] = float(rate)
+    if ch.get("fuel") is not None:
+        rows[("(燃油率)", "整体", "fuel")] = float(ch["fuel"])
+    return rows
+
+
+def compute_ringbi(old_d, new_d):
+    """返回 [(channel_dict, [change,...]), ...]，change={dim,w,kind,old,new,delta,pct,direction}。"""
+    oc = {c["id"]: c for c in old_d["channels"]}
+    nc = {c["id"]: c for c in new_d["channels"]}
+    out = []
+    for cid in sorted(set(oc) & set(nc)):
+        pr = extract_price_rows(oc[cid])
+        nr = extract_price_rows(nc[cid])
+        if not (pr or nr):
+            continue
+        changes = []
+        for key in sorted(set(pr) | set(nr), key=lambda k: (k[0], k[1])):
+            o = pr.get(key); n = nr.get(key)
+            if o == n:
+                continue
+            if o is None:
+                direction = "新增"
+            elif n is None:
+                direction = "移除"
+            else:
+                delta = n - o
+                pct = (delta / o * 100) if o else 0.0
+                direction = "涨" if delta > 0 else ("跌" if delta < 0 else "平")
+            changes.append({
+                "dim": key[0], "w": key[1], "kind": key[2],
+                "old": o, "new": n,
+                "delta": (None if (o is None or n is None) else n - o),
+                "pct": (None if (o is None or n is None or not o) else (n - o) / o * 100),
+                "direction": direction,
+            })
+        if changes:
+            out.append((nc[cid], changes))
+    return out
+
+
+def _fmt_money(x):
+    return "—" if x is None else f"{x:,.2f}"
+
+
+def _pct_str(p):
+    return "—" if p is None else f"{p:+.1f}%"
+
+
+def render_ringbi_text(rep, prev_label, new_label):
+    L = []
+    L.append("📊 物流报价环比变动通知")
+    L.append(f"环比基准：{prev_label}  →  {new_label}")
+    L.append(f"覆盖承运商：云途 / 中运通达 / 亚丰（仅价格数值变动，红涨绿跌·运费/kg口径）")
+    L.append("=" * 54)
+    up = sum(1 for _, chs in rep for x in chs if x["direction"] == "涨")
+    dn = sum(1 for _, chs in rep for x in chs if x["direction"] == "跌")
+    newc = sum(1 for _, chs in rep for x in chs if x["direction"] == "新增")
+    maxjump = None
+    for _, chs in rep:
+        for x in chs:
+            if x["pct"] is not None and (maxjump is None or abs(x["pct"]) > abs(maxjump[0])):
+                maxjump = (x["pct"], x)
+    L.append(f"【汇总】涨价 {up} ｜ 降价 {dn} ｜ 新增 {newc} ｜ 涉及渠道 {len(rep)}"
+             + (f" ｜ 最大单跳：{_pct_str(maxjump[0])}" if maxjump else ""))
+    L.append("=" * 54)
+    for c, changes in rep:
+        car = c.get("carrier", "") or c.get("name", "")
+        L.append(f"\n▌{c.get('name')}  （{car}）")
+        for x in changes:
+            arrow = {"涨": "🔺", "跌": "🟢", "新增": "🆕", "移除": "➖", "平": "➖"}.get(x["direction"], "")
+            if x["kind"] == "fuel":
+                L.append(f"   · {x['dim']}燃油率：{_fmt_money(x['old'])} → {_fmt_money(x['new'])}  ({_pct_str(x['pct'])}) {arrow}")
+            elif x["kind"] == "reg":
+                L.append(f"   · {x['dim']} {x['w']}：{_fmt_money(x['old'])} → {_fmt_money(x['new'])} 元  ({_pct_str(x['pct'])}) {arrow}")
+            else:
+                L.append(f"   · {x['dim']} {x['w']}：{_fmt_money(x['old'])} → {_fmt_money(x['new'])} 元/kg  "
+                         f"Δ{_fmt_money(x['delta'])} ({_pct_str(x['pct'])}) {arrow}")
+    L.append("")
+    L.append(f"📎 完整比价/历史看板：{SITE_URL}")
+    return "\n".join(L)
+
+
+def send_text(text):
+    """飞书文本消息（msg_type=text），可直接转发。超长自动分条。"""
+    if not APP_SECRET:
+        log("未配置 FEISHU_APP_SECRET，跳过发文本")
+        return
+    try:
+        t = req_json("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", "POST",
+                     body={"app_id": APP_ID, "app_secret": APP_SECRET})
+        tok = t["tenant_access_token"]
+        MAX = 28000
+        chunks = [text[i:i+MAX] for i in range(0, len(text), MAX)] or [text]
+        for i, ch in enumerate(chunks):
+            body = {"receive_id": CHAT_ID, "msg_type": "text", "content": json.dumps({"text": ch})}
+            r = req_json("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id", "POST", tok, body)
+            if r.get("code") == 0:
+                log(f"飞书文本发送成功({i+1}/{len(chunks)}) -> " + CHAT_ID)
+            else:
+                log("飞书文本错误: " + str(r)[:200])
+    except Exception as e:
+        log(f"发文本失败: {e}")
+
+
 def send_card(card):
     if not APP_SECRET:
         log("未配置 FEISHU_APP_SECRET，跳过发卡片")
@@ -544,12 +683,15 @@ def _main_impl():
                               "text": {"tag": "lark_md", "content": "\n".join(dlog)}}],
             })
         return
-    # 重新烘焙 + 发卡片
+    # 重新烘焙 + 发环比文本
     bake_ratesjs()
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    card = build_card("比价易·自动抓单", now, added, removed, changed)
-    send_card(card)
-    log(f"✅ 价格变动 {len(changed)} 渠道，已更新 rates.json/rates.js，待 yml 提交")
+    ringbi = compute_ringbi(old, new)
+    _raw_prev = (old.get("meta") or {}).get("baked_at") or (old.get("meta") or {}).get("effective_date") or "上一版"
+    prev_label = _raw_prev[:10] if isinstance(_raw_prev, str) and len(_raw_prev) >= 10 else _raw_prev
+    text = render_ringbi_text(ringbi, prev_label, "本版(" + now + ")")
+    send_text(text)
+    log(f"✅ 价格变动 {sum(len(c) for _, c in ringbi)} 项，环比文本已推送，待 yml 提交")
 
 
 if __name__ == "__main__":
