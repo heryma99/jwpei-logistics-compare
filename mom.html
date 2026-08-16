@@ -17,6 +17,11 @@
   .ctrl .arrow{color:var(--acc);font-weight:700;font-size:15px}
   #modeHint{font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(88,166,255,.15);color:var(--acc);white-space:nowrap}
   .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .banner{margin:2px 0 12px;padding:9px 14px;border-radius:10px;font-size:13px;line-height:1.5;
+          background:rgba(139,148,158,.12);border:1px solid var(--line);color:var(--mut)}
+  .banner.warn{background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#ffb3ad}
+  #carBar button{padding:5px 11px;font-size:12px}
+  #carBar button.on{background:var(--acc);color:#0e1117}
   button{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
   button.on{background:var(--acc);color:#0e1117;border-color:var(--acc);font-weight:600}
   .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:500px}
@@ -69,9 +74,13 @@
   <label>本期</label>
   <select id="selCur"></select>
   <span id="modeHint"></span>
+  <button id="btnLastChange" type="button">↺ 看最近一次变动</button>
 </div>
 
+<div id="banner" class="banner" style="display:none"></div>
+
 <div class="bar" id="catBar"></div>
+<div class="bar" id="carBar" style="margin-top:-4px"></div>
 
 <div class="layout">
   <aside class="side" id="sidebar"></aside>
@@ -99,6 +108,7 @@ let selBase = 0;
 let selCur = 0;
 let CH = {};
 let curCat = "all";
+let curCar = "all";
 let curId = null;
 
 const isOverseas = (c) => /海外仓|入仓|集货仓/.test(c.name || "");
@@ -139,8 +149,32 @@ function init(){
   sB.onchange = () => { selBase = +sB.value; if (selBase > selCur){ selCur = selBase; sC.value = selCur; } rebuild(); };
   sC.onchange = () => { selCur = +sC.value; if (selCur < selBase){ selBase = selCur; sB.value = selBase; } rebuild(); };
 
+  document.getElementById("btnLastChange").onclick = () => {
+    selBase = 0; selCur = VERS.length - 1;
+    sB.value = selBase; sC.value = selCur;
+    rebuild();
+  };
+
+  buildCarrierBar();
   buildCatBar();
   rebuild();
+}
+
+// 物流商筛选条：让"对比基准/本期"明确绑定到所选物流商/渠道
+function buildCarrierBar(){
+  const bar = document.getElementById("carBar");
+  bar.innerHTML = "";
+  const cars = Array.from(new Set(Object.values(CH).map(c => normCarrier(c)))).sort((a,b)=>a.localeCompare(b,'zh'));
+  [["all","全部物流商"]].concat(cars.map(c => [c, c])).forEach(([v,label]) => {
+    const b = document.createElement("button");
+    b.textContent = label; b.dataset.c = v;
+    if (v === curCar) b.classList.add("on");
+    b.onclick = () => { curCar = v; renderCarBar(); buildSidebar(); };
+    bar.appendChild(b);
+  });
+}
+function renderCarBar(){
+  [...document.getElementById("carBar").children].forEach(x => x.classList.toggle("on", x.dataset.c === curCar));
 }
 
 function compareChannels(){
@@ -162,22 +196,51 @@ function compareChannels(){
 function rebuild(){
   CH = compareChannels();
   updateSub();
+  // 物流商筛选随渠道集合变化重建一次
+  buildCarrierBar();
   buildSidebar();
+}
+
+function totalChanges(){
+  let up=0,down=0,na=0;
+  for (const id in CH){
+    if (curCar !== "all" && normCarrier(CH[id]) !== curCar) continue;
+    const rows = joinRows(CH[id].prev, CH[id].cur);
+    rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; });
+  }
+  return {up,down,na};
 }
 
 function updateSub(){
   const base = VERS[selBase], cur = VERS[selCur];
+  const chN = Object.keys(CH).length;
   document.getElementById("sub").textContent =
-    `对比基准 ${base.date} → 本期 ${cur.date} ｜ ${modeLabel()} ｜ 共 ${Object.keys(CH).length} 渠道可比`;
+    `${modeLabel()} ｜ 对比基准 ${base.date} → 本期 ${cur.date} ｜ 共 ${chN} 渠道可比`;
   document.getElementById("modeHint").textContent = modeLabel();
+
+  // 无变动提示横幅
+  const banner = document.getElementById("banner");
+  const {up,down} = totalChanges();
+  if (up === 0 && down === 0){
+    banner.className = "banner warn";
+    banner.style.display = "block";
+    if (selCur === selBase + 1){
+      banner.innerHTML = `ℹ 本期(${cur.date})与对比基准(${base.date})之间<b>无价格变动</b>——${cur.date} 为同步日，价格与 ${base.date} 完全一致。点「↺ 看最近一次变动」可查看 ${VERS[0].date} → ${cur.date} 的真实涨跌幅。`;
+    } else {
+      banner.innerHTML = `ℹ 当前所选对比基准(${base.date})与本期(${cur.date})之间<b>无价格变动</b>。可把"对比基准"改到 ${VERS[0].date} 查看真实涨跌幅。`;
+    }
+  } else {
+    banner.style.display = "none";
+  }
 }
 
 function buildCatBar(){
   const bar = document.getElementById("catBar");
   bar.innerHTML = "";
+  const scoped = Object.values(CH).filter(c => curCar === "all" || normCarrier(c) === curCar);
   DOMAINS.forEach(([cat,label]) => {
-    const n = cat === "all" ? Object.keys(CH).length
-            : Object.values(CH).filter(c => catOf(c) === cat).length;
+    const n = cat === "all" ? scoped.length
+            : scoped.filter(c => catOf(c) === cat).length;
     const b = document.createElement("button");
     b.textContent = label + " (" + n + ")"; b.dataset.c = cat;
     if (cat === curCat) b.classList.add("on");
@@ -208,7 +271,9 @@ function buildSidebar(){
   const sb = document.getElementById("sidebar");
   sb.innerHTML = "";
 
-  const all = Object.entries(CH).sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
+  const all = Object.entries(CH)
+    .filter(([id,c]) => curCar === "all" || normCarrier(c) === curCar)
+    .sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
 
   const renderByCarrier = (list) => {
     const groups = {};
@@ -265,7 +330,7 @@ function renderDetail(id){
   const catLabel = ({small:"小包专线", express:"商业快递", "b2b-air":"2B头程", overseas:"海外仓"}[catOf(c)]) || catOf(c);
 
   let html = `<div class="dcard">`;
-  html += `<div class="dhead"><div><div class="dname">${c.name}</div><div class="dcar">${c.carrier} · ${catLabel}</div></div><span class="dtag">${catOf(c)}</span></div>`;
+  html += `<div class="dhead"><div><div class="dname">${c.name}</div><div class="dcar">${c.carrier} · ${catLabel} ｜ 对比基准 ${VERS[selBase].date} → 本期 ${VERS[selCur].date}</div></div><span class="dtag">${catOf(c)}</span></div>`;
   html += `<div class="chips">`+
     `<span class="chip up">▲ 涨 ${up}</span>`+
     `<span class="chip down">▼ 跌 ${down}</span>`+
