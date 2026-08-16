@@ -3,11 +3,11 @@
 fetch_quotes.py — 云端定时抓报价单并自动更新基础价格（GitHub Actions 内运行）。
 流程: 用 wl02@ 的 user_access_token 搜邮箱报价单 -> 下附件 -> 解压选主表
       -> 调各 bake_*.py 解析(只改价格数值) -> 白名单 diff 守铁律
-      -> 若有变化: 重新生成 rates.js + 飞书群推「变了什么」卡片。
+      -> 若有变化: 重新生成 rates.js + 飞书群(比价易通知)推**环比变动快照图**（仅图片，不发文字/卡片）。
 依赖: openpyxl（bake 需要）；user token 来自 secret WL02_MAIL_TOKEN（JSON）。
 本地回归: 设 FETCH_LOCAL=1 则从本地 quote_pull/{carrier}/latest.xlsx 复制，不联网。
 """
-import json, os, sys, urllib.request, urllib.parse, zipfile, shutil, subprocess, time, datetime, re
+import json, os, sys, uuid, urllib.request, urllib.parse, zipfile, shutil, subprocess, time, datetime, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))          # .github/scripts -> repo root
@@ -441,11 +441,26 @@ def build_card(committer, ctime, added, removed, changed):
 
 
 # ---------- 环比通知（纯文本，可直接转发） ----------
+def _fmt_w(x):
+    """重量数值格式化：去掉无意义的尾随 0（0.10->0.1, 2.0->2, 30.0->30）。"""
+    if x is None:
+        return ""
+    x = float(x)
+    if x == int(x):
+        return str(int(x))
+    return ("%g" % x)
+
+
 def extract_price_rows(ch):
-    """归一为 {(dim, w, kind): rate}：rate 为运费/kg（元）。覆盖 3 家自动抓单渠道的真实价格字段。
-    - 云途 small/专线：countries.<国>.brackets[] {up, rate, reg}
-    - 中运/亚丰 b2b-air 专线包税：countries.<国>.tiers[] {min, rate}
-    - 中运 express：matrix[重量段][区] + fuel 燃油率
+    """归一为 {(dim, w, kind): rate}：rate 为运费/kg（元）。覆盖各渠道真实价格字段。
+    重量段一律还原成「报价里的实际区间（用 > ≤ < 符号表示，不用括号）」：
+    - 云途 brackets：countries.<国>.brackets[] {up, rate, reg} —— 相邻 up 拼接成
+      「>{prev_up} ≤{up}kg」（首段下限为 0）
+    - 中运/亚丰 tiers：countries.<国>.tiers[] {min, rate} —— 相邻 min 拼接成
+      「>{min} <{next_min}kg」（末段「>{min}kg」）
+    - 中运 大货 To B：channel.bulk_tiers[] {min, max, rates[区]} —— 直接用显式
+      「>{min} ≤{max}kg」
+    - 中运 express：matrix[重量段][区] + fuel —— 相邻键拼接成「>{prev} ≤{w}kg」
     其它结构无价格行则返回空，不影响。"""
     rows = {}
     ctry = ch.get("countries")
@@ -453,65 +468,130 @@ def extract_price_rows(ch):
         for country, v in ctry.items():
             if not isinstance(v, dict):
                 continue
-            for bk in ("brackets", "tiers"):
-                arr = v.get(bk)
-                if isinstance(arr, list):
-                    for i, seg in enumerate(arr):
-                        if not isinstance(seg, dict):
-                            continue
-                        up = seg.get("up"); mn = seg.get("min")
-                        wlabel = f"≤{up}kg" if up is not None else (f"≥{mn}kg" if mn is not None else f"第{i+1}段")
-                        if seg.get("rate") is not None:
-                            rows[(country, wlabel, "rate")] = float(seg["rate"])
-                        if seg.get("reg") is not None:
-                            rows[(country, "挂号费", "reg")] = float(seg["reg"])
+            # 云途 brackets：相邻 up 拼接完整区间
+            arr = v.get("brackets")
+            if isinstance(arr, list) and arr:
+                for i, seg in enumerate(arr):
+                    if not isinstance(seg, dict):
+                        continue
+                    up = seg.get("up")
+                    if up is None:
+                        wlabel = f"第{i+1}段"
+                    else:
+                        lo = arr[i - 1].get("up") if i > 0 else 0
+                        wlabel = f">{_fmt_w(lo)} ≤{_fmt_w(up)}kg"
+                    if seg.get("rate") is not None:
+                        rows[(country, wlabel, "rate")] = float(seg["rate"])
+                    if seg.get("reg") is not None:
+                        rows[(country, "挂号费", "reg")] = float(seg["reg"])
+            # 中运/亚丰 tiers：相邻 min 拼接完整区间
+            arr = v.get("tiers")
+            if isinstance(arr, list) and arr:
+                n = len(arr)
+                for i, seg in enumerate(arr):
+                    if not isinstance(seg, dict):
+                        continue
+                    mn = seg.get("min")
+                    if mn is None:
+                        wlabel = f"第{i+1}段"
+                    else:
+                        hi = arr[i + 1].get("min") if i + 1 < n else None
+                        wlabel = (f">{_fmt_w(mn)} <{_fmt_w(hi)}kg"
+                                  if hi is not None else f">{_fmt_w(mn)}kg")
+                    if seg.get("rate") is not None:
+                        rows[(country, wlabel, "rate")] = float(seg["rate"])
+    # 中运 大货 To B：channel 级 bulk_tiers（显式 min/max，按区取价）
+    arr = ch.get("bulk_tiers")
+    if isinstance(arr, list) and arr:
+        zones = ch.get("zones", [])
+        zlabel = {i: (z.get("label", f"区{i+1}") if isinstance(z, dict) else f"区{i+1}") for i, z in enumerate(zones)}
+        for seg in arr:
+            if not isinstance(seg, dict):
+                continue
+            mn = seg.get("min"); mx = seg.get("max")
+            if mn is None or mx is None:
+                continue
+            wlabel = f">{_fmt_w(mn)} ≤{_fmt_w(mx)}kg"
+            rates = seg.get("rates")
+            if isinstance(rates, list):
+                for zi, rate in enumerate(rates):
+                    if rate is None:
+                        continue
+                    rows[(zlabel.get(zi, f"区{zi+1}"), wlabel, "rate")] = float(rate)
     if "matrix" in ch and isinstance(ch["matrix"], dict):
         zones = ch.get("zones", [])
         zlabel = {i: (z.get("label", f"区{i+1}") if isinstance(z, dict) else f"区{i+1}") for i, z in enumerate(zones)}
-        for w, arr in ch["matrix"].items():
+        for w in sorted(ch["matrix"].keys(), key=lambda k: float(k)):
+            arr = ch["matrix"][w]
             if not isinstance(arr, list):
                 continue
+            lower = 0.0
+            # 找上一个键作下限
+            prev = None
+            for k in sorted(ch["matrix"].keys(), key=lambda k: float(k)):
+                if k == w:
+                    break
+                prev = k
+            if prev is not None:
+                lower = float(prev)
+            wlabel = f">{_fmt_w(lower)} ≤{_fmt_w(w)}kg"
             for zi, rate in enumerate(arr):
                 if rate is None:
                     continue
-                rows[(f"区{zlabel.get(zi, zi+1)}", f"{w}kg", "rate")] = float(rate)
+                rows[(f"区{zlabel.get(zi, zi+1)}", wlabel, "rate")] = float(rate)
     if ch.get("fuel") is not None:
         rows[("(燃油率)", "整体", "fuel")] = float(ch["fuel"])
     return rows
 
 
 def compute_ringbi(old_d, new_d):
-    """返回 [(channel_dict, [change,...]), ...]，change={dim,w,kind,old,new,delta,pct,direction}。"""
+    """返回 [(channel_dict, [change,...]), ...]，change={dim,w,kind,old,new,delta,pct,direction}。
+    覆盖：新旧都有的渠道做逐项环比；仅在 new 出现的渠道视为整渠道「新增」。"""
     oc = {c["id"]: c for c in old_d["channels"]}
     nc = {c["id"]: c for c in new_d["channels"]}
     out = []
-    for cid in sorted(set(oc) & set(nc)):
-        pr = extract_price_rows(oc[cid])
-        nr = extract_price_rows(nc[cid])
-        if not (pr or nr):
-            continue
-        changes = []
-        for key in sorted(set(pr) | set(nr), key=lambda k: (k[0], k[1])):
-            o = pr.get(key); n = nr.get(key)
-            if o == n:
+    for cid in sorted(set(oc) | set(nc)):
+        oc_c = oc.get(cid)
+        nc_c = nc.get(cid)
+        if oc_c and nc_c:
+            pr = extract_price_rows(oc_c)
+            nr = extract_price_rows(nc_c)
+            if not (pr or nr):
                 continue
-            if o is None:
-                direction = "新增"
-            elif n is None:
-                direction = "移除"
-            else:
-                delta = n - o
-                pct = (delta / o * 100) if o else 0.0
-                direction = "涨" if delta > 0 else ("跌" if delta < 0 else "平")
-            changes.append({
-                "dim": key[0], "w": key[1], "kind": key[2],
-                "old": o, "new": n,
-                "delta": (None if (o is None or n is None) else n - o),
-                "pct": (None if (o is None or n is None or not o) else (n - o) / o * 100),
-                "direction": direction,
-            })
-        if changes:
-            out.append((nc[cid], changes))
+            changes = []
+            for key in sorted(set(pr) | set(nr), key=lambda k: (k[0], k[1])):
+                o = pr.get(key); n = nr.get(key)
+                if o == n:
+                    continue
+                if o is None:
+                    direction = "新增"
+                elif n is None:
+                    direction = "移除"
+                else:
+                    delta = n - o
+                    pct = (delta / o * 100) if o else 0.0
+                    direction = "涨" if delta > 0 else ("跌" if delta < 0 else "平")
+                changes.append({
+                    "dim": key[0], "w": key[1], "kind": key[2],
+                    "old": o, "new": n,
+                    "delta": (None if (o is None or n is None) else n - o),
+                    "pct": (None if (o is None or n is None or not o) else (n - o) / o * 100),
+                    "direction": direction,
+                })
+            if changes:
+                out.append((nc_c, changes))
+        elif nc_c and not oc_c:
+            # 整渠道新增：old 缺失，所有价格行视为新增
+            nr = extract_price_rows(nc_c)
+            if not nr:
+                continue
+            changes = [{
+                "dim": k[0], "w": k[1], "kind": k[2],
+                "old": None, "new": v, "delta": None, "pct": None, "direction": "新增",
+            } for k, v in sorted(nr.items(), key=lambda kv: (kv[0][0], kv[0][1]))]
+            if changes:
+                out.append((nc_c, changes))
+        # 仅 old 有的渠道（被移除）不推送
     return out
 
 
@@ -555,6 +635,179 @@ def render_ringbi_text(rep, prev_label, new_label):
     L.append("")
     L.append(f"📎 完整比价/历史看板：{SITE_URL}")
     return "\n".join(L)
+
+
+# ---------- 环比通知（表格快照图，直观可直接转发） ----------
+def _cjk_font(size, bold=False):
+    import glob, os
+    cands = []
+    cands += glob.glob("/usr/share/fonts/**/NotoSansCJK*.*", recursive=True)
+    cands += glob.glob("/usr/share/fonts/**/wqy*.*", recursive=True)
+    cands += glob.glob("/usr/share/fonts/**/SourceHanSans*.*", recursive=True)
+    cands += ["C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/msyhbd.ttc",
+              "C:/Windows/Fonts/simhei.ttf", "C:/Windows/Fonts/simsun.ttc"]
+    fp = os.environ.get("RB_FONT")
+    if fp:
+        cands = [fp] + cands
+    for p in cands:
+        if os.path.exists(p):
+            try:
+                from PIL import ImageFont
+                return ImageFont.truetype(p, size)
+            except Exception:
+                pass
+    from PIL import ImageFont
+    return ImageFont.load_default()
+
+
+def render_channel_images(rep, prev_label, new_label):
+    """按渠道逐张渲染环比快照图：每个「有价格环比变化」的渠道单独一张
+    （含该渠道下所有国家 × 重量段的环比变化）；单渠道行数过多自动分页。
+    返回所有图片路径列表（按渠道顺序，渠道内按页顺序）。无变化的渠道不会出现。"""
+    from PIL import Image, ImageDraw
+    if not rep:
+        return []
+    # 逐渠道快照不再画「渠道」列（表头已标明渠道），把空间留给国家/重量段
+    # 重量段为完整符号区间（如「>0 ≤0.5kg」「>21 <45kg」「>21kg」），需更宽
+    cols = [("国家/区域", 110), ("重量段", 232), ("类别", 80),
+            ("旧值", 92), ("新值", 92), ("涨跌", 92), ("涨跌率", 92)]
+    PAD = 14
+    TOP = 120
+    HEADER_H = 36
+    ROW_H = 30
+    W = PAD * 2 + sum(w for _, w in cols)
+
+    def _fit(d, font, text, max_w):
+        text = str(text).replace("\n", " ").replace("\r", " ")
+        if d.textlength(text, font=font) <= max_w:
+            return text
+        for i in range(len(text) - 1, 0, -1):
+            s = text[:i] + "..."
+            if d.textlength(s, font=font) <= max_w:
+                return s
+        return "..."
+
+    def fmt(x):
+        if x["kind"] == "fuel":
+            ov = "—" if x["old"] is None else f"{x['old']*100:.2f}%"
+            nv = "—" if x["new"] is None else f"{x['new']*100:.2f}%"
+            dv = "—" if x["delta"] is None else f"{x['delta']*100:+.2f}pp"
+        else:
+            ov = "—" if x["old"] is None else f"{x['old']:.2f}"
+            nv = "—" if x["new"] is None else f"{x['new']:.2f}"
+            dv = "—" if x["delta"] is None else f"{x['delta']:+.2f}"
+        pv = "—" if x["pct"] is None else f"{x['pct']:+.1f}%"
+        cat = {"rate": "运费/kg", "reg": "挂号费", "fuel": "燃油率"}.get(x["kind"], "")
+        return ov, nv, dv, pv, cat
+
+    COLORS = {"涨": (212, 56, 13), "跌": (56, 158, 13), "新增": (9, 109, 217),
+              "移除": (140, 140, 140), "平": (51, 51, 51)}
+    PER = 40
+    paths = []
+    page_no = 0
+    for c, changes in rep:
+        name = c.get("name", "") or c.get("carrier", "")
+        if not changes:
+            continue
+        up = sum(1 for x in changes if x["direction"] == "涨")
+        dn = sum(1 for x in changes if x["direction"] == "跌")
+        newc = sum(1 for x in changes if x["direction"] == "新增")
+        rmc = sum(1 for x in changes if x["direction"] == "移除")
+        chunks = [changes[i:i + PER] for i in range(0, len(changes), PER)]
+        for pi, chunk in enumerate(chunks):
+            page_no += 1
+            H = TOP + HEADER_H + len(chunk) * ROW_H + 24
+            img = Image.new("RGB", (W, H), (255, 255, 255))
+            d = ImageDraw.Draw(img)
+            f_title = _cjk_font(19, True)
+            d.text((PAD, 14), _fit(d, f_title, name, W - PAD * 2), fill=(20, 30, 50), font=f_title)
+            f_sub = _cjk_font(12)
+            d.text((PAD, 46), f"物流报价环比变动快照   |   环比基准：{prev_label}  ->  {new_label}",
+                   fill=(90, 90, 90), font=f_sub)
+            d.text((PAD, 68), f"涨价 {up}  降价 {dn}  新增 {newc}  移除 {rmc}  共 {len(changes)} 条变动",
+                   fill=(90, 90, 90), font=f_sub)
+            if len(chunks) > 1:
+                d.text((W - PAD - 96, 68), f"第 {pi+1}/{len(chunks)} 页", fill=(140, 140, 140), font=f_sub)
+            # 表头
+            y = TOP
+            d.rectangle([PAD, y, W - PAD, y + HEADER_H], fill=(31, 58, 95))
+            cx = PAD
+            f_h = _cjk_font(13, True)
+            for title, w in cols:
+                d.text((cx + 6, y + 10), title, fill=(255, 255, 255), font=f_h)
+                cx += w
+            # 数据行
+            ry = y + HEADER_H
+            f_c = _cjk_font(12)
+            for idx, x in enumerate(chunk):
+                if idx % 2 == 1:
+                    d.rectangle([PAD, ry, W - PAD, ry + ROW_H], fill=(245, 247, 250))
+                ov, nv, dv, pv, cat = fmt(x)
+                color = COLORS.get(x["direction"], (51, 51, 51))
+                cells = [x["dim"], x["w"], cat, ov, nv, dv, pv]
+                cx = PAD
+                for ci, (val, (_, w)) in enumerate(zip(cells, cols)):
+                    fill = color if ci in (5, 6) else (51, 51, 51)
+                    txt = _fit(d, f_c, str(val), w - 10)
+                    tw = d.textlength(txt, font=f_c)
+                    tx = cx + (w - tw) / 2
+                    ty = ry + (ROW_H - 12) / 2
+                    d.text((tx, ty), txt, fill=fill, font=f_c)
+                    cx += w
+                ry += ROW_H
+            # 网格线
+            cx = PAD
+            for _, w in cols:
+                d.line([cx, TOP, cx, ry], fill=(225, 228, 232))
+                cx += w
+            d.line([W - PAD, TOP, W - PAD, ry], fill=(225, 228, 232))
+            d.line([PAD, TOP, W - PAD, TOP], fill=(225, 228, 232))
+            d.line([PAD, ry, W - PAD, ry], fill=(225, 228, 232))
+            d.line([PAD, TOP, PAD, ry], fill=(225, 228, 232))
+            path = os.path.join(HERE, f"_ringbi_{uuid.uuid4().hex}.png")
+            img.save(path)
+            paths.append(path)
+    return paths
+
+
+def send_image(path):
+    """上传 PNG 到飞书并以图片消息推送到群（可直接转发）。"""
+    if not APP_SECRET:
+        log("未配置 FEISHU_APP_SECRET，跳过发图")
+        return
+    try:
+        t = req_json("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", "POST",
+                     body={"app_id": APP_ID, "app_secret": APP_SECRET})
+        tok = t["tenant_access_token"]
+        import urllib.request as _ur
+        boundary = "----rb" + str(int(time.time() * 1000))
+        data = b""
+        data += f"--{boundary}\r\n".encode()
+        data += b'Content-Disposition: form-data; name="image_type"\r\n\r\n'
+        data += b"message\r\n"
+        data += f"--{boundary}\r\n".encode()
+        data += b'Content-Disposition: form-data; name="image"; filename="ringbi.png"\r\n'
+        data += b"Content-Type: image/png\r\n\r\n"
+        data += open(path, "rb").read()
+        data += f"\r\n--{boundary}--\r\n".encode()
+        req = _ur.Request("https://open.feishu.cn/open-apis/im/v1/images", data=data,
+                          headers={"Authorization": "Bearer " + tok,
+                                   "Content-Type": f"multipart/form-data; boundary={boundary}"},
+                          method="POST")
+        with _ur.urlopen(req, timeout=60) as r:
+            up = json.loads(r.read().decode())
+        if up.get("code") != 0:
+            log("图片上传失败: " + str(up)[:200])
+            return
+        key = up["data"]["image_key"]
+        body = {"receive_id": CHAT_ID, "msg_type": "image", "content": json.dumps({"image_key": key})}
+        r2 = req_json("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id", "POST", tok, body)
+        if r2.get("code") == 0:
+            log("飞书图片发送成功 -> " + CHAT_ID)
+        else:
+            log("飞书图片消息错误: " + str(r2)[:200])
+    except Exception as e:
+        log(f"发图失败: {e}")
 
 
 def send_text(text):
@@ -668,7 +921,7 @@ def _main_impl():
         log("❌ 白名单 FAIL：结构/渠道被改动，禁止提交！已恢复原 rates.json")
         json.dump(old, open(RATES, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         return
-    # 计算变更
+    # 计算变更（白名单已确保只改数值；有变化才继续）
     added, removed, changed = compute_diff(old, new)
     if not (added or removed or changed):
         log("✅ 无价格数值变化，跳过提交与通知")
@@ -683,15 +936,26 @@ def _main_impl():
                               "text": {"tag": "lark_md", "content": "\n".join(dlog)}}],
             })
         return
-    # 重新烘焙 + 发环比文本
+    # 计算价格环比（仅运费/kg / 挂号费 / 燃油率 三类价格数值）
+    ringbi = compute_ringbi(old, new)
+    # 重新烘焙 rates.js
     bake_ratesjs()
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    ringbi = compute_ringbi(old, new)
     _raw_prev = (old.get("meta") or {}).get("baked_at") or (old.get("meta") or {}).get("effective_date") or "上一版"
     prev_label = _raw_prev[:10] if isinstance(_raw_prev, str) and len(_raw_prev) >= 10 else _raw_prev
-    text = render_ringbi_text(ringbi, prev_label, "本版(" + now + ")")
-    send_text(text)
-    log(f"✅ 价格变动 {sum(len(c) for _, c in ringbi)} 项，环比文本已推送，待 yml 提交")
+    # 只推「价格环比有变化」的快照图；无任何价格环比变化则不往群里推消息
+    if ringbi:
+        imgs = render_channel_images(ringbi, prev_label, "本版(" + now + ")")
+        for p in imgs:
+            send_image(p)
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+        log(f"✅ 价格环比变动 {len(ringbi)} 个渠道 / {sum(len(c) for _, c in ringbi)} 项，"
+            f"已按渠道逐张推送 {len(imgs)} 张快照图，待 yml 提交")
+    else:
+        log("✅ 有数值变化但非运费价格环比，已更新价格未推图")
 
 
 if __name__ == "__main__":
