@@ -11,15 +11,19 @@
   body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;padding:16px}
   h1{font-size:18px;margin:0 0 4px}
   .sub{color:var(--mut);font-size:12px;margin-bottom:12px}
+
+  .topbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .mbtn{font-size:14px;padding:8px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--txt);user-select:none}
+  .mbtn:hover{border-color:var(--acc)}
+  .mbtn.on{background:var(--acc);color:#0e1117;font-weight:600;border-color:var(--acc)}
+
   .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:520px}
-  .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;overflow-y:auto;max-height:calc(100vh - 120px)}
-  .allbtn{display:inline-block;font-size:12px;color:var(--acc);cursor:pointer;padding:4px 10px;border:1px solid var(--line);border-radius:8px;margin:2px 4px 8px}
-  .allbtn.on{background:var(--acc);color:#0e1117;font-weight:600}
-  .ct{font-size:12px;font-weight:700;color:var(--mut);padding:8px 10px 4px;cursor:pointer}
-  .ct.on{color:var(--acc)}
-  .cr{padding:5px 10px 5px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between}
-  .cr:hover{background:#1c2533}
-  .cr .cnt{font-size:11px;color:var(--mut);font-weight:400}
+  .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;overflow-y:auto;max-height:calc(100vh - 160px)}
+  .ctlabel{font-size:12px;font-weight:700;color:var(--mut);padding:10px 10px 4px}
+  .car{padding:6px 10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-radius:8px;margin:2px 0}
+  .car:hover{background:#1c2533}
+  .car .arw{color:var(--mut);width:14px;display:inline-block;font-weight:400}
+  .car .cnt{font-size:11px;color:var(--mut);font-weight:400}
   .ch{padding:6px 10px 6px 34px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;border-radius:8px;margin:2px 0}
   .ch:hover{background:#1c2533}
   .ch.on{background:#1a304d;color:var(--acc);font-weight:600}
@@ -30,11 +34,9 @@
   .dname{font-size:17px;font-weight:700}
   .dcar{font-size:12px;color:var(--mut);margin-top:2px}
   .dtag{font-size:11px;border-radius:6px;padding:2px 8px;background:#0e1117;border:1px solid var(--line);color:var(--mut);white-space:nowrap}
-  .sech{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
-  .sech h3{font-size:13px;margin:0 0 8px;color:var(--acc);font-weight:600}
-  .sech .ctx{font-size:12px;color:var(--mut);margin-bottom:8px}
-  .histctrl{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-  .histctrl select{background:#0e1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:13px;max-width:260px}
+  .histctrl{display:flex;gap:8px;align-items:center;margin:10px 0 12px;flex-wrap:wrap}
+  .histctrl label{font-size:13px;color:var(--mut)}
+  .histctrl select{background:#0e1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;max-width:280px}
   .chips{display:flex;gap:10px;margin:4px 0 12px;flex-wrap:wrap}
   .chip{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}
   .chip.up{background:rgba(248,81,73,.15);color:var(--up)}
@@ -49,7 +51,7 @@
   .up{color:var(--up);font-weight:600}
   .down{color:var(--down);font-weight:600}
   .flat{color:var(--flat)}
-  .placeholder{color:var(--mut);padding:40px 20px;text-align:center}
+  .placeholder{color:var(--mut);padding:40px 20px;text-align:center;line-height:1.8}
   .note{color:var(--mut);font-size:12px;margin-top:18px;line-height:1.6}
   code{background:var(--card);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
   @media(max-width:860px){
@@ -62,14 +64,16 @@
 <h1>📊 报价环比分析</h1>
 <div class="sub" id="sub">加载中…</div>
 
+<div class="topbar" id="topbar"></div>
+
 <div class="layout">
   <aside class="side" id="sidebar"></aside>
   <main class="detail" id="detail"></main>
 </div>
 
 <div class="note">
-  交互：左侧 <b>树形导航</b> —— 点「全部」展开所有物流商与其渠道；点某个<b>分类</b>（小包专线 / 商业快递 / to B 头程）收拢到该分类；点<b>物流商</b>展开/收起其渠道；点<b>渠道</b>，右侧出它的明细。<br>
-  右侧明细含两块：① <b>最新环比</b>（上一期 → 本期，逐目的国/分区 × 重量段）；② <b>历史对比</b>下拉，选任意已有报价日期，立即算「最新价 vs 该日」逐段涨跌。<br>
+  交互：顶部 <b>并排大菜单</b> 选分类（全部 / 小包专线 / 商业快递 / TO B头程 / 海外仓）—— 点分类后，左侧物流商<b>默认全部折叠</b>，点开某个物流商才展开它的渠道；点<b>渠道</b>，右侧出明细。<br>
+  右侧明细只有一个 <b>对比基准日</b> 下拉：默认「上一期」即<b>最新环比</b>；选任意历史报价日，同一张表立刻重算「最新价 vs 该日」的逐段涨跌（即基期/历史比价）。<br>
   红＝涨价，绿＝降价，灰＝持平。数据来源 <code>versions.json</code>，已含系统里全部历史报价版本。
 </div>
 
@@ -87,8 +91,15 @@ let LATEST = null;          // 最新版本（当前价）
 let TREE = {};              // cat -> carrier -> [cid]
 let CATS = [];              // 分类顺序
 let CAT_LABEL = {small:"小包专线", express:"商业快递", "b2b-air":"to B 头程", overseas:"海外仓"};
-let filterCat = null;       // null=全部
-let collapsed = new Set();  // 收起的物流商 key（cat||carrier）
+let MENU = [
+  {key:null, label:"全部"},
+  {key:"small", label:"小包专线"},
+  {key:"express", label:"商业快递"},
+  {key:"b2b-air", label:"TO B头程"},
+  {key:"overseas", label:"海外仓"},
+];
+let filterCat = null;       // null=全部；"overseas"=占位
+let expanded = new Set();   // 展开的物流商 key（cat||carrier）；默认空=全折叠
 let curId = null;
 
 function catLabel(c){ return CAT_LABEL[c] || c; }
@@ -99,12 +110,12 @@ fetch("versions.json?_=" + Date.now(), {cache:"no-store"})
     VERS = (d.versions || []).slice().sort((a,b) => a.date.localeCompare(b.date));
     LATEST = VERS[VERS.length - 1];
     buildTree();
+    renderTopbar();
     document.getElementById("sub").textContent =
       `共 ${VERS.length} 个报价版本（${VERS[0].date} ~ ${LATEST.date}）｜ 当前价基准 ${LATEST.date}`;
-    // 默认选中第一个渠道
-    const first = firstChannelId();
-    if (first) selectChannel(first);
-    else document.getElementById("detail").innerHTML = '<div class="placeholder">无渠道数据</div>';
+    renderTree();
+    document.getElementById("detail").innerHTML =
+      '<div class="placeholder">← 从左侧点开一个物流商，再点它的渠道<br>即可查看该渠道的环比比价</div>';
   })
   .catch(e => { document.getElementById("sub").textContent = "加载 versions.json 失败：" + e; });
 
@@ -116,47 +127,54 @@ function buildTree(){
     (TREE[cat][ch.carrier] = TREE[cat][ch.carrier] || []).push(cid);
   }
   CATS = Object.keys(TREE).sort((a,b) => (CAT_LABEL[a]||a).localeCompare(CAT_LABEL[b]||b,'zh'));
-  renderTree();
 }
 
-function firstChannelId(){
-  for (const cat of CATS){
-    if (filterCat && cat !== filterCat) continue;
-    const cars = Object.keys(TREE[cat]);
-    if (cars.length) return TREE[cat][cars[0]][0];
-  }
-  return null;
+function renderTopbar(){
+  const tb = document.getElementById("topbar");
+  tb.innerHTML = "";
+  MENU.forEach(m => {
+    const b = document.createElement("span");
+    b.className = "mbtn" + (filterCat === m.key ? " on" : "");
+    b.textContent = m.label;
+    b.onclick = () => {
+      filterCat = m.key;
+      if (m.key === "overseas"){ curId = null; document.getElementById("detail").innerHTML =
+        '<div class="placeholder">海外仓暂无对比渠道<br><span style="font-size:12px">系统在比价数据里尚未接入海外仓报价</span></div>'; }
+      renderTopbar();
+      renderTree();
+    };
+    tb.appendChild(b);
+  });
 }
 
 function renderTree(){
   const sb = document.getElementById("sidebar");
   sb.innerHTML = "";
 
-  const allBtn = document.createElement("span");
-  allBtn.className = "allbtn" + (filterCat === null ? " on" : "");
-  allBtn.textContent = "全部";
-  allBtn.onclick = () => { filterCat = null; renderTree(); };
-  sb.appendChild(allBtn);
+  if (filterCat === "overseas"){
+    sb.innerHTML = '<div class="placeholder">海外仓暂无对比渠道<br><span style="font-size:12px">系统在比价数据里尚未接入海外仓报价</span></div>';
+    return;
+  }
 
   const cats = filterCat ? [filterCat] : CATS;
   for (const cat of cats){
     if (!TREE[cat]) continue;
-    const ct = document.createElement("div");
-    ct.className = "ct" + (filterCat === cat ? " on" : "");
-    const catCount = Object.values(TREE[cat]).reduce((s,a)=>s+a.length,0);
-    ct.textContent = `${catLabel(cat)} (${catCount})`;
-    ct.onclick = () => { filterCat = (filterCat === cat ? null : cat); renderTree(); };
-    sb.appendChild(ct);
-
+    if (!filterCat){
+      const h = document.createElement("div");
+      h.className = "ctlabel";
+      h.textContent = catLabel(cat);
+      sb.appendChild(h);
+    }
     for (const car of Object.keys(TREE[cat]).sort((a,b)=>a.localeCompare(b,'zh'))){
       const ckey = cat + "||" + car;
+      const isOpen = expanded.has(ckey);
       const cr = document.createElement("div");
-      cr.className = "cr";
-      cr.innerHTML = `<span>${car}</span><span class="cnt">${TREE[cat][car].length}</span>`;
-      cr.onclick = () => { if (collapsed.has(ckey)) collapsed.delete(ckey); else collapsed.add(ckey); renderTree(); if (curId) selectChannel(curId); };
+      cr.className = "car";
+      cr.innerHTML = `<span><span class="arw">${isOpen?"▾":"▸"}</span> ${car}</span><span class="cnt">${TREE[cat][car].length}</span>`;
+      cr.onclick = () => { if (expanded.has(ckey)) expanded.delete(ckey); else expanded.add(ckey); renderTree(); };
       sb.appendChild(cr);
 
-      if (collapsed.has(ckey)) continue;
+      if (!isOpen) continue;
       for (const cid of TREE[cat][car]){
         const ch = LATEST.channels[cid];
         const {up,down} = channelChange(cid);
@@ -186,9 +204,14 @@ function channelChange(cid){
 
 function selectChannel(cid){
   curId = cid;
-  // 高亮
-  [...document.getElementById("sidebar").querySelectorAll(".ch")].forEach(x => x.classList.remove("on"));
-  // 重新渲染树以更新高亮 + 明细
+  // 确保所属物流商展开，使高亮可见
+  for (const cat of CATS){
+    if (TREE[cat]){
+      for (const car of Object.keys(TREE[cat])){
+        if (TREE[cat][car].includes(cid)) expanded.add(cat + "||" + car);
+      }
+    }
+  }
   renderTree();
   renderDetail(cid);
 }
@@ -205,13 +228,13 @@ function joinRows(baseRows, curRows){
 }
 
 function tableHTML(rows){
-  let html = `<table><thead><tr><th>目的国/分区</th><th>重量段</th><th>上期</th><th>本期</th><th>Δ</th><th>方向</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>目的国/分区</th><th>重量段</th><th>最新价</th><th>对比价</th><th>Δ</th><th>方向</th></tr></thead><tbody>`;
   if (!rows.length){ html += `<tr><td colspan="6" style="text-align:center;color:var(--mut)">该渠道在此对比版本中无数据</td></tr>`; }
   rows.forEach(r => {
     const prevTxt = r.prev==null ? "—" : r.prev;
     const dTxt = r.d==null ? "—" : (r.d>0?"+":"")+r.d;
     const dirTxt = r.dir==="up"?"▲ 涨":r.dir==="down"?"▼ 跌":"＝ 持平";
-    html += `<tr><td>${r.dim}</td><td>${r.w}</td><td>${prevTxt}</td><td>${r.cur}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${dirTxt}</td></tr>`;
+    html += `<tr><td>${r.dim}</td><td>${r.w}</td><td>${r.cur}</td><td>${prevTxt}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${dirTxt}</td></tr>`;
   });
   return html + `</tbody></table>`;
 }
@@ -223,7 +246,7 @@ function chipsHTML(rows){
     `<span class="chip up">▲ 涨 ${up}</span>`+
     `<span class="chip down">▼ 跌 ${down}</span>`+
     `<span class="chip flat">＝ 持平 ${flat}</span>`+
-    (na?`<span class="chip na">· 仅本期 ${na}</span>`:"")+`</div>`;
+    (na?`<span class="chip na">· 仅最新 ${na}</span>`:"")+`</div>`;
 }
 
 function renderDetail(cid){
@@ -232,48 +255,38 @@ function renderDetail(cid){
   if (!ch){ det.innerHTML = '<div class="placeholder">请选择左侧渠道</div>'; return; }
 
   const prevIdx = Math.max(0, VERS.length - 2);
-  const baseRows0 = (VERS[prevIdx].channels[cid] || {}).rows || null;
-  const curRows = ch.rows;
-  const rowsMoM = joinRows(baseRows0, curRows);
 
   let html = `<div class="dcard">`;
   html += `<div class="dhead"><div><div class="dname">${ch.name}</div>`+
           `<div class="dcar">${ch.carrier} · ${catLabel(ch.cat)}</div></div>`+
           `<span class="dtag">${ch.cat}</span></div>`;
 
-  // ① 最新环比
-  html += `<div class="sech"><h3>最新环比</h3>`+
-          `<div class="ctx">上一期 ${VERS[prevIdx].date} → 本期 ${LATEST.date}</div>`+
-          chipsHTML(rowsMoM) + tableHTML(rowsMoM) + `</div>`;
-
-  // ② 历史对比
-  html += `<div class="sech"><h3>历史对比</h3>`+
-          `<div class="histctrl"><span class="ctx" style="margin:0">选一个历史报价日期，看最新价 vs 该日逐段涨跌：</span>`+
-          `<select id="selHist"></select></div>`+
-          `<div id="histBody"></div></div>`;
-
+  // 单一对比区块：日期下拉合并「最新环比」与「历史对比」
+  html += `<div class="histctrl"><label>对比基准日</label><select id="selBase"></select></div>`;
+  html += `<div id="cmpBody"></div>`;
   html += `</div>`;
   det.innerHTML = html;
 
-  // 历史下拉：除当前外所有版本
-  const sel = document.getElementById("selHist");
-  const histVers = VERS.map((v,i)=>({v,i})).filter(x => x.i !== VERS.length-1);
-  histVers.forEach(({v,i}) => {
-    const opt = new Option(v.date + (i===prevIdx ? "（上一期）" : ""), i);
+  const sel = document.getElementById("selBase");
+  // 选项 = 除最新版外的所有版本（最新价 vs 选定历史日）
+  VERS.forEach((v,i) => {
+    if (i === VERS.length - 1) return;
+    const opt = new Option(v.date + (i===prevIdx ? "（上一期·最新环比）" : ""), i);
     sel.appendChild(opt);
   });
   sel.value = prevIdx;
-  sel.onchange = () => renderHistory(cid, +sel.value);
-  renderHistory(cid, prevIdx);
+  sel.onchange = () => renderCompare(cid, +sel.value);
+  renderCompare(cid, prevIdx);
 }
 
-function renderHistory(cid, baseIdx){
-  const body = document.getElementById("histBody");
+function renderCompare(cid, baseIdx){
+  const body = document.getElementById("cmpBody");
   if (!body) return;
   const baseRows = (VERS[baseIdx].channels[cid] || {}).rows || null;
   const curRows = (LATEST.channels[cid] || {}).rows;
   const rows = joinRows(baseRows, curRows);
-  body.innerHTML = `<div class="ctx">最新价（${LATEST.date}） vs ${VERS[baseIdx].date}</div>` +
+  const tag = (baseIdx === VERS.length - 2) ? "（最新环比：上一期 → 本期）" : "";
+  body.innerHTML = `<div class="ctx" style="font-size:12px;color:var(--mut);margin-bottom:8px">最新价（${LATEST.date}） vs 对比基准 ${VERS[baseIdx].date} ${tag}</div>` +
                    chipsHTML(rows) + tableHTML(rows);
 }
 </script>
