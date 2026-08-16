@@ -36,7 +36,7 @@
   .dtag{font-size:11px;border-radius:6px;padding:2px 8px;background:#0e1117;border:1px solid var(--line);color:var(--mut);white-space:nowrap}
   .histctrl{display:flex;gap:8px;align-items:center;margin:10px 0 12px;flex-wrap:wrap}
   .histctrl label{font-size:13px;color:var(--mut)}
-  .histctrl select{background:#0e1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;max-width:280px}
+  .histctrl select{background:#0e1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;max-width:320px}
   .chips{display:flex;gap:10px;margin:4px 0 12px;flex-wrap:wrap}
   .chip{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}
   .chip.up{background:rgba(248,81,73,.15);color:var(--up)}
@@ -73,8 +73,8 @@
 
 <div class="note">
   交互：顶部 <b>并排大菜单</b> 选分类（全部 / 小包专线 / 商业快递 / TO B头程 / 海外仓）—— 点分类后，左侧物流商<b>默认全部折叠</b>，点开某个物流商才展开它的渠道；点<b>渠道</b>，右侧出明细。<br>
-  右侧明细只有一个 <b>对比基准日</b> 下拉：默认「上一期」即<b>最新环比</b>；选任意历史报价日，同一张表立刻重算「最新价 vs 该日」的逐段涨跌（即基期/历史比价）。<br>
-  红＝涨价，绿＝降价，灰＝持平。数据来源 <code>versions.json</code>，已含系统里全部历史报价版本。
+  右侧明细只有一个 <b>对比基准日</b> 下拉：它列出<b>该渠道自己真实的历史报价日</b>（各家、各渠道的报价到达时间不同，互不相同）。默认「上一期」即<b>最新环比</b>；选任意历史报价日，同一张表立刻重算「最新价 vs 该日」的逐段涨跌（即基期/历史比价）。<br>
+  红＝涨价，绿＝降价，灰＝持平。数据来源 <code>versions.json</code>，按邮箱真实报价日重建的逐渠道历史快照。
 </div>
 
 <script>
@@ -86,10 +86,11 @@ if (EMBED) {
   document.body.style.padding = "8px";
 }
 
-let VERS = [];
-let LATEST = null;          // 最新版本（当前价）
-let TREE = {};              // cat -> carrier -> [cid]
-let CATS = [];              // 分类顺序
+let CH = {};               // cid -> {cat, name, carrier, snapshots:[{date, rows:[{dim,w,rate}]}]}
+let LATEST = null;         // 最新价视图：{channels:{cid:{...,rows:[...]}}}
+let LATEST_DATE = null;    // 当前价基准日期
+let TREE = {};             // cat -> carrier -> [cid]
+let CATS = [];             // 分类顺序
 let CAT_LABEL = {small:"小包专线", express:"商业快递", "b2b-air":"to B 头程", overseas:"海外仓"};
 let MENU = [
   {key:null, label:"全部"},
@@ -107,15 +108,30 @@ function catLabel(c){ return CAT_LABEL[c] || c; }
 fetch("versions.json?_=" + Date.now(), {cache:"no-store"})
   .then(r => r.json())
   .then(d => {
-    VERS = (d.versions || []).slice().sort((a,b) => a.date.localeCompare(b.date));
-    LATEST = VERS[VERS.length - 1];
+    CH = d.channels || {};
+    LATEST_DATE = d.latestDate || "";
+    // 构建「最新价视图」：每个渠道取末位 snapshot 的 rows 作为当前价
+    LATEST = {channels:{}};
+    for (const [cid, ch] of Object.entries(CH)){
+      const snaps = (ch.snapshots || []).slice().sort((a,b)=>a.date.localeCompare(b.date));
+      const cur = snaps[snaps.length - 1];
+      LATEST.channels[cid] = Object.assign({}, ch, {rows: cur ? cur.rows : []});
+    }
     buildTree();
     renderTopbar();
+    // 全局统计
+    let allDates = new Set(), withHist = 0;
+    for (const cid in CH){
+      const s = CH[cid].snapshots || [];
+      s.forEach(x => allDates.add(x.date));
+      if (s.length > 1) withHist++;
+    }
+    const dates = [...allDates].sort();
     document.getElementById("sub").textContent =
-      `共 ${VERS.length} 个报价版本（${VERS[0].date} ~ ${LATEST.date}）｜ 当前价基准 ${LATEST.date}`;
+      `共 ${Object.keys(CH).length} 个渠道｜ 有历史报价的 ${withHist} 个｜ 报价日期跨度 ${dates[0]} ~ ${dates[dates.length-1]}｜ 当前价基准 ${LATEST_DATE}`;
     renderTree();
     document.getElementById("detail").innerHTML =
-      '<div class="placeholder">← 从左侧点开一个物流商，再点它的渠道<br>即可查看该渠道的环比比价</div>';
+      '<div class="placeholder">← 从左侧点开一个物流商，再点它的渠道<br>即可查看该渠道按真实报价日的环比比价</div>';
   })
   .catch(e => { document.getElementById("sub").textContent = "加载 versions.json 失败：" + e; });
 
@@ -189,16 +205,15 @@ function renderTree(){
   }
 }
 
-// 某渠道相对「上一期」的涨跌计数（用于左侧 badge）
+// 某渠道相对「上一期」的涨跌计数（用于左侧 badge），取该渠道末两份快照
 function channelChange(cid){
-  const prev = VERS.length >= 2 ? (VERS[VERS.length-2].channels[cid] || {}).rows : null;
-  const cur = (LATEST.channels[cid] || {}).rows;
+  const s = (CH[cid].snapshots || []);
+  if (s.length < 2) return {up:0,down:0};
+  const prev = s[s.length - 2].rows, cur = s[s.length - 1].rows;
   let up=0,down=0;
-  if (prev && cur){
-    const pm = {};
-    prev.forEach(r => pm[r.dim+"|"+r.w] = r.rate);
-    cur.forEach(r => { const pv = pm[r.dim+"|"+r.w]; if (pv==null) return; const d=r.rate-pv; if(d>0)up++; else if(d<0)down++; });
-  }
+  const pm = {};
+  prev.forEach(r => pm[r.dim+"|"+r.w] = r.rate);
+  cur.forEach(r => { const pv = pm[r.dim+"|"+r.w]; if (pv==null) return; const d=r.rate-pv; if(d>0)up++; else if(d<0)down++; });
   return {up,down};
 }
 
@@ -254,24 +269,33 @@ function renderDetail(cid){
   const ch = LATEST.channels[cid];
   if (!ch){ det.innerHTML = '<div class="placeholder">请选择左侧渠道</div>'; return; }
 
-  const prevIdx = Math.max(0, VERS.length - 2);
+  const s = (CH[cid].snapshots || []).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const lastIdx = s.length - 1;
 
   let html = `<div class="dcard">`;
   html += `<div class="dhead"><div><div class="dname">${ch.name}</div>`+
           `<div class="dcar">${ch.carrier} · ${catLabel(ch.cat)}</div></div>`+
           `<span class="dtag">${ch.cat}</span></div>`;
 
-  // 单一对比区块：日期下拉合并「最新环比」与「历史对比」
+  if (s.length < 2){
+    html += `<div class="placeholder">该渠道暂无历史报价（仅最新价 ${LATEST_DATE}）<br>`+
+            `<span style="font-size:12px">邮箱里没有抓到这家该渠道的早期报价单，无法做环比</span></div>`;
+    html += `</div>`;
+    det.innerHTML = html;
+    return;
+  }
+
+  // 单一对比区块：下拉列出该渠道自己的实际报价日
   html += `<div class="histctrl"><label>对比基准日</label><select id="selBase"></select></div>`;
   html += `<div id="cmpBody"></div>`;
   html += `</div>`;
   det.innerHTML = html;
 
   const sel = document.getElementById("selBase");
-  // 选项 = 除最新版外的所有版本（最新价 vs 选定历史日）
-  VERS.forEach((v,i) => {
-    if (i === VERS.length - 1) return;
-    const opt = new Option(v.date + (i===prevIdx ? "（上一期·最新环比）" : ""), i);
+  const prevIdx = lastIdx - 1;
+  s.forEach((snap, i) => {
+    if (i === lastIdx) return;            // 末位是最新价本身，不进下拉
+    const opt = new Option(snap.date + (i===prevIdx ? "（上一期·最新环比）" : ""), i);
     sel.appendChild(opt);
   });
   sel.value = prevIdx;
@@ -282,11 +306,13 @@ function renderDetail(cid){
 function renderCompare(cid, baseIdx){
   const body = document.getElementById("cmpBody");
   if (!body) return;
-  const baseRows = (VERS[baseIdx].channels[cid] || {}).rows || null;
-  const curRows = (LATEST.channels[cid] || {}).rows;
+  const s = (CH[cid].snapshots || []).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const baseSnap = s[baseIdx], curSnap = s[s.length - 1];
+  const baseRows = baseSnap.rows, curRows = curSnap.rows;
   const rows = joinRows(baseRows, curRows);
-  const tag = (baseIdx === VERS.length - 2) ? "（最新环比：上一期 → 本期）" : "";
-  body.innerHTML = `<div class="ctx" style="font-size:12px;color:var(--mut);margin-bottom:8px">最新价（${LATEST.date}） vs 对比基准 ${VERS[baseIdx].date} ${tag}</div>` +
+  const isPrev = (baseIdx === s.length - 2);
+  const tag = isPrev ? "（最新环比：上一期 → 本期）" : "";
+  body.innerHTML = `<div class="ctx" style="font-size:12px;color:var(--mut);margin-bottom:8px">最新价（${curSnap.date}） vs 对比基准 ${baseSnap.date} ${tag}</div>` +
                    chipsHTML(rows) + tableHTML(rows);
 }
 </script>
