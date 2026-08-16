@@ -242,14 +242,17 @@ function joinRows(baseRows, curRows){
   });
 }
 
+function fmtPrice(v){ return v==null || v==="" ? "—" : (+v).toFixed(2); }
+
 function tableHTML(rows){
   let html = `<table><thead><tr><th>目的国/分区</th><th>重量段</th><th>最新价</th><th>对比价</th><th>Δ</th><th>方向</th></tr></thead><tbody>`;
   if (!rows.length){ html += `<tr><td colspan="6" style="text-align:center;color:var(--mut)">该渠道在此对比版本中无数据</td></tr>`; }
   rows.forEach(r => {
-    const prevTxt = r.prev==null ? "—" : r.prev;
+    const curTxt = fmtPrice(r.cur);
+    const prevTxt = fmtPrice(r.prev);
     const dTxt = r.d==null ? "—" : (r.d>0?"+":"")+r.d;
     const dirTxt = r.dir==="up"?"▲ 涨":r.dir==="down"?"▼ 跌":"＝ 持平";
-    html += `<tr><td>${r.dim}</td><td>${r.w}</td><td>${r.cur}</td><td>${prevTxt}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${dirTxt}</td></tr>`;
+    html += `<tr><td>${r.dim}</td><td>${r.w}</td><td>${curTxt}</td><td>${prevTxt}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${dirTxt}</td></tr>`;
   });
   return html + `</tbody></table>`;
 }
