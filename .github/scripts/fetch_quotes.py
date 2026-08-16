@@ -229,6 +229,7 @@ def process_carrier(token, name, cfg):
     if os.environ.get("FETCH_DIAG") == "1":
         log(f"[diag] === {name}：全关键词邮件清单（含分页，最多 6 页/关键词）===")
         seen = set()
+        first_dumped = False
         for kw in cfg["kw"]:
             page, pt = 1, None
             while page <= 6:
@@ -253,6 +254,11 @@ def process_carrier(token, name, cfg):
                         date = msg.get("date") or em.get("date")
                         subj = msg.get("subject") or em.get("subject") or "(无主题)"
                         atts = [a.get("filename") for a in (msg.get("attachments") or [])]
+                        if not first_dumped:
+                            first_dumped = True
+                            log(f"[diag-raw] item_keys={list(em.keys())}")
+                            log(f"[diag-raw] msg_keys={list(msg.keys())}")
+                            log(f"[diag-raw] msg_sample={json.dumps(msg, ensure_ascii=False)[:1500]}")
                     except Exception as e:
                         date, subj, atts = em.get("date"), "(详情获取失败)", str(e)
                     line = f"  [diag] kw={kw} | date={date} | subj={subj[:60]} | atts={atts}"
