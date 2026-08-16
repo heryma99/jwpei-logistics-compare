@@ -236,6 +236,15 @@ def process_carrier(token, name, cfg):
     outdir = os.path.join(HERE, name)
     os.makedirs(outdir, exist_ok=True)
     final = os.path.join(outdir, "latest.xlsx")
+    # 手动上传覆盖：若 manual/<name>/latest.xlsx 存在，优先用它（不走邮箱）。
+    # 用途：邮箱没收到某承运商报价单时（如 DPEX/2090/顺丰/易连/捷邮 只发月结账单），
+    # 由用户提供报价单 xlsx 放此路径，走与邮箱完全相同的烘焙流程。
+    manual_path = os.path.join(REPO_ROOT, "manual", name, "latest.xlsx")
+    if os.path.exists(manual_path):
+        shutil.copy(manual_path, final)
+        log(f"[{name}] 手动上传覆盖：{manual_path}")
+        REPORT.append(f"✅ [{name}] 使用手动上传的报价单（{os.path.basename(manual_path)}）")
+        return True
     if FETCH_LOCAL:
         src = os.path.join(LOCAL_XLSX_DIR, name, "latest.xlsx")
         if not os.path.exists(src):
