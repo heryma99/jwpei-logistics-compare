@@ -26,6 +26,7 @@ CARRIERS = {
     "中运通达": {"kw": ["中运通达", "中运"],    "main": None, "prefer_ext": "xlsx"},
     "亚丰":     {"kw": ["璞景", "德翼供应链", "德翼价格表", "德翼", "亚丰"], "main": None, "prefer_ext": "xlsx"},
     "飞特":     {"kw": ["飞特", "飞特标准挂号", "飞特物流"], "main": None, "prefer_ext": "xlsx"},
+    "捷邮":     {"kw": ["捷邮", "捷邮物流", "Jieyou", "捷邮国际", "捷邮中东"], "main": None, "prefer_ext": "xlsx"},
 }
 QUOTE_SOURCES = {}   # 抓取时记录各家选定报价邮件主题，供 bake 备注真实报价日
 BAKE = {
@@ -33,6 +34,7 @@ BAKE = {
     "中运通达": ["bake_zy_package.py", "bake_commercial.py"],
     "亚丰":     ["bake_yf.py"],
     "飞特":     ["bake_feit.py"],
+    "捷邮":     ["bake_jieyou.py"],
 }
 MAIL_API = "https://open.feishu.cn/open-apis/mail/v1/user_mailboxes/" + MBOX
 REFRESH_URL = "https://open.feishu.cn/open-apis/authen/v1/oidc/refresh_access_token"
@@ -281,9 +283,14 @@ def process_carrier(token, name, cfg):
         log(f"[{name}] 候选邮件均无报价附件")
         REPORT.append(f"· [{name}] 候选邮件均无报价附件")
         return False
-    # 优先取「报价单」类，其次退化为全部候选；都按收件时间倒序取最新
+    # 只接受「报价单」单价类邮件；若无任何报价单类候选（只有账单/发票/其他），
+    # 保持当前价、跳过本承运商（不退化去抓账单，避免误烘焙）。
     price_cands = [c for c in candidates if c["is_price"]]
-    pool = price_cands if price_cands else candidates
+    if not price_cands:
+        log(f"[{name}] 无报价单类邮件（仅账单/其他），保持当前价")
+        REPORT.append(f"· [{name}] 无报价单类邮件（仅账单/其他），保持当前价")
+        return False
+    pool = price_cands
     pool.sort(key=lambda c: c["internal"], reverse=True)
     best = pool[0]
     mid, tgt, subj = best["mid"], best["tgt"], best["subj"]
