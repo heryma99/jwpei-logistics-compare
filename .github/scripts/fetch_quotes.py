@@ -25,12 +25,14 @@ CARRIERS = {
     "云途":     {"kw": ["云途", "客户报价单"], "main": "云途全球专线挂号（特惠普货）", "prefer_ext": "zip"},
     "中运通达": {"kw": ["中运通达", "中运"],    "main": None, "prefer_ext": "xlsx"},
     "亚丰":     {"kw": ["璞景", "德翼供应链", "德翼价格表", "德翼", "亚丰"], "main": None, "prefer_ext": "xlsx"},
+    "飞特":     {"kw": ["飞特", "飞特标准挂号", "飞特物流"], "main": None, "prefer_ext": "xlsx"},
 }
 QUOTE_SOURCES = {}   # 抓取时记录各家选定报价邮件主题，供 bake 备注真实报价日
 BAKE = {
     "云途":     ["bake_yuntu.py"],
     "中运通达": ["bake_zy_package.py", "bake_commercial.py"],
     "亚丰":     ["bake_yf.py"],
+    "飞特":     ["bake_feit.py"],
 }
 MAIL_API = "https://open.feishu.cn/open-apis/mail/v1/user_mailboxes/" + MBOX
 REFRESH_URL = "https://open.feishu.cn/open-apis/authen/v1/oidc/refresh_access_token"
