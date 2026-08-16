@@ -26,6 +26,7 @@ CARRIERS = {
     "中运通达": {"kw": ["中运通达", "中运"],    "main": None, "prefer_ext": "xlsx"},
     "亚丰":     {"kw": ["璞景", "德翼供应链", "德翼价格表", "德翼", "亚丰"], "main": None, "prefer_ext": "xlsx"},
 }
+QUOTE_SOURCES = {}   # 抓取时记录各家选定报价邮件主题，供 bake 备注真实报价日
 BAKE = {
     "云途":     ["bake_yuntu.py"],
     "中运通达": ["bake_zy_package.py", "bake_commercial.py"],
@@ -276,6 +277,7 @@ def process_carrier(token, name, cfg):
     best = pool[0]
     mid, tgt, subj = best["mid"], best["tgt"], best["subj"]
     log(f"[{name}] 选定最新报价邮件: {subj[:40]} (internal={best['internal']})")
+    QUOTE_SOURCES[name] = subj
     url = download_url(token, mid, tgt["id"])
     if not url:
         log(f"[{name}] 拿不到下载链接")
@@ -854,8 +856,17 @@ def send_card(card):
 def bake_ratesjs():
     import time as _t
     d = json.load(open(RATES, encoding="utf-8"))
-    eff = (d.get("meta") or {}).get("effective_date") or _t.strftime("%Y-%m-%d")
-    d["generated"] = eff
+    today = _t.strftime("%Y-%m-%d")
+    now = _t.strftime("%Y-%m-%dT%H:%M:%S")
+    d["generated"] = today              # 修复：显示系统同步日，不再写死 effective_date(8/04)
+    meta = d.setdefault("meta", {})
+    meta["baked_at"] = now              # 烘焙时间戳
+    # 动态 banner：同步日 + 各家报价单真实主题（备注真实报价日，避免"显示同步日但报价是更早日"的误导）
+    qs = dict(QUOTE_SOURCES) or dict(meta.get("quote_sources") or {})
+    meta["quote_sources"] = qs
+    parts = [f"{k}报价：{v}" for k, v in qs.items() if v]
+    meta["banner"] = "数据同步于 " + today + (" ｜ " + "；".join(parts) if parts else "")
+    eff = (d.get("meta") or {}).get("effective_date") or today   # 保留供下方 log 使用
     BANNER = "\n;(function(){function render(){var R=window.RATES||{};var g=R.generated||(R.meta&&R.meta.effective_date);var note=(R.meta&&R.meta.banner)||(R.meta&&R.meta.note)||'';var h=document.querySelector('header');if(!h||!g)return;var el=document.getElementById('effBanner');if(!el){el=document.createElement('div');el.id='effBanner';el.style.cssText='margin-top:8px;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:#0e1117;background:linear-gradient(90deg,#ffd479,#ffb347);box-shadow:0 1px 4px rgba(0,0,0,.25);display:inline-block';h.appendChild(el);}el.textContent='\\U0001F4C5 '+note;}if(document.readyState!=='loading')render();else document.addEventListener('DOMContentLoaded',render);})();\n"
     with open(RATES_JS, "w", encoding="utf-8") as f:
         f.write("window.RATES = ")
