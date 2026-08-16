@@ -225,6 +225,45 @@ def process_carrier(token, name, cfg):
     outdir = os.path.join(HERE, name)
     os.makedirs(outdir, exist_ok=True)
     final = os.path.join(outdir, "latest.xlsx")
+    # ---- 诊断模式（FETCH_DIAG=1）：只读列出所有匹配邮件的日期/主题/附件，不下载不改动 ----
+    if os.environ.get("FETCH_DIAG") == "1":
+        log(f"[diag] === {name}：全关键词邮件清单（含分页，最多 6 页/关键词）===")
+        seen = set()
+        for kw in cfg["kw"]:
+            page, pt = 1, None
+            while page <= 6:
+                body = {"query": kw, "page_size": 15}
+                if pt:
+                    body["page_token"] = pt
+                r = req_json(MAIL_API + "/search", "POST", token, body)
+                if r.get("code") != 0:
+                    log(f"[diag] search '{kw}' 错误: {r.get('code')} {r.get('msg')}")
+                    break
+                items = r.get("data", {}).get("items", []) or []
+                if not items:
+                    break
+                for em in items:
+                    mid = em.get("message_id") or em.get("id")
+                    if mid in seen:
+                        continue
+                    seen.add(mid)
+                    try:
+                        d = req_json(MAIL_API + f"/messages/{mid}", "GET", token)
+                        msg = (d.get("data") or {}).get("message", {}) if d.get("code") == 0 else {}
+                        date = msg.get("date") or em.get("date")
+                        subj = msg.get("subject") or em.get("subject") or "(无主题)"
+                        atts = [a.get("filename") for a in (msg.get("attachments") or [])]
+                    except Exception as e:
+                        date, subj, atts = em.get("date"), "(详情获取失败)", str(e)
+                    line = f"  [diag] kw={kw} | date={date} | subj={subj[:60]} | atts={atts}"
+                    log(line)
+                    REPORT.append(f"· [diag] {name}/{kw} | {date} | {subj[:60]} | {atts}")
+                pt = r.get("data", {}).get("page_token")
+                if not pt:
+                    break
+                page += 1
+        log(f"[diag] {name} 诊断结束（只读，未下载/未改动）")
+        return False
     if FETCH_LOCAL:
         src = os.path.join(LOCAL_XLSX_DIR, name, "latest.xlsx")
         if not os.path.exists(src):
