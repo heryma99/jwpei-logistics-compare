@@ -11,11 +11,16 @@
   body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;padding:16px}
   h1{font-size:18px;margin:0 0 4px}
   .sub{color:var(--mut);font-size:12px;margin-bottom:12px}
+  .ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px}
+  .ctrl label{font-size:12px;color:var(--mut)}
+  .ctrl select{background:#0e1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:13px;max-width:240px}
+  .ctrl .arrow{color:var(--acc);font-weight:700;font-size:15px}
+  #modeHint{font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(88,166,255,.15);color:var(--acc);white-space:nowrap}
   .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
   button{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
   button.on{background:var(--acc);color:#0e1117;border-color:var(--acc);font-weight:600}
   .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:500px}
-  .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-y:auto;max-height:calc(100vh - 140px)}
+  .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-y:auto;max-height:calc(100vh - 200px)}
   .gt{font-size:12px;font-weight:700;color:var(--mut);padding:8px 6px 2px}
   .gt2{font-size:12px;font-weight:600;color:var(--acc);padding:6px 8px 2px 18px;border-top:1px dashed var(--line);margin-top:6px}
   .ch{padding:7px 10px;font-size:13px;cursor:pointer;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin:3px 0;gap:8px}
@@ -57,6 +62,15 @@
 <h1>📊 报价环比分析</h1>
 <div class="sub" id="sub">加载中…</div>
 
+<div class="ctrl" id="ctrl">
+  <label>对比基准</label>
+  <select id="selBase"></select>
+  <span class="arrow">→</span>
+  <label>本期</label>
+  <select id="selCur"></select>
+  <span id="modeHint"></span>
+</div>
+
 <div class="bar" id="catBar"></div>
 
 <div class="layout">
@@ -65,8 +79,9 @@
 </div>
 
 <div class="note">
-  数据来源：<code>versions.json</code>（上一期 <b id="bD"></b> → 本期 <b id="cD"></b>）。<br>
-  按业务域分组：<b>全部</b>（119 渠道）、<b>小包专线</b>（B2C 按件/按票）、<b>商业快递</b>（DHL/FedEx/UPS 分区总票价）、<b>2B头程</b>（FBA/专线头程）、<b>海外仓</b>（发往海外仓的头程/入仓渠道）。<br>
+  数据来源：<code>versions.json</code>。用上方下拉可切换：默认显示 <b>环比</b>（本期 vs 上一期）；
+  把"对比基准"选成更早的版本即变为 <b>基期对比</b>（本期 vs 选定基期）。<br>
+  按业务域分组：<b>全部</b>、<b>小包专线</b>（B2C 按件/按票）、<b>商业快递</b>（DHL/FedEx/UPS 分区总票价）、<b>2B头程</b>（FBA/专线头程）、<b>海外仓</b>（发往海外仓的头程/入仓渠道）。<br>
   红＝涨价，绿＝降价，灰＝持平。逐（目的国/分区 × 重量段）比对运费。谷仓等海外仓操作费对比数据源未接入（另见 overseas_data.js）。
 </div>
 
@@ -79,7 +94,13 @@ if (EMBED) {
   document.body.style.padding = "8px";
 }
 
-let DATA = null;
+let VERS = [];
+let selBase = 0;
+let selCur = 0;
+let CH = {};
+let curCat = "all";
+let curId = null;
+
 const isOverseas = (c) => /海外仓|入仓|集货仓/.test(c.name || "");
 const catOf = (c) => isOverseas(c) ? "overseas" : (c.cat || "");
 const normCarrier = (c) => {
@@ -89,32 +110,80 @@ const normCarrier = (c) => {
   return n;
 };
 const DOMAINS = [["all","全部"],["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]];
-let curCat = "all";
-let curId = null;
+
+function modeLabel(){
+  if (selCur === selBase) return "同一版本";
+  if (selCur === selBase + 1) return "环比(本期 vs 上一期)";
+  return "基期对比";
+}
 
 fetch("versions.json?_=" + Date.now(), {cache:"no-store"})
   .then(r => r.json())
-  .then(d => { DATA = d; init(); })
+  .then(d => {
+    VERS = (d.versions || []).slice().sort((a,b) => a.date.localeCompare(b.date));
+    selCur = VERS.length - 1;
+    selBase = Math.max(0, VERS.length - 2);
+    init();
+  })
   .catch(e => { document.getElementById("sub").textContent = "加载 versions.json 失败：" + e; });
 
 function init(){
-  document.getElementById("sub").textContent =
-    `上一期 ${DATA.baseline.date}（${DATA.baseline.label}）→ 本期 ${DATA.current.date}（${DATA.current.label}）；共 ${Object.keys(DATA.channels).length} 渠道可比`;
-  document.getElementById("bD").textContent = DATA.baseline.date;
-  document.getElementById("cD").textContent = DATA.current.date;
+  const sB = document.getElementById("selBase");
+  const sC = document.getElementById("selCur");
+  sB.innerHTML = ""; sC.innerHTML = "";
+  VERS.forEach((v,i) => {
+    sB.appendChild(new Option(v.label, i));
+    sC.appendChild(new Option(v.label, i));
+  });
+  sB.value = selBase; sC.value = selCur;
+  sB.onchange = () => { selBase = +sB.value; if (selBase > selCur){ selCur = selBase; sC.value = selCur; } rebuild(); };
+  sC.onchange = () => { selCur = +sC.value; if (selCur < selBase){ selBase = selCur; sB.value = selBase; } rebuild(); };
 
+  buildCatBar();
+  rebuild();
+}
+
+function compareChannels(){
+  const base = VERS[selBase], cur = VERS[selCur], out = {};
+  const ids = new Set([...Object.keys(base.channels), ...Object.keys(cur.channels)]);
+  ids.forEach(id => {
+    const cc = cur.channels[id];
+    if (!cc) return;
+    const bc = base.channels[id];
+    out[id] = {
+      cat: cc.cat, name: cc.name, carrier: cc.carrier,
+      prev: bc ? bc.rows : [],
+      cur: cc.rows
+    };
+  });
+  return out;
+}
+
+function rebuild(){
+  CH = compareChannels();
+  updateSub();
+  buildSidebar();
+}
+
+function updateSub(){
+  const base = VERS[selBase], cur = VERS[selCur];
+  document.getElementById("sub").textContent =
+    `对比基准 ${base.date} → 本期 ${cur.date} ｜ ${modeLabel()} ｜ 共 ${Object.keys(CH).length} 渠道可比`;
+  document.getElementById("modeHint").textContent = modeLabel();
+}
+
+function buildCatBar(){
   const bar = document.getElementById("catBar");
+  bar.innerHTML = "";
   DOMAINS.forEach(([cat,label]) => {
-    const n = cat === "all" ? Object.keys(DATA.channels).length
-            : Object.values(DATA.channels).filter(c => catOf(c) === cat).length;
+    const n = cat === "all" ? Object.keys(CH).length
+            : Object.values(CH).filter(c => catOf(c) === cat).length;
     const b = document.createElement("button");
     b.textContent = label + " (" + n + ")"; b.dataset.c = cat;
     if (cat === curCat) b.classList.add("on");
     b.onclick = () => { curCat = cat; renderBar(); buildSidebar(); };
     bar.appendChild(b);
   });
-
-  buildSidebar();
 }
 
 function renderBar(){
@@ -139,9 +208,8 @@ function buildSidebar(){
   const sb = document.getElementById("sidebar");
   sb.innerHTML = "";
 
-  const all = Object.entries(DATA.channels).sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
+  const all = Object.entries(CH).sort((a,b) => a[1].name.localeCompare(b[1].name,'zh'));
 
-  // 第三步：渠道（按物流商分组渲染）
   const renderByCarrier = (list) => {
     const groups = {};
     list.forEach(([id,c]) => {
@@ -166,7 +234,6 @@ function buildSidebar(){
     });
   };
 
-  // 第一步：大类
   if (curCat === "all"){
     [["small","小包专线"],["express","商业快递"],["b2b-air","2B头程"],["overseas","海外仓"]].forEach(([cat,label]) => {
       const sub = all.filter(([id,c]) => catOf(c) === cat);
@@ -174,7 +241,7 @@ function buildSidebar(){
       const g = document.createElement("div");
       g.className = "gt"; g.textContent = label + " (" + sub.length + ")";
       sb.appendChild(g);
-      renderByCarrier(sub);   // 第二步：物流商
+      renderByCarrier(sub);
     });
   } else {
     const chs = all.filter(([id,c]) => catOf(c) === curCat);
@@ -183,14 +250,14 @@ function buildSidebar(){
   }
 
   const pool = curCat === "all" ? all : all.filter(([id,c]) => catOf(c) === curCat);
-  if (!curId || (curCat !== "all" && catOf(DATA.channels[curId] || {}) !== curCat)) curId = (pool[0]||[])[0];
+  if (!curId || (curCat !== "all" && catOf(CH[curId] || {}) !== curCat)) curId = (pool[0]||[])[0];
   renderDetail(curId);
 }
 
 function renderDetail(id){
   const det = document.getElementById("detail");
-  if (!id || !DATA.channels[id]){ det.innerHTML = '<div class="placeholder">请选择左侧渠道</div>'; return; }
-  const c = DATA.channels[id];
+  if (!id || !CH[id]){ det.innerHTML = '<div class="placeholder">请选择左侧渠道</div>'; return; }
+  const c = CH[id];
   const rows = joinRows(c.prev, c.cur);
   let up=0,down=0,flat=0,na=0;
   rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
