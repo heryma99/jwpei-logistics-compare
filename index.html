@@ -28182,27 +28182,27 @@ function rOps(){
     var sel=document.getElementById('ovTailCountry'); if(!sel) return;
     var fin=document.getElementById('ovTailFilter');
     if(!fin){
-      // create filter input after the select's parent fld div's label area
       var fld=sel.parentElement;
       fin=document.createElement('input'); fin.type='text'; fin.id='ovTailFilter';
       fin.className='inline-in'; fin.style.width='120px'; fin.style.marginLeft='4px';
       fin.placeholder='搜索国家...';
       fld.appendChild(fin);
-      // move note span after filter
       var note=document.getElementById('ovTailNote');
       if(note){ fld.appendChild(note); }
     }
-    $(fin).off('input.tailfilter').on('input.tailfilter',function(){
-      var q=$(this).val().toLowerCase();
-      $('#ovTailCountry option').each(function(){
-        var txt=$(this).text().toLowerCase(); $(this).prop('hidden',!txt.includes(q));
-      });
-      // if current selection is hidden, pick first visible
-      if($('#ovTailCountry option:selected').prop('hidden')){
-        var first=$('#ovTailCountry option:not(:hidden):first');
-        if(first.length){ sel.value=first.val(); onTailCountryChange(); syncTail(); }
+    fin.oninput=function(){
+      var q=(fin.value||'').toLowerCase();
+      var opts=sel.options; var firstVisible=null;
+      for(var i=0;i<opts.length;i++){
+        var txt=(opts[i].text||'').toLowerCase();
+        var hide=!txt.includes(q);
+        opts[i].hidden=hide;
+        if(!hide && !firstVisible) firstVisible=opts[i];
       }
-    });
+      if(sel.selectedOptions.length && sel.selectedOptions[0].hidden && firstVisible){
+        sel.value=firstVisible.value; onTailCountryChange(); syncTail();
+      }
+    };
   }
 
   function onTailCountryChange(){
