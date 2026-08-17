@@ -28255,6 +28255,7 @@ function rOps(){
   }
 
   function drawDetail(){
+    try{
     const sc=buildSc(), hd=buildHead(), fx=fxVal();
     const wh=st.wh, res=E.calcOne(wh, sc), cats=res.cats;
     let opSub=0; for(const k in cats) opSub+=cats[k].amt;
@@ -28289,7 +28290,14 @@ function rOps(){
     $("#ovGcwhFld").style.display=(wh==='goodcang')?'':'none';
     $("#ovDetail").innerHTML=segHtml;
     $("#ovVerdict").textContent='';
-  }
+    }catch(err){
+      var msg = `❌ 测算出错: ${err.message||err}
+栈: ${(err.stack||'').slice(0,300)}`;
+      document.getElementById('ovDetail').innerHTML = '<pre style="color:red;padding:10px;background:#1a1a2e;border-radius:6px;white-space:pre-wrap">' + msg.replace(/</g,'&lt;') + '</pre>';
+      var vEl = document.getElementById('ovVerdict');
+      if(vEl) vEl.textContent = '⚠️ 计算异常';
+      console.error('[drawDetail]', err);
+    }
 
   function getCmpIds(){
     const chk=Array.from(document.querySelectorAll('.ovCmpWh:checked')).map(c=>c.value);
