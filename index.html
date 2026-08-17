@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260817134500";</script>
+<script>window.__BUILD__="20260817193100";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -29025,6 +29025,10 @@ function tailGoodcang(sc){
 // ===== ⑥ 谷仓尾程：按所选子仓真实渠道（复用 tail_eurasia + gc_eu_routing 数据，不改动模块⑤）=====
 // 选 CZ/FR/DE/IT/ES/UK/AU/PL 等子仓时，尾程用该仓真实渠道（PPL捷克/法邮/DHL德国/GLS/DPD/G2G…），而非写死 GC Parcel 美国表。
 var GC_ISO6 = {'USWE':'US','USEA':'US','USCH':'US','USAT':'US','USSA':'US','USDW':'US','USHO':'US','USSE':'US','USNC':'US','CA':'CA','MX':'MX','UK':'UK','CZ':'CZ','PL':'PL','DE':'DE','FR':'FR','IT':'IT','ES':'ES','AU':'AU'};
+var GCWH_NAME = {
+  'USWE':'美国·美西(洛杉矶)','USEA':'美国·美东(新泽西)','USCH':'美国·美中','USAT':'美国·美东(亚特兰大)','USSA':'美国·美南','USDW':'美国·美西(达拉斯)','USHO':'美国·美西(休斯顿)','USSE':'美国·美东南','USNC':'美国·美东(北卡)',
+  'CA':'加拿大','MX':'墨西哥','CZ':'捷克(布拉格)','FR':'法国(巴黎)','UK':'英国(伯明翰)','DE':'德国(经CZ枢纽)','IT':'意大利(米兰)','ES':'西班牙(马德里)','PL':'波兰','AU':'澳洲(墨尔本/悉尼)'
+};
 function gcwhIso6(g){ return GC_ISO6[g]||'US'; }
 // 国家名→ISO 归一（与模块⑤同表）
 var ISO6={};
@@ -29120,11 +29124,11 @@ function tailGoodcangRoute(sc){
   if(whIso==='US'||whIso==='CA'||whIso==='MX'){ // 美/加/墨：维持原 GC Parcel 美国表（补充 note/cur 避免 UI 显示 undefined）
     var tg=tailGoodcang(sc);
     if(!tg){ return {price:0, listPrice:0, bk:Math.max(sc.kg,sc.L*sc.W*sc.H/8000), tier:'—', disc:0.88, cur:'USD', note:'谷仓'+whIso+'仓尾程(GC Parcel 美国表)：当前重量/分区无可用报价（请检查重量与分区 Zone 设置）。'}; }
-    return {price:tg.price, listPrice:tg.listPrice, bk:tg.bk, tier:tg.tier, disc:tg.disc, cur:'USD', note:'谷仓'+whIso+'仓尾程(GC Parcel 美国表)：分区 '+sc.zone+' ｜ 计费重'+tg.bk.toFixed(3)+'kg(÷8000) ｜ 挂牌 $'+fmt(tg.listPrice)+' × '+Math.round(tg.disc*100)+'% (账户尾程折扣) = $'+fmt(tg.price)+'/件(折后)'};
+    return {price:tg.price, listPrice:tg.listPrice, bk:tg.bk, tier:tg.tier, disc:tg.disc, cur:'USD', note:'谷仓'+whIso+'仓尾程(GC Parcel 美国表) ｜ 服务商：USPS Ground Advantage ｜ 分区 '+sc.zone+' ｜ 计费重'+tg.bk.toFixed(3)+'kg(÷8000) ｜ 挂牌 $'+fmt(tg.listPrice)+' × '+Math.round(tg.disc*100)+'% (账户尾程折扣) = $'+fmt(tg.price)+'/件(折后)'};
   }
   var destIso=sc.dest||whIso;
   var rt=routeGcTail(whIso, destIso);
-  if(!rt||!rt.ch){ return {price:0, listPrice:0, bk:Math.max(sc.kg,sc.L*sc.W*sc.H/6000), tier:'—', disc:0.88, note:'谷仓'+whIso+'仓 → '+destIso+' 尾程：未在 tail_eurasia / gc_eu_routing 找到可发官方渠道（该流向可能无官方渠道或需人工查价）。'}; }
+  if(!rt||!rt.ch){ return {price:0, listPrice:0, bk:Math.max(sc.kg,sc.L*sc.W*sc.H/6000), tier:'—', disc:0.88, note:'谷仓'+whIso+'仓 → '+destIso+' 尾程：服务商 未匹配（未在 tail_eurasia / gc_eu_routing 找到可发官方渠道，可能该流向无官方渠道或需人工查价）。'}; }
   var ch=rt.ch; var cur=ch.cur||(OV_GC.tail_eurasia[rt.whIso]&&OV_GC.tail_eurasia[rt.whIso].cur)||'EUR';
   var bk=Math.max(sc.kg, sc.L*sc.W*sc.H/6000);
   var col=colOf6(ch, destIso, ch.mode);
@@ -29136,13 +29140,14 @@ function tailGoodcangRoute(sc){
         var col2=colOf6(alt,destIso,mm); var p2=priceCh6(alt,bk,col2); if(p2!=null){ ch=alt; cur=alt.cur||cur; col=col2; p=p2; break; } }
     }
   }
-  if(p==null){ return {price:0, listPrice:0, bk:bk, tier:'—', disc:0.88, note:'谷仓'+rt.whIso+'仓 → '+destIso+'：官方渠道('+rt.label+')本页暂无法自动计价（分区/列不匹配），请人工查价。'}; }
+  if(p==null){ var cn0=(rt.label||'').replace('谷仓海外仓尾程-',''); return {price:0, listPrice:0, bk:bk, tier:'—', disc:0.88, note:'谷仓'+rt.whIso+'仓 → '+destIso+'：服务商 '+cn0+' 本页暂无法自动计价（分区/列不匹配），请人工查价。'}; }
   var FX6={'USD':7.2,'GBP':9.25,'EUR':7.85,'JPY':0.049,'SEK':0.69,'CZK':0.31,'PLN':1.85,'AUD':4.72};
   var usd=p*((FX6[cur]||7.2)/(FX6['USD']||7.2));
   var disc=0.88;
   var routeNote = rt.layer===1?'同仓本地':(rt.layer===2?'跨仓国际':'就近兜底');
+  var carrierName=(rt.label||'').replace('谷仓海外仓尾程-','');
   return {price:usd*disc, listPrice:usd, bk:bk, tier:ch.mode+'·'+rt.label, disc:disc, cur:cur,
-    note:'谷仓'+rt.whIso+'仓尾程('+routeNote+')：'+rt.label+' ｜ 计费重'+bk.toFixed(3)+'kg(÷6000) ｜ 挂牌 '+cur+' '+fmt(p)+(col?(' ｜ 分区/列='+col):'')+' × '+Math.round(disc*100)+'% (账户尾程折扣) = $'+fmt(usd)+'/件 ≈ $'+fmt(usd*disc)+'/件(折后)'};
+    note:'谷仓'+rt.whIso+'仓尾程('+routeNote+') ｜ 服务商：'+carrierName+' ｜ 计费重'+bk.toFixed(3)+'kg(÷6000) ｜ 挂牌 '+cur+' '+fmt(p)+(col?(' ｜ 分区/列='+col):'')+' × '+Math.round(disc*100)+'% (账户尾程折扣) = $'+fmt(usd)+'/件 ≈ $'+fmt(usd*disc)+'/件(折后)'};
 }
 function tailNorm(norm, sc, kind){
   var bk, oz, lb, row, price;
@@ -29207,13 +29212,14 @@ function calcOne(id, sc){
   var cats={}; var total=0;
   if(id==='goodcang'){
     var w=sc.gcwh;
+    var whName=GCWH_NAME[w]||w;
     // 入库
     var lc = (OV_GC.inbound.unload_lcl[w]||0)*0.9632*sc.vol;
-    cats.LC={amt:lc, rate:OV_GC.inbound.unload_lcl[w], rating:'green', note:'美国9仓固定6.8/CBM(牌价7.06×96.32%)，按实测体积；14单验证'};
+    cats.LC={amt:lc, rate:OV_GC.inbound.unload_lcl[w], rating:'green', note: whName+' 卸货 牌价'+(OV_GC.inbound.unload_lcl[w]||0)+'/CBM×96.32%→实结'+((OV_GC.inbound.unload_lcl[w]||0)*0.9632).toFixed(2)+'/CBM，按实测体积'};
     var ibtf = (OV_GC.inbound.sort[w]||0)*0.70*sc.sku;
-    cats.IB_TF={amt:ibtf, rating:'green', note:'USEA 0.70/SKU×7折→0.49；去重SKU'+sc.sku};
+    cats.IB_TF={amt:ibtf, rating:'green', note: whName+' 分拣 '+(OV_GC.inbound.sort[w]||0)+'/SKU×7折→'+((OV_GC.inbound.sort[w]||0)*0.70).toFixed(2)+'；去重SKU'+sc.sku};
     var ibts = (OV_GC.inbound.mixed_sort[w]||0)*1.0*sc.mix;
-    cats.IB_TS={amt:ibts, rating:'green', note:'USEA 1.31/行(无折)；混装实收SKU行'+sc.mix};
+    cats.IB_TS={amt:ibts, rating:'green', note: whName+' 混装分拣 '+(OV_GC.inbound.mixed_sort[w]||0)+'/行(无折)；混装实收SKU行'+sc.mix};
     var tier=wtTier(sc.kg);
     var ibf = (OV_GC.inbound.shelf[tier][w]||0)*sc.qty;
     cats.IB_F={amt:ibf, rating:'green', note:'重量段 '+tier+' ×'+sc.qty+'件；逐件实重判定(估算用均值)'};
