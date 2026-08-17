@@ -16,6 +16,8 @@
   .mbtn{font-size:14px;padding:8px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--txt);user-select:none}
   .mbtn:hover{border-color:var(--acc)}
   .mbtn.on{background:var(--acc);color:#0e1117;font-weight:600;border-color:var(--acc)}
+  .tgl{font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:#0e1117;color:var(--mut);user-select:none}
+  .tgl.on{background:rgba(88,166,255,.15);color:var(--acc);border-color:var(--acc)}
 
   .layout{display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:520px}
   .side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;overflow-y:auto;max-height:calc(100vh - 160px)}
@@ -43,6 +45,7 @@
   .chip.down{background:rgba(63,185,80,.15);color:var(--down)}
   .chip.flat{background:rgba(139,148,158,.15);color:var(--flat)}
   .chip.na{background:rgba(139,148,158,.1);color:var(--mut)}
+  .chip.mixed{background:rgba(210,153,34,.15);color:#d29922}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line)}
   th:first-child,td:first-child{text-align:left}
@@ -51,6 +54,7 @@
   .up{color:var(--up);font-weight:600}
   .down{color:var(--down);font-weight:600}
   .flat{color:var(--flat)}
+  .mixed{color:#d29922;font-weight:600}
   .placeholder{color:var(--mut);padding:40px 20px;text-align:center;line-height:1.8}
   .note{color:var(--mut);font-size:12px;margin-top:18px;line-height:1.6}
   code{background:var(--card);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
@@ -74,7 +78,7 @@
 <div class="note">
   交互：顶部 <b>并排大菜单</b> 选分类（全部 / 小包专线 / 商业快递 / TO B头程 / 海外仓）—— 点分类后，左侧物流商<b>默认全部折叠</b>，点开某个物流商才展开它的渠道；点<b>渠道</b>，右侧出明细。<br>
   右侧明细只有一个 <b>对比基准日</b> 下拉：它列出<b>该渠道自己真实的历史报价日</b>（各家、各渠道的报价到达时间不同，互不相同）。默认「上一期」即<b>最新环比</b>；选任意历史报价日，同一张表立刻重算「最新价 vs 该日」的逐段涨跌（即基期/历史比价）。<br>
-  红＝涨价，绿＝降价，灰＝持平。数据来源 <code>versions.json</code>，按邮箱真实报价日重建的逐渠道历史快照。
+  红＝涨价，绿＝降价，灰＝持平；表格同时给出<b>运费</b>与（小包渠道）<b>挂号费</b>两类「变动值 + 变动百分比」成分比，默认<b>只看变动</b>（点右上切换显示全部）。数据来源 <code>versions.json</code>，按邮箱真实报价日重建的逐渠道历史快照。
 </div>
 
 <script>
@@ -233,36 +237,71 @@ function selectChannel(cid){
 
 function joinRows(baseRows, curRows){
   const pm = {};
-  (baseRows||[]).forEach(r => pm[r.dim+"|"+r.w] = r.rate);
+  (baseRows||[]).forEach(r => pm[r.dim+"|"+r.w] = {rate:r.rate, reg:(r.reg!=null?r.reg:null)});
   return (curRows||[]).map(r => {
     const pv = pm[r.dim+"|"+r.w];
-    let d=null, dir="flat";
-    if (pv != null){ d = +(r.rate - pv).toFixed(2); dir = d>0?"up":(d<0?"down":"flat"); }
-    return {dim:r.dim, w:r.w, prev:pv, cur:r.rate, d, dir};
+    let d=null, pct=null, dir="flat";
+    let dReg=null, regPct=null, regDir="flat";
+    let cdir="flat";
+    if (pv != null){
+      d = +(r.rate - pv.rate).toFixed(2);
+      dir = d>0?"up":(d<0?"down":"flat");
+      if (+pv.rate !== 0){ pct = +((d / pv.rate) * 100).toFixed(2); }
+      if (r.reg != null && pv.reg != null){
+        dReg = +(r.reg - pv.reg).toFixed(2);
+        regDir = dReg>0?"up":(dReg<0?"down":"flat");
+        if (+pv.reg !== 0){ regPct = +((dReg / pv.reg) * 100).toFixed(2); }
+      }
+      const upC = (dir==="up")||(regDir==="up");
+      const downC = (dir==="down")||(regDir==="down");
+      cdir = (upC && downC) ? "mixed" : upC ? "up" : downC ? "down" : "flat";
+    } else {
+      cdir = "na";
+    }
+    return {dim:r.dim, w:r.w, prev:pv?pv.rate:null, cur:r.rate, d, pct, dir,
+            reg:r.reg, prevReg:pv?pv.reg:null, dReg, regPct, regDir, cdir};
   });
 }
 
 function fmtPrice(v){ return v==null || v==="" ? "—" : (+v).toFixed(2); }
+function fmtPct(v){ return v==null || v==="" ? "—" : (v>0?"+":"")+v.toFixed(2)+"%"; }
 
-function tableHTML(rows){
-  let html = `<table><thead><tr><th>目的国/分区</th><th>重量段</th><th>最新价</th><th>对比价</th><th>Δ</th><th>方向</th></tr></thead><tbody>`;
-  if (!rows.length){ html += `<tr><td colspan="6" style="text-align:center;color:var(--mut)">该渠道在此对比版本中无数据</td></tr>`; }
-  rows.forEach(r => {
+function tableHTML(rows, onlyChanged, hasReg){
+  const disp = onlyChanged ? rows.filter(r => r.dir === "up" || r.dir === "down" || r.regDir === "up" || r.regDir === "down") : rows;
+  const head = `<th>目的国/分区</th><th>重量段</th><th>最新运费</th><th>对比运费</th><th>运费Δ</th><th>运费±%</th>`+
+    (hasReg?`<th>最新挂号</th><th>对比挂号</th><th>挂号Δ</th><th>挂号±%</th>`:"")+
+    `<th>方向</th>`;
+  const colspan = hasReg?11:7;
+  let html = `<table><thead><tr>${head}</tr></thead><tbody>`;
+  if (!disp.length){ html += `<tr><td colspan="${colspan}" style="text-align:center;color:var(--mut)">${onlyChanged?"当前对比版本下没有发生变动的报价（运费或挂号费）":"该渠道在此对比版本中无数据"}</td></tr>`; }
+  disp.forEach(r => {
     const curTxt = fmtPrice(r.cur);
     const prevTxt = fmtPrice(r.prev);
-    const dTxt = r.d==null ? "—" : (r.d>0?"+":"")+r.d;
-    const dirTxt = r.dir==="up"?"▲ 涨":r.dir==="down"?"▼ 跌":"＝ 持平";
-    html += `<tr><td>${r.dim}</td><td>${r.w}</td><td>${curTxt}</td><td>${prevTxt}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${dirTxt}</td></tr>`;
+    const dTxt = r.d==null ? "—" : (r.d>0?"+":"")+r.d.toFixed(2);
+    const pTxt = fmtPct(r.pct);
+    const dirTxt = r.cdir==="up"?"▲ 涨":r.cdir==="down"?"▼ 跌":r.cdir==="mixed"?"↕ 涨跌互见":r.cdir==="na"?"· 仅最新":"＝ 持平";
+    let regCells = "";
+    if (hasReg){
+      const cReg = fmtPrice(r.reg), pReg = fmtPrice(r.prevReg);
+      const dRegTxt = r.dReg==null ? "—" : (r.dReg>0?"+":"")+r.dReg.toFixed(2);
+      const pRegTxt = fmtPct(r.regPct);
+      regCells = `<td class="${r.regDir}">${cReg}</td><td class="${r.regDir}">${pReg}</td>`+
+                 `<td class="${r.regDir}">${dRegTxt}</td><td class="${r.regDir}">${pRegTxt}</td>`;
+    }
+    html += `<tr><td>${r.dim}</td><td>${r.w}</td><td class="${r.dir}">${curTxt}</td><td class="${r.dir}">${prevTxt}</td><td class="${r.dir}">${dTxt}</td><td class="${r.dir}">${pTxt}</td>`+
+      regCells+
+      `<td class="${r.cdir}">${dirTxt}</td></tr>`;
   });
   return html + `</tbody></table>`;
 }
 
 function chipsHTML(rows){
-  let up=0,down=0,flat=0,na=0;
-  rows.forEach(r => { if(r.dir==="up")up++; else if(r.dir==="down")down++; else if(r.prev==null)na++; else flat++; });
+  let up=0,down=0,flat=0,na=0,mixed=0;
+  rows.forEach(r => { if(r.cdir==="up")up++; else if(r.cdir==="down")down++; else if(r.cdir==="mixed")mixed++; else if(r.prev==null)na++; else flat++; });
   return `<div class="chips">`+
     `<span class="chip up">▲ 涨 ${up}</span>`+
     `<span class="chip down">▼ 跌 ${down}</span>`+
+    (mixed?`<span class="chip mixed">↕ 互见 ${mixed}</span>`:"")+
     `<span class="chip flat">＝ 持平 ${flat}</span>`+
     (na?`<span class="chip na">· 仅最新 ${na}</span>`:"")+`</div>`;
 }
@@ -306,6 +345,8 @@ function renderDetail(cid){
   renderCompare(cid, prevIdx);
 }
 
+let onlyChanged = true; // 默认只看有变动的行
+
 function renderCompare(cid, baseIdx){
   const body = document.getElementById("cmpBody");
   if (!body) return;
@@ -313,10 +354,19 @@ function renderCompare(cid, baseIdx){
   const baseSnap = s[baseIdx], curSnap = s[s.length - 1];
   const baseRows = baseSnap.rows, curRows = curSnap.rows;
   const rows = joinRows(baseRows, curRows);
+  const hasReg = rows.some(r => r.reg != null || r.prevReg != null);
   const isPrev = (baseIdx === s.length - 2);
   const tag = isPrev ? "（最新环比：上一期 → 本期）" : "";
-  body.innerHTML = `<div class="ctx" style="font-size:12px;color:var(--mut);margin-bottom:8px">最新价（${curSnap.date}） vs 对比基准 ${baseSnap.date} ${tag}</div>` +
-                   chipsHTML(rows) + tableHTML(rows);
+  const changedCnt = rows.filter(r => r.cdir === "up" || r.cdir === "down" || r.cdir === "mixed").length;
+  body.innerHTML = `<div class="ctx" style="font-size:12px;color:var(--mut);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">` +
+                   `<span>最新价（${curSnap.date}） vs 对比基准 ${baseSnap.date} ${tag}</span>` +
+                   `<span class="tgl ${onlyChanged?'on':''}" id="btnOnlyChanged">${onlyChanged?"✓ 只看变动":"显示全部"}（${changedCnt}/${rows.length}）</span>` +
+                   `</div>` +
+                   chipsHTML(rows) + tableHTML(rows, onlyChanged, hasReg);
+  document.getElementById("btnOnlyChanged").onclick = () => {
+    onlyChanged = !onlyChanged;
+    renderCompare(cid, baseIdx);
+  };
 }
 </script>
 </body>
