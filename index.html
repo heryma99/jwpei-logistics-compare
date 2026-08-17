@@ -28257,7 +28257,10 @@ function rOps(){
   function drawDetail(){
     try{
     const sc=buildSc(), hd=buildHead(), fx=fxVal();
-    const wh=st.wh, res=E.calcOne(wh, sc), cats=res.cats;
+    const wh=st.wh;
+    /*DEBUG*/ window.__last_sc=sc; window.__last_hd=hd; window.__last_wh=wh; window.__last_E=typeof E!=='undefined'?E:null;
+    const res=E.calcOne(wh, sc), cats=res.cats;
+    /*DEBUG*/ window.__last_res=res;
     let opSub=0; for(const k in cats) opSub+=cats[k].amt;
     const headR=getHead(hd);
     let segHtml='';
@@ -28344,12 +28347,20 @@ function rOps(){
   }
 
   function draw(){
+    try{
     const cmpOn=$("#ovCmp").checked;
     $("#ovCmpPanel").style.display=cmpOn?'':'none';
     $("#ovSeg").style.display=cmpOn?'none':'';
     $("#ovDetail").style.display=cmpOn?'none':'';
     $("#ovCmpRes").style.display=cmpOn?'':'none';
     if(cmpOn){ drawCompare(); } else { renderSeg(); drawDetail(); }
+    }catch(err){
+      var msg = `❌ draw()出错: ${err.message||err}
+位置: ${(err.stack||'').slice(0,600)}`;
+      var el=document.getElementById('ovDetail');
+      if(el) el.innerHTML='<pre style="color:#ff6b6b;padding:15px;background:#1a0a0a;border-radius:8px;white-space:pre-wrap;font-size:13px">'+msg.replace(/</g,'&lt;')+'</pre>';
+      console.error('[draw]',err);
+    }
   }
 
   $("#ovHc").onchange=function(){fillHch(); syncHead();}; $("#ovHch").onchange=function(){fillHr(); syncHead();}; fillHch(); renderTailCountry(); syncHead(); syncTail();
