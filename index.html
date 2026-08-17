@@ -28154,7 +28154,12 @@ function rOps(){
       if(/西|ES|SPAN/i.test(r)) return 'ES';
       if(/波|PL|POL/i.test(r)) return 'PL';
     }
-    if(id==='goodcang'||id==='vip'||id==='kuajing'||id==='winit'||(''+id).indexOf('xp:')===0) return 'US';
+    if(id==='goodcang'){
+    var _gc=document.getElementById('ovGcwh'); var _w=_gc?_gc.value:'USWE';
+    var _M={'USWE':'US','USEA':'US','USCH':'US','USAT':'US','USSA':'US','USDW':'US','USHO':'US','USSE':'US','USNC':'US','CA':'CA','MX':'MX','UK':'UK','CZ':'CZ','PL':'PL','DE':'DE','FR':'FR','IT':'IT','ES':'ES','AU':'AU'};
+    if(_M[_w]) return _M[_w];
+  }
+  if(id==='goodcang'||id==='vip'||id==='kuajing'||id==='winit'||(''+id).indexOf('xp:')===0) return 'US';
     var m=(''+id).match(/^gc-(.+)$/); if(m) return m[1].toUpperCase();
     return 'US';
   }
@@ -28216,8 +28221,11 @@ function rOps(){
     if(ck==='manual'){ document.getElementById('ovHrNote').textContent='手填金额·头程国不限制'; return; }
     var found=null;
     for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===cc){found=sel.options[i];break;} }
-    if(!found){ var eu=(cc in TAIL_ZONE)||EU_COUNTRIES.indexOf(cc)>=0;
-      for(var j=0;j<sel.options.length;j++){ var t=(sel.options[j].text||'')+' '+(sel.options[j].value||''); if(eu&&/欧|EU|EUR|Europe/i.test(t)){found=sel.options[j];break;} if(cc==='US'&&/美|US|U\.S/i.test(t)){found=sel.options[j];break;} } }
+    if(!found){
+      var eu=(cc in TAIL_ZONE)||EU_COUNTRIES.indexOf(cc)>=0;
+      if(eu){ var EU_MAP={'DE':'EU_T1','FR':'EU_T2','ES':'EU_T3','IT':'EU_T3','PL':'EU_T3','CZ':'EU_T4','AT':'EU_T4','NL':'EU_T4','BE':'EU_T4','PT':'EU_T4','SE':'EU_T4','FI':'EU_T4','DK':'EU_T4','IE':'EU_T4','GR':'EU_T4','HU':'EU_T4','RO':'EU_T4','BG':'EU_T4','SK':'EU_T4','SI':'EU_T4','HR':'EU_T4','LT':'EU_T4','LV':'EU_T4','EE':'EU_T4','LU':'EU_T4','CH':'EU_T4','NO':'EU_T4','UK':'UK'}; var tgt=EU_MAP[cc]||'EU_T4'; for(var j=0;j<sel.options.length;j++){ if(sel.options[j].value===tgt){found=sel.options[j];break;} } }
+      if(!found){ for(var j=0;j<sel.options.length;j++){ var t=(sel.options[j].text||'')+' '+(sel.options[j].value||''); if(eu&&/欧|EU|EUR|Europe/i.test(t)){found=sel.options[j];break;} if(cc==='US'&&/美|US|U\.S/i.test(t)){found=sel.options[j];break;} } }
+    }
     if(found){ sel.value=found.value; document.getElementById('ovHrNote').textContent='默认: '+found.text+'（=仓库所在国，可改）'; }
     else { document.getElementById('ovHrNote').textContent='默认: '+COUNTRY_LABEL[cc]+'（该物流商未覆盖，请手选）'; }
   }
@@ -29103,7 +29111,7 @@ function calcOne(id, sc){
     var t=tailGoodcang(sc);
     cats.TAIL={amt:t?t.price:0, rating:'green', note: t? ('GC Parcel Zone'+sc.zone+' 计费重'+t.bk.toFixed(3)+'kg('+t.tier+') ｜ 挂牌 $'+fmt(t.listPrice)+' × '+Math.round(t.disc*100)+'% (账户尾程折扣) = $'+fmt(t.price)) : 'GC Parcel 无该Zone报价'};
     // 退件（谷仓退件出库操作费属账户操作费，适用≈70%账户折扣，与出库BFF同口径；4档重量段边界待目检sheet确认，暂未估算）
-    cats.RETURN={amt:0, rating:'yellow', note:'退件处理(退件出库操作费)属账户操作费，适用≈70%账户折扣(与出库BFF同口径)；本页暂未接入退件4档重量段费率表(档位边界待目检sheet确认)，故未估算。折扣口径已确认存在。'};
+    cats.RETURN={amt:0, rating:'na', note:'退件处理：谷仓退件费率表未录入系统（gc_D 无 return_in 数据），本页暂不估算，全链路汇总暂不含退件。请提供退件4档重量段费率表后接入。'};
   } else {
     // 非谷仓：用 payload 内嵌费率
     var ib=wh.inbound, ob=wh.outbound, st=wh.storage, rt=wh.return, tl=wh.tail;
