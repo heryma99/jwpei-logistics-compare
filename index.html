@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260817110933";</script>
+<script>window.__BUILD__="20260817134500";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -28245,7 +28245,7 @@ function rOps(){
 
   function buildSc(){
     const f=(id)=> (document.getElementById(id).value);
-    return { kg:+f('ovKg')||0, L:+f('ovL')||0, W:+f('ovW')||0, H:+f('ovH')||0, qty:+f('ovQty')||0, vol:(+f('ovVol')||0), days:+f('ovDays')||0, zone:+f('ovZone')||8, sku:+f('ovSkuU')||1, mix:+f('ovMix')||1, newsku:+f('ovNew')||0, gcwh:f('ovGcwh')||'USWE' };
+    return { kg:+f('ovKg')||0, L:+f('ovL')||0, W:+f('ovW')||0, H:+f('ovH')||0, qty:+f('ovQty')||0, vol:(+f('ovVol')||0), days:+f('ovDays')||0, zone:+f('ovZone')||8, sku:+f('ovSkuU')||1, mix:+f('ovMix')||1, newsku:+f('ovNew')||0, gcwh:f('ovGcwh')||'USWE', dest:(document.getElementById('ovTailCountry')?document.getElementById('ovTailCountry').value:'US') };
   }
   function buildHead(){
     const f=(id)=> (document.getElementById(id).value);
@@ -29022,6 +29022,128 @@ function tailGoodcang(sc){
   var p=row[sc.zone]; if(p==null) return null;
   return {price:p*0.88, listPrice:p, bk:bk, tier:tier, disc:0.88};
 }
+// ===== ⑥ 谷仓尾程：按所选子仓真实渠道（复用 tail_eurasia + gc_eu_routing 数据，不改动模块⑤）=====
+// 选 CZ/FR/DE/IT/ES/UK/AU/PL 等子仓时，尾程用该仓真实渠道（PPL捷克/法邮/DHL德国/GLS/DPD/G2G…），而非写死 GC Parcel 美国表。
+var GC_ISO6 = {'USWE':'US','USEA':'US','USCH':'US','USAT':'US','USSA':'US','USDW':'US','USHO':'US','USSE':'US','USNC':'US','CA':'CA','MX':'MX','UK':'UK','CZ':'CZ','PL':'PL','DE':'DE','FR':'FR','IT':'IT','ES':'ES','AU':'AU'};
+function gcwhIso6(g){ return GC_ISO6[g]||'US'; }
+// 国家名→ISO 归一（与模块⑤同表）
+var ISO6={};
+function addIso6(iso, ns){ for(var n=0;n<ns.length;n++) ISO6[ns[n]]=iso; }
+addIso6('UK',['UK','GB','Great Britain','Britain','United Kingdom','英国']);
+addIso6('FR',['FR','France','法国']);
+addIso6('NL',['NL','Netherlands','荷兰']);
+addIso6('PT',['PT','Portugal','葡萄牙']);
+addIso6('ES',['ES','Spain','西班牙']);
+addIso6('IT',['IT','Italy','意大利']);
+addIso6('BE',['BE','Belgium','比利时']);
+addIso6('PL',['PL','Poland','波兰']);
+addIso6('DE',['DE','Germany','德国']);
+addIso6('CZ',['CZ','Czech Republic','Czech. Rep','Czech. Rep.','捷克','捷克共和国']);
+addIso6('AT',['AT','Austria','奥地利']);
+addIso6('BG',['BG','Bulgaria','保加利亚']);
+addIso6('HR',['HR','Croatia','克罗地亚']);
+addIso6('CY',['CY','Cyprus','塞浦路斯']);
+addIso6('DK',['DK','Denmark','丹麦']);
+addIso6('EE',['EE','Estonia','爱沙尼亚']);
+addIso6('FI',['FI','Finland','芬兰']);
+addIso6('GR',['GR','Greece','希腊']);
+addIso6('HU',['HU','Hungary','匈牙利']);
+addIso6('IE',['IE','Ireland','爱尔兰']);
+addIso6('LV',['LV','Latvia','拉脱维亚']);
+addIso6('LT',['LT','Lithuania','立陶宛']);
+addIso6('LU',['LU','Luxembourg','卢森堡']);
+addIso6('MT',['MT','Malta','马耳他']);
+addIso6('RO',['RO','Romania','罗马尼亚']);
+addIso6('SK',['SK','Slovakia','斯洛伐克']);
+addIso6('SI',['SI','Slovenia','斯洛文尼亚']);
+addIso6('SE',['SE','Sweden','瑞典']);
+addIso6('CH',['CH','Switzerland','瑞士']);
+addIso6('NO',['NO','Norway','挪威']);
+addIso6('IS',['IS','Iceland','冰岛']);
+addIso6('LI',['LI','Liechtenstein','列支敦士登']);
+addIso6('MC',['MC','Monaco','摩纳哥']);
+addIso6('BY',['BY','Belarus','白俄罗斯']);
+addIso6('TR',['TR','Turkey','土耳其']);
+function isoOf6(v){ return ISO6[String(v==null?'':v)]||String(v==null?'':v); }
+// 三层路由（与模块⑤ findRoute3 同逻辑，数据来自 OV_GC.gc_eu_routing）
+function routeGcTail(whIso, destIso){
+  var R = OV_GC.gc_eu_routing; if(!R) return null;
+  if(whIso===destIso && R.local[whIso]){
+    var g1=OV_GC.tail_eurasia[whIso];
+    var ch1=g1&&g1.channels&&g1.channels[R.local[whIso].channel];
+    if(ch1) return {layer:1, label:R.local[whIso].label, ch:ch1, whIso:whIso, destIso:destIso};
+  }
+  for(var i=0;i<R.cross.length;i++){ var r=R.cross[i];
+    if(r.destIso.indexOf(destIso)<0) continue;
+    if(r.wh && r.wh!==whIso) continue;
+    var g2=OV_GC.tail_eurasia[whIso]; var ch2=g2&&g2.channels&&g2.channels[r.channel];
+    if(ch2) return {layer:2, label:r.label, ch:ch2, whIso:whIso, destIso:destIso};
+  }
+  var cands=[destIso,'CZ','FR'];
+  for(var c=0;c<cands.length;c++){ var cw=cands[c]; if(cw===whIso) continue; var g3=OV_GC.tail_eurasia[cw]; if(!g3) continue;
+    for(var j=0;j<R.cross.length;j++){ var r2=R.cross[j];
+      if(r2.destIso.indexOf(destIso)<0) continue;
+      if(r2.wh && r2.wh!==cw) continue;
+      var ch3=g3.channels[r2.channel];
+      if(ch3) return {layer:3, label:r2.label, ch:ch3, whIso:cw, destIso:destIso};
+    }
+  }
+  return null;
+}
+// 列选择（与模块⑤ colOf 同逻辑）
+function colOf6(d, destIso, mode){
+  if(mode==='cc'||mode==='ccb'){ var ks=(mode==='ccb')?d.countries:Object.keys(d.countries);
+    for(var i=0;i<ks.length;i++){ if(isoOf6(ks[i])===destIso) return ks[i]; } return ''; }
+  if(mode==='matrix'){ if(d.cols){ for(var c=0;c<d.cols.length;c++){ if(isoOf6(d.cols[c])===destIso) return d.cols[c]; } return d.cols[0]||''; } return ''; }
+  if(mode==='zones'){ return (d.zones&&d.zones[0])||''; }
+  if(mode==='wtb'){ var bk=Object.keys(d.blocks||{}); return bk[0]||''; }
+  return '';
+}
+function wtPrice6(tiers, per_kg, w){ var last=null; for(var i=0;i<tiers.length;i++){ var t=tiers[i]; if(w>t[0]&&(t[1]==null||w<=t[1])) return +t[2]; last=t; } if(last){ if(per_kg&&last[1]!=null) return +last[2]+per_kg*(w-last[1]); return +last[2]; } return null; }
+function findTierIdx6(tiers,w){ for(var i=0;i<tiers.length;i++){ var t=tiers[i]; if(t[1]==null){ if(w>t[0]) return i; } else if(w>t[0]&&w<=t[1]) return i; } return tiers.length-1; }
+function bandUpOf6(bands){ var out=[]; for(var b=0;b<bands.length;b++){ var m=String(bands[b]).match(/([\d.]+)\s*[≤<]\s*([\d.]+)/); out.push(m?+m[2]:null); } return out; }
+function priceCh6(d, w, col){
+  var m=d.mode;
+  try{
+    if(m==='wt') return wtPrice6(d.tiers,d.per_kg,w);
+    if(m==='wtb'){ var b=d.blocks[col]; return b?wtPrice6(b.tiers,b.per_kg,w):null; }
+    if(m==='cc'){ var cc=d.countries[col]; return cc?(+cc[0]+(cc[1]||0)*Math.max(0,w-1)):null; }
+    if(m==='matrix'){ var ri=findTierIdx6(d.tiers,w); var ci=d.cols.indexOf(col); if(ci<0) return null; var v=d.rates[ri][ci]; return v==null?null:+v; }
+    if(m==='zones'){ var zi=d.zones.indexOf(col); if(zi<0) return null; var wi=-1; for(var i=0;i<d.weights.length;i++){ if(w<=d.weights[i]){wi=i;break;} } if(wi<0) wi=d.weights.length-1; var vz=d.rates[zi][wi]; return vz==null?null:+vz; }
+    if(m==='ccb'){ var ri2=d.countries.indexOf(col); if(ri2<0) return null; var bu=bandUpOf6(d.bands); var bi=-1; for(var k=0;k<bu.length;k++){ if(w<=bu[k]){bi=k;break;} } if(bi<0) bi=bu.length-1; var v2=d.rates[ri2][bi]; return v2==null?null:+v2; }
+  }catch(e){ return null; }
+  return null;
+}
+// 主入口：选子仓 → 真实渠道尾程（统一折算 USD，含 88% 账户折扣）
+function tailGoodcangRoute(sc){
+  var whIso=gcwhIso6(sc.gcwh);
+  if(whIso==='US'||whIso==='CA'||whIso==='MX'){ // 美/加/墨：维持原 GC Parcel 美国表（补充 note/cur 避免 UI 显示 undefined）
+    var tg=tailGoodcang(sc);
+    if(!tg){ return {price:0, listPrice:0, bk:Math.max(sc.kg,sc.L*sc.W*sc.H/8000), tier:'—', disc:0.88, cur:'USD', note:'谷仓'+whIso+'仓尾程(GC Parcel 美国表)：当前重量/分区无可用报价（请检查重量与分区 Zone 设置）。'}; }
+    return {price:tg.price, listPrice:tg.listPrice, bk:tg.bk, tier:tg.tier, disc:tg.disc, cur:'USD', note:'谷仓'+whIso+'仓尾程(GC Parcel 美国表)：分区 '+sc.zone+' ｜ 计费重'+tg.bk.toFixed(3)+'kg(÷8000) ｜ 挂牌 $'+fmt(tg.listPrice)+' × '+Math.round(tg.disc*100)+'% (账户尾程折扣) = $'+fmt(tg.price)+'/件(折后)'};
+  }
+  var destIso=sc.dest||whIso;
+  var rt=routeGcTail(whIso, destIso);
+  if(!rt||!rt.ch){ return {price:0, listPrice:0, bk:Math.max(sc.kg,sc.L*sc.W*sc.H/6000), tier:'—', disc:0.88, note:'谷仓'+whIso+'仓 → '+destIso+' 尾程：未在 tail_eurasia / gc_eu_routing 找到可发官方渠道（该流向可能无官方渠道或需人工查价）。'}; }
+  var ch=rt.ch; var cur=ch.cur||(OV_GC.tail_eurasia[rt.whIso]&&OV_GC.tail_eurasia[rt.whIso].cur)||'EUR';
+  var bk=Math.max(sc.kg, sc.L*sc.W*sc.H/6000);
+  var col=colOf6(ch, destIso, ch.mode);
+  var p=priceCh6(ch, bk, col);
+  if(p==null){ // 官方渠道对该目的国取不到价 → 同仓内找可算渠道兜底（跳过 generic/ccw 特殊渠道）
+    var g=OV_GC.tail_eurasia[rt.whIso];
+    if(g&&g.channels){ var names=Object.keys(g.channels);
+      for(var n=0;n<names.length;n++){ var alt=g.channels[names[n]]; if(alt===ch) continue; var mm=alt.mode; if(mm==='generic'||mm==='ccw') continue;
+        var col2=colOf6(alt,destIso,mm); var p2=priceCh6(alt,bk,col2); if(p2!=null){ ch=alt; cur=alt.cur||cur; col=col2; p=p2; break; } }
+    }
+  }
+  if(p==null){ return {price:0, listPrice:0, bk:bk, tier:'—', disc:0.88, note:'谷仓'+rt.whIso+'仓 → '+destIso+'：官方渠道('+rt.label+')本页暂无法自动计价（分区/列不匹配），请人工查价。'}; }
+  var FX6={'USD':7.2,'GBP':9.25,'EUR':7.85,'JPY':0.049,'SEK':0.69,'CZK':0.31,'PLN':1.85,'AUD':4.72};
+  var usd=p*((FX6[cur]||7.2)/(FX6['USD']||7.2));
+  var disc=0.88;
+  var routeNote = rt.layer===1?'同仓本地':(rt.layer===2?'跨仓国际':'就近兜底');
+  return {price:usd*disc, listPrice:usd, bk:bk, tier:ch.mode+'·'+rt.label, disc:disc, cur:cur,
+    note:'谷仓'+rt.whIso+'仓尾程('+routeNote+')：'+rt.label+' ｜ 计费重'+bk.toFixed(3)+'kg(÷6000) ｜ 挂牌 '+cur+' '+fmt(p)+(col?(' ｜ 分区/列='+col):'')+' × '+Math.round(disc*100)+'% (账户尾程折扣) = $'+fmt(usd)+'/件 ≈ $'+fmt(usd*disc)+'/件(折后)'};
+}
 function tailNorm(norm, sc, kind){
   var bk, oz, lb, row, price;
   if(kind==='vip'){
@@ -29107,9 +29229,9 @@ function calcOne(id, sc){
     var bffDisc=0.70;
     var bff=bffList*bffDisc*sc.qty;
     cats.BFF={amt:bff, rating:'green', note:'出库操作费 挂牌 $'+fmt(bffList)+'/件('+bt+') × '+Math.round(bffDisc*100)+'% (账户操作费折扣) = $'+fmt(bffList*bffDisc)+'/件 ×'+sc.qty+'件'};
-    // 尾程（谷仓尾程=GC Parcel，适用≈88%账户尾程折扣）
-    var t=tailGoodcang(sc);
-    cats.TAIL={amt:t?t.price:0, rating:'green', note: t? ('GC Parcel Zone'+sc.zone+' 计费重'+t.bk.toFixed(3)+'kg('+t.tier+') ｜ 挂牌 $'+fmt(t.listPrice)+' × '+Math.round(t.disc*100)+'% (账户尾程折扣) = $'+fmt(t.price)) : 'GC Parcel 无该Zone报价'};
+    // 尾程（按所选谷仓子仓真实渠道：美/加/墨→GC Parcel 美国表；欧/英/澳→tail_eurasia 各仓真实渠道，经 gc_eu_routing 三层路由）
+    var t=tailGoodcangRoute(sc);
+    cats.TAIL={amt:t?t.price:0, rating:(t&&t.price)?'green':'na', note: t?t.note:'尾程无数据'};
     // 退件（谷仓退件出库操作费属账户操作费，适用≈70%账户折扣，与出库BFF同口径；4档重量段边界待目检sheet确认，暂未估算）
     cats.RETURN={amt:0, rating:'na', note:'退件处理：谷仓退件费率表未录入系统（gc_D 无 return_in 数据），本页暂不估算，全链路汇总暂不含退件。请提供退件4档重量段费率表后接入。'};
   } else {
@@ -29166,7 +29288,7 @@ function fmtKg(kg, cat){
   return (Math.round(kg*100)/100).toFixed(2);
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;amp;').replace(/</g,'&amp;lt;').replace(/>/g,'&amp;gt;'); }
-window.OV_ENGINE={calcOne:calcOne, calcHead:calcHead, calcXpU:calcXpU, badge:badge, fmt:fmt, esc:esc, WH:WH, GC:OV_GC, SEGS:SEGS, tailGoodcang:tailGoodcang, tailNorm:tailNorm, calcTail:calcTail, periodOf:periodOf, tierRate:tierRate, volCapOf:volCapOf, wtCapOf:wtCapOf, tailXpUSPS:tailXpUSPS};
+window.OV_ENGINE={calcOne:calcOne, calcHead:calcHead, calcXpU:calcXpU, badge:badge, fmt:fmt, esc:esc, WH:WH, GC:OV_GC, SEGS:SEGS, tailGoodcang:tailGoodcang, tailGoodcangRoute:tailGoodcangRoute, tailNorm:tailNorm, calcTail:calcTail, periodOf:periodOf, tierRate:tierRate, volCapOf:volCapOf, wtCapOf:wtCapOf, tailXpUSPS:tailXpUSPS};
 /* ★ 头程数据源统一：此时 OV_HC 已挂载，把 RATES.b2b-air 全部真实渠道并入头程承运商池（⑤/⑥ 与 ④ 同源） */
 syncHeadCarriersFromRates();
 
