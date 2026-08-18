@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260818121409";</script>
+<script>window.__BUILD__="20260818163124";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -28450,7 +28450,7 @@ function rMom(){
   // 主站顶部 nav 已是 4 业务域切入口；这里只嵌入看板（默认 cat=all）+ 原两期环比折叠区
   let h=`<div class="card"><h2>⑧ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
     <div class="note">按主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）组织：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。看板上方 Tab 切换业务域，左栏选渠道、右栏看环比详情。</div>
-    <iframe id="mIframe" src="mom.html?cat=all&embed=1&v=20260817110933" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <iframe id="mIframe" src="mom.html?cat=all&embed=1&v=20260818163124" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
     <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
       <div style="margin-top:10px">
         <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
@@ -28508,8 +28508,9 @@ function rConfig(){
       <input type="file" id="impFile" style="display:none">
       <span id="cStat" class="mut"></span>
     </div>
-    <textarea id="cfg">${JSON.stringify(S,null,2)}</textarea>
-    <div style="margin-top:8px"><button class="act" id="saveCfg">保存配置</button> <button class="ghost" id="resetCfg">恢复默认</button></div>
+    <details id="cfgWrap" style="margin-top:6px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 完整配置 JSON（默认折叠；展开时懒加载，避免大状态一次性渲染卡死）</summary>
+    <textarea id="cfg" style="margin-top:6px;width:100%;height:280px;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:12px"></textarea>
+    <div style="margin-top:8px"><button class="act" id="saveCfg">保存配置</button> <button class="ghost" id="resetCfg">恢复默认</button></div></details>
     <h3 style="margin-top:16px">渠道体积重除数维护（per-channel）</h3>
     <div class="note">各渠道计费重除数不同（云途10000 / 飞特7000 / 中运通达B2B 6000 / 亚丰美线6000·欧线5000 / 商业快递5000 …）。在此<b>按渠道维护除数</b>：保存后即时生效并记到浏览器本地，刷新不丢、<b>无需改 rates.json 或重新部署</b>。结果表「除数」列即读此值（②小包专线 / ⑨全渠道比价 / ③商业快递 / ④头程 全部同步）。</div>
     <div style="max-height:320px;overflow:auto;margin-top:6px"><table><thead><tr><th>物流商</th><th>渠道</th><th>当前除数</th><th>改为</th></tr></thead><tbody>${divRows}</tbody></table></div>
@@ -28554,6 +28555,10 @@ function rConfig(){
       <span id="coStat" class="mut"></span>
     </div>`;
   $("#app").innerHTML=h;
+  /* 完整配置 JSON 懒加载：展开 <details> 时才填充 textarea，避免 1.6MB 文本一次性进 DOM 触发 OOM */
+  (function(){ var w=document.getElementById('cfgWrap'), t=document.getElementById('cfg'), filled=false;
+    if(w&&t) w.addEventListener('toggle', function(){ if(w.open && !filled){ filled=true; t.value=JSON.stringify(S,null,2); } });
+  })();
   $("#saveDiv").onclick=()=>{
     const ov={};
     document.querySelectorAll('.divInput').forEach(inp=>{ const v=parseFloat(inp.value); if(!isNaN(v)&&v>0) ov[inp.dataset.id]=v; });
@@ -28561,7 +28566,7 @@ function rConfig(){
     applyDivisorOverrides(ov);
     $("#divStat").innerHTML='<span class="ok">✓ 已保存 '+Object.keys(ov).length+' 条并生效（存于浏览器本地）</span>';
   };
-  $("#saveCfg").onclick=()=>{ try{ S=JSON.parse($("#cfg").value); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
+  $("#saveCfg").onclick=()=>{ try{ var _v=$("#cfg").value; if(!_v.trim()){ _v=JSON.stringify(S,null,2); $("#cfg").value=_v; } S=JSON.parse(_v); saveState(); $("#cStat").innerHTML='<span class="ok">✓ 已保存</span>'; }catch(e){ $("#cStat").innerHTML='<span class="err">JSON 解析失败：'+e.message+'</span>'; } };
   $("#resetCfg").onclick=()=>{ if(confirm("恢复默认配置？当前改动将丢失")){ S=JSON.parse(JSON.stringify(DEF)); saveState(); rConfig(); } };
   $("#exp").onclick=()=>{ const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="logi_config.json"; a.click(); };
   $("#imp").onclick=()=> $("#impFile").click();
