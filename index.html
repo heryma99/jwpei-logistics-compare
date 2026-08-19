@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260818163124";</script>
+<script>window.__BUILD__="20260819124526";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -26585,11 +26585,15 @@ function applyCountryOverrides(ov){
   if(!ov || !Object.keys(ov).length) return;
   (window.RATES&&window.RATES.channels||[]).forEach(ch=>{
     const chOv = ov[ch.id]; if(!chOv) return;
+    // 防御：矩阵类渠道(zy_fedex/zy_ups)用 countryMap 而非 countries，引擎读 countryMap
+    const tgt = (ch.countries && typeof ch.countries==='object') ? ch.countries :
+                (ch.countryMap && typeof ch.countryMap==='object') ? ch.countryMap : null;
+    if(!tgt) return;
     Object.keys(chOv).forEach(cn=>{
       const data = chOv[cn];
-      if(!ch.countries[cn]) ch.countries[cn] = {brackets:[]};
-      if(data.volumetric_divisor) ch.countries[cn].volumetric_divisor = data.volumetric_divisor;
-      if(data.charge_rule) ch.countries[cn].charge_rule = data.charge_rule;
+      if(!tgt[cn]) tgt[cn] = {brackets:[]};
+      if(data.volumetric_divisor) tgt[cn].volumetric_divisor = data.volumetric_divisor;
+      if(data.charge_rule) tgt[cn].charge_rule = data.charge_rule;
     });
   });
 }
@@ -26656,7 +26660,44 @@ function saveCountryOverrides(){
   const ov = JSON.parse(localStorage.getItem('jwpei_country_overrides')||'{}');
   let nCountries = 0; Object.values(ov).forEach(c=>nCountries += Object.keys(c).length);
   const el = document.getElementById('coStat');
-  if(el) el.innerHTML = '<span class="ok">✓ 已即时生效</span> <span class="mut">· '+nCountries+' 条国家例外已记到浏览器本地（刷新页面不丢，跨浏览器需重新配置）</span>';
+  const tok = (typeof localStorage!=='undefined' ? (localStorage.getItem('jwpei_team_token')||'').trim() : '');
+  if(tok){
+    // ★ 团队模式：写回双仓 rates.json → 全员刷新即自动拉取生效
+    pushCountryOverridesToGithub(ov, tok)
+      .then(()=>{ if(el) el.innerHTML = '<span class="ok">✓ 已保存并写回团队仓库（双仓）</span> <span class="mut">· '+nCountries+' 条国家例外，全员刷新即见</span>'; })
+      .catch(e=>{ if(el) el.innerHTML = '<span class="ok">✓ 本机已生效</span> <span class="err">团队写回失败：'+e.message+'</span>'; });
+  } else {
+    if(el) el.innerHTML = '<span class="ok">✓ 已即时生效</span> <span class="mut">· '+nCountries+' 条国家例外已记到浏览器本地（配置「团队 Token」后可写回全员生效）</span>';
+  }
+}
+/* 团队写回：把国家例外合并进双仓 rates.json 的 channels[].countries[国家]（引擎计算读取的字段） */
+function b64encodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64decodeUtf8(b64){ return decodeURIComponent(escape(atob(b64.replace(/\s/g,'')))); }
+async function pushCountryOverridesToGithub(co, tok){
+  const repos=['jwpei-logistics-live','jwpei-logistics-compare'];
+  const headers={'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'};
+  for(const repo of repos){
+    const api='https://api.github.com/repos/heryma99/'+repo+'/contents/rates.json';
+    const cur=await fetch(api,{headers});
+    if(!cur.ok) throw new Error(repo+' 读取失败 HTTP '+cur.status);
+    const meta=await cur.json();
+    const obj=JSON.parse(b64decodeUtf8(meta.content));
+    // 按渠道 id 合并例外 → countries[国家] 内联字段（引擎 computeFreight 读取：co.volumetric_divisor / co.charge_rule）
+    (obj.channels||[]).forEach(ch=>{
+      const chOv=co[ch.id]; if(!chOv) return;
+      ch.countries = ch.countries || {};
+      Object.keys(chOv).forEach(cn=>{
+        const data=chOv[cn]; if(!data) return;
+        if(!ch.countries[cn] || typeof ch.countries[cn]!=='object') ch.countries[cn]={};
+        if(data.volumetric_divisor!=null) ch.countries[cn].volumetric_divisor=data.volumetric_divisor;
+        if(data.charge_rule) ch.countries[cn].charge_rule=data.charge_rule;
+      });
+    });
+    const body=JSON.stringify({message:'团队保存：更新 per-country 国家例外（via 配置中心）',content:b64encodeUtf8(JSON.stringify(obj,null,2)),sha:meta.sha});
+    const res=await fetch(api,{method:'PUT',headers:Object.assign({},headers,{'Content-Type':'application/json'}),body});
+    if(!res.ok){ const t=await res.text().catch(()=>''); throw new Error(repo+' 写回失败 HTTP '+res.status+' '+(t||'').slice(0,120)); }
+  }
+  return true;
 }
 /* 物料主数据表：搜索 + 分页状态（2317 条不能一次性渲染，否则卡死） */
 let ITEM_PAGE=1, ITEM_Q="";
@@ -28553,8 +28594,37 @@ function rConfig(){
       <button class="ghost" id="impCO">导入 JSON</button>
       <input type="file" id="impCOFile" style="display:none" accept=".json">
       <span id="coStat" class="mut"></span>
+    </div>
+    <h3 style="margin-top:20px">团队同步设置（写回 GitHub，全员生效）</h3>
+    <div class="note">在此粘贴您的 GitHub Token（仅存本浏览器 localStorage，<b>不写入代码/仓库</b>）。保存后，点「✓ 应用并确认」国家例外时会<b>自动写回双仓 rates.json</b>——同事打开链接即自动拉到最新配置，无需各自配置。未填 Token 时仍只在本机生效。建议用只授权这两个仓库的 fine-grained token。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="password" id="teamTok" placeholder="ghp_ 或 github_pat_…" style="width:280px" autocomplete="off">
+      <button class="act" id="saveTeamTok">保存 Token</button>
+      <button class="ghost" id="syncTeamNow">立即拉取线上配置</button>
+      <span id="teamStat" class="mut"></span>
     </div>`;
   $("#app").innerHTML=h;
+  /* 团队同步：Token 输入回填 + 保存 + 手动拉取 */
+  (function(){
+    const ti=document.getElementById('teamTok');
+    try{ if(ti) ti.value = localStorage.getItem('jwpei_team_token')||''; }catch(e){}
+    const st=document.getElementById('teamStat');
+    const sb=document.getElementById('saveTeamTok');
+    if(sb) sb.onclick=function(){
+      const v=(ti?ti.value:'').trim();
+      try{
+        if(!v){ localStorage.removeItem('jwpei_team_token'); if(st) st.innerHTML='<span class="err">已清除 Token（仅本机生效）</span>'; return; }
+        localStorage.setItem('jwpei_team_token', v);
+        if(st) st.innerHTML='<span class="ok">✓ Token 已保存（仅存本浏览器）</span>';
+      }catch(e){ if(st) st.innerHTML='<span class="err">保存失败：'+e.message+'</span>'; }
+    };
+    const nb=document.getElementById('syncTeamNow');
+    if(nb) nb.onclick=function(){
+      if(st) st.innerHTML='<span class="mut">拉取中…</span>';
+      loadTeamConfig();
+      setTimeout(function(){ if(st) st.innerHTML='<span class="ok">✓ 已拉取线上配置并应用</span>'; },900);
+    };
+  })();
   /* 完整配置 JSON 懒加载：展开 <details> 时才填充 textarea，避免 1.6MB 文本一次性进 DOM 触发 OOM */
   (function(){ var w=document.getElementById('cfgWrap'), t=document.getElementById('cfg'), filled=false;
     if(w&&t) w.addEventListener('toggle', function(){ if(w.open && !filled){ filled=true; t.value=JSON.stringify(S,null,2); } });
@@ -28940,6 +29010,41 @@ function bindCombo(input, listEl, items, onChange){
 }
 
 /* ===================== 启动 ===================== */
+/* ★ 团队配置自动拉取：页面加载时 fetch 线上 rates.json，把 per-country 覆盖合并进内嵌 RATES，全员自动生效 */
+function loadTeamConfig(){
+  if(typeof fetch!=='function') return;
+  fetch('rates.json?_='+Date.now(),{cache:'no-store'})
+    .then(r=> r.ok ? r.json() : null)
+    .then(j=>{
+      if(!j || !Array.isArray(j.channels)) return;
+      const byId={}; j.channels.forEach(c=>{ if(c&&c.id) byId[c.id]=c; });
+      let merged=0;
+      (window.RATES&&window.RATES.channels||[]).forEach(c=>{
+        const rc=byId[c.id]; if(!rc || !rc.countries) return;
+        Object.keys(rc.countries).forEach(cn=>{
+          const rco=rc.countries[cn]; if(!rco || typeof rco!=='object') return;
+          if(!c.countries) c.countries={};
+          if(!c.countries[cn] || typeof c.countries[cn]!=='object') c.countries[cn]={};
+          if(rco.volumetric_divisor!=null) c.countries[cn].volumetric_divisor=rco.volumetric_divisor;
+          if(rco.charge_rule) c.countries[cn].charge_rule=rco.charge_rule;
+          if(rco.min_charge_weight!=null) c.countries[cn].min_charge_weight=rco.min_charge_weight;
+          merged++;
+        });
+      });
+      if(!merged) return;
+      // 重新同步进模块 + 应用本地 overrides（个人本地仍优先于线上）
+      applyCountryOverrides();
+      syncParcelFromRates(); syncTobFromRates(); syncExpressFromRates();
+      if(typeof syncHeadCarriersFromRates==='function') syncHeadCarriersFromRates();
+      applyDivisorOverrides();
+      saveState();
+      try{ if(CUR==='config' && typeof rConfig==='function') rConfig(); }catch(e){}
+      const st=document.getElementById('coStat');
+      if(st) st.innerHTML='<span class="ok">✓ 已拉取团队线上配置（合并 '+merged+' 处国家例外）</span>';
+    })
+    .catch(function(){ /* 拉取失败 → 内嵌 RATES 兜底，静默 */ });
+}
+loadTeamConfig();
 renderNav(); render();
 </script>
 <script>
