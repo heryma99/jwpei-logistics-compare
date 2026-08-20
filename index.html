@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260819124526";</script>
+<script>window.__BUILD__="20260820103700";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -26489,6 +26489,7 @@ function syncExpressFromRates(){
   const liveIds = new Set();
   const newCarriers = window.RATES.channels.filter(c=>c.cat==='express').map(c=>{
     liveIds.add(c.id);
+    c.country_overrides = c.country_overrides || {};   // 矩阵渠道 per-country 例外（除数/计费规则），与配置中心 applyCountryOverrides 共享同一引用
     const countries = Object.keys(c.countryMap||{}).map(cn=>{
       const k=cn.replace(/\s*\(.*\)$/,'').trim();
       return (typeof CN2ISO==='object'&&(CN2ISO[k]||CN2ISO[cn]))||cn;
@@ -26527,6 +26528,7 @@ function syncExpressFromRates(){
       bulk_tiers: c.bulk_tiers,     /* 21kg+ 大货区间单价(元/kg，报价表"区间"段) */
       zones: c.zones,
       countryMap: c.countryMap,
+      country_overrides: c.country_overrides,  /* 矩阵渠道 per-country 除数/计费规则（引擎 coOverride 读取） */
       fuel_included: c.fuel_included,
       fuel: c.fuel
     };
@@ -26585,14 +26587,18 @@ function applyCountryOverrides(ov){
   if(!ov || !Object.keys(ov).length) return;
   (window.RATES&&window.RATES.channels||[]).forEach(ch=>{
     const chOv = ov[ch.id]; if(!chOv) return;
-    // 防御：矩阵类渠道(zy_fedex/zy_ups)用 countryMap 而非 countries，引擎读 countryMap
-    const tgt = (ch.countries && typeof ch.countries==='object') ? ch.countries :
+    // 引擎(computeFreight)只读 ch.countryMap（rich 对象）取 per-country 除数/计费规则。
+    // 正常渠道：countryMap 已规范化=countries（rich 对象）→ 写 countryMap；
+    // 矩阵渠道(zy_*)：countryMap 是分区标签(字符串)，不能塞除数对象 → 写独立字段 country_overrides。
+    const isMatrix = !!ch.matrix;
+    const tgt = isMatrix ? (ch.country_overrides = ch.country_overrides||{}) :
+                (ch.countries && typeof ch.countries==='object') ? ch.countries :
                 (ch.countryMap && typeof ch.countryMap==='object') ? ch.countryMap : null;
     if(!tgt) return;
     Object.keys(chOv).forEach(cn=>{
-      const data = chOv[cn];
-      if(!tgt[cn]) tgt[cn] = {brackets:[]};
-      if(data.volumetric_divisor) tgt[cn].volumetric_divisor = data.volumetric_divisor;
+      const data = chOv[cn]; if(!data) return;
+      if(!tgt[cn] || typeof tgt[cn]!=='object') tgt[cn] = {};
+      if(data.volumetric_divisor!=null) tgt[cn].volumetric_divisor = data.volumetric_divisor;
       if(data.charge_rule) tgt[cn].charge_rule = data.charge_rule;
     });
   });
@@ -26620,6 +26626,26 @@ function findCountryWithAlias(countryMap, destCn){
     if(k && (k.includes(destCn) || destCn.includes(k))) return countryMap[k];
   }
   return {};
+}
+/* 矩阵渠道 per-country 除数/计费规则 走独立字段 country_overrides（countryMap 已被分区标签占用，不能塞对象） */
+function coOverride(ch, destCn){
+  if(!ch || !ch.country_overrides) return {};
+  const direct = ch.country_overrides[destCn];
+  if(direct && typeof direct==='object') return direct;
+  const alias = COUNTRY_ALIAS[destCn];
+  if(alias && ch.country_overrides[alias] && typeof ch.country_overrides[alias]==='object') return ch.country_overrides[alias];
+  return {};
+}
+/* 规范化：让计费引擎能读到 per-country 数据
+   - 正常渠道：countries 是 rich per-country 对象，但引擎(computeFreight)只读 countryMap → 把 countryMap 指向 countries（同一引用）
+   - 矩阵渠道：countryMap 是分区标签(字符串)，per-country 除数走独立字段 country_overrides */
+function normalizeCountryMaps(){
+  (window.RATES&&window.RATES.channels||[]).forEach(ch=>{
+    if(ch.countries && typeof ch.countries==='object' && (!ch.countryMap || typeof ch.countryMap!=='object')){
+      ch.countryMap = ch.countries;
+    }
+    if(ch.matrix && !ch.country_overrides) ch.country_overrides = {};
+  });
 }
 /* 添加/删除/保存 per-country 覆盖（全局，供 UI 按钮调用） */
 function addCountryOverride(chId){
@@ -26682,16 +26708,26 @@ async function pushCountryOverridesToGithub(co, tok){
     if(!cur.ok) throw new Error(repo+' 读取失败 HTTP '+cur.status);
     const meta=await cur.json();
     const obj=JSON.parse(b64decodeUtf8(meta.content));
-    // 按渠道 id 合并例外 → countries[国家] 内联字段（引擎 computeFreight 读取：co.volumetric_divisor / co.charge_rule）
+    // 按渠道 id 合并例外 → 正常渠道写 countries[国家]（引擎经规范化 countryMap 读取）；矩阵渠道写 country_overrides（countryMap 是分区标签不能覆盖）
     (obj.channels||[]).forEach(ch=>{
       const chOv=co[ch.id]; if(!chOv) return;
-      ch.countries = ch.countries || {};
-      Object.keys(chOv).forEach(cn=>{
-        const data=chOv[cn]; if(!data) return;
-        if(!ch.countries[cn] || typeof ch.countries[cn]!=='object') ch.countries[cn]={};
-        if(data.volumetric_divisor!=null) ch.countries[cn].volumetric_divisor=data.volumetric_divisor;
-        if(data.charge_rule) ch.countries[cn].charge_rule=data.charge_rule;
-      });
+      if(ch.matrix){
+        ch.country_overrides = ch.country_overrides || {};
+        Object.keys(chOv).forEach(cn=>{
+          const data=chOv[cn]; if(!data) return;
+          ch.country_overrides[cn] = ch.country_overrides[cn] || {};
+          if(data.volumetric_divisor!=null) ch.country_overrides[cn].volumetric_divisor=data.volumetric_divisor;
+          if(data.charge_rule) ch.country_overrides[cn].charge_rule=data.charge_rule;
+        });
+      } else {
+        ch.countries = ch.countries || {};
+        Object.keys(chOv).forEach(cn=>{
+          const data=chOv[cn]; if(!data) return;
+          if(!ch.countries[cn] || typeof ch.countries[cn]!=='object') ch.countries[cn]={};
+          if(data.volumetric_divisor!=null) ch.countries[cn].volumetric_divisor=data.volumetric_divisor;
+          if(data.charge_rule) ch.countries[cn].charge_rule=data.charge_rule;
+        });
+      }
     });
     const body=JSON.stringify({message:'团队保存：更新 per-country 国家例外（via 配置中心）',content:b64encodeUtf8(JSON.stringify(obj,null,2)),sha:meta.sha});
     const res=await fetch(api,{method:'PUT',headers:Object.assign({},headers,{'Content-Type':'application/json'}),body});
@@ -26795,13 +26831,14 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   const p = ch.pricing;
   const cm = ch.countryMap || {};
   const co = findCountryWithAlias(cm, destCn);
+  const ov = coOverride(ch, destCn);
   // ★ 申报价 decl 货币=USD，凡用它算费用（VAT/DUTY/手续费/按值费）都先 ×USD/CNY 转人民币
   const declCny = (sku.decl||0) * getUsdFx();
-  const divisor = co.volumetric_divisor || p.divisor;
+  const divisor = ov.volumetric_divisor || co.volumetric_divisor || p.divisor;
   const sw = sku.weight * units;
   const vw = volumeWeight(sku.l, sku.w, sku.h, divisor) * units;
-  const effectiveRule = co.charge_rule || p.charge_rule;
-  const effectiveMin  = co.min_charge_weight || p.min_charge_weight || 0;
+  const effectiveRule = ov.charge_rule || co.charge_rule || p.charge_rule;
+  const effectiveMin  = ov.min_charge_weight || co.min_charge_weight || p.min_charge_weight || 0;
   const cw = chargeWeight(sw, vw, effectiveRule, p.rounding, effectiveMin);
   // ★ 小包修复：优先用「目的国自己的」brackets 费率与挂号费（此前 bug：全局只取渠道第一个国家的费率/挂号费，导致发法国却按美国 92/kg 计）
   const coBrackets = (co && co.brackets && co.brackets.length) ? co.brackets : null;
@@ -29020,17 +29057,32 @@ function loadTeamConfig(){
       const byId={}; j.channels.forEach(c=>{ if(c&&c.id) byId[c.id]=c; });
       let merged=0;
       (window.RATES&&window.RATES.channels||[]).forEach(c=>{
-        const rc=byId[c.id]; if(!rc || !rc.countries) return;
-        Object.keys(rc.countries).forEach(cn=>{
-          const rco=rc.countries[cn]; if(!rco || typeof rco!=='object') return;
+        const rc=byId[c.id]; if(!rc) return;
+        if(c.matrix){
+          // 矩阵渠道：线上 country_overrides 合并进来（countryMap 是分区标签不能覆盖）
+          if(!rc.country_overrides) return;
+          c.country_overrides = c.country_overrides || {};
+          Object.keys(rc.country_overrides).forEach(cn=>{
+            const rco=rc.country_overrides[cn]; if(!rco || typeof rco!=='object') return;
+            c.country_overrides[cn]=c.country_overrides[cn]||{};
+            if(rco.volumetric_divisor!=null) c.country_overrides[cn].volumetric_divisor=rco.volumetric_divisor;
+            if(rco.charge_rule) c.country_overrides[cn].charge_rule=rco.charge_rule;
+            merged++;
+          });
+        } else {
+          if(!rc.countries) return;
           if(!c.countries) c.countries={};
-          if(!c.countries[cn] || typeof c.countries[cn]!=='object') c.countries[cn]={};
-          if(rco.volumetric_divisor!=null) c.countries[cn].volumetric_divisor=rco.volumetric_divisor;
-          if(rco.charge_rule) c.countries[cn].charge_rule=rco.charge_rule;
-          if(rco.min_charge_weight!=null) c.countries[cn].min_charge_weight=rco.min_charge_weight;
-          merged++;
-        });
+          Object.keys(rc.countries).forEach(cn=>{
+            const rco=rc.countries[cn]; if(!rco || typeof rco!=='object') return;
+            if(!c.countries[cn] || typeof c.countries[cn]!=='object') c.countries[cn]={};
+            if(rco.volumetric_divisor!=null) c.countries[cn].volumetric_divisor=rco.volumetric_divisor;
+            if(rco.charge_rule) c.countries[cn].charge_rule=rco.charge_rule;
+            if(rco.min_charge_weight!=null) c.countries[cn].min_charge_weight=rco.min_charge_weight;
+            merged++;
+          });
+        }
       });
+      normalizeCountryMaps();
       if(!merged) return;
       // 重新同步进模块 + 应用本地 overrides（个人本地仍优先于线上）
       applyCountryOverrides();
@@ -29044,6 +29096,7 @@ function loadTeamConfig(){
     })
     .catch(function(){ /* 拉取失败 → 内嵌 RATES 兜底，静默 */ });
 }
+normalizeCountryMaps();
 loadTeamConfig();
 renderNav(); render();
 </script>
