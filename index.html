@@ -29420,7 +29420,9 @@ function calcOne(id, sc){
     cats.BFF={amt:bff, rating:'green', note:'出库操作费 挂牌 $'+fmt(bffList)+'/件('+bt+') × '+Math.round(bffDisc*100)+'% (账户操作费折扣) = $'+fmt(bffList*bffDisc)+'/件 ×'+sc.qty+'件'};
     // 尾程（按所选谷仓子仓真实渠道：美/加/墨→GC Parcel 美国表；欧/英/澳→tail_eurasia 各仓真实渠道，经 gc_eu_routing 三层路由）
     var t=tailGoodcangRoute(sc);
-    cats.TAIL={amt:t?t.price:0, rating:(t&&t.price)?'green':'na', note: t?t.note:'尾程无数据'};
+    var tvQty=Math.max(1, sc.qty||1);
+    var tvAmt=(t?t.price:0)*tvQty;
+    cats.TAIL={amt:tvAmt, rating:(t&&t.price)?'green':'na', note: t ? (t.note + (tvQty>1 ? (' ｜ 件数 '+tvQty+' × 单件折后 $'+fmt(t.price)+' = 总尾程 $'+fmt(tvAmt)) : '')) : '尾程无数据'};
     // 退件（谷仓退件费率 sheet9 已接入：理货按票+质检按件·实重4档；账户操作费家族实测折扣72%同BFF）
     var rt=calcReturnGC(sc);
     cats.RETURN={amt:rt?rt.price:0, rating:(rt&&rt.price)?'green':'na', note:rt?rt.note:'退件：所选仓无退件费率('+sc.gcwh+')，请核对'};
