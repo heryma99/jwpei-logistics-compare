@@ -29462,7 +29462,7 @@ function calcOne(id, sc){
     else if(ob.BFF){ cats.BFF={amt:0, rating:ob.BFF.rating, note:ob.BFF.note||'无'}; }
     // 尾程
     var t=calcTail(wh, sc);
-    cats.TAIL={amt:t?t.price:0, rating:(wh.id==='winit'?'red':(tl.pricing==='结算'?'green':'yellow')), note:tl.carrier+' Zone'+sc.zone+' '+(t?(t.bk.toFixed(3)+'kg '+(t.unit||'')):'')+'｜ '+tl.pricing+'：'+tl.note};
+    cats.TAIL={amt:(t?t.price:0)*sc.qty, rating:(tl.pricing==='结算'?'green':'yellow'), note:tl.carrier+' Zone'+sc.zone+' '+(t?(t.bk.toFixed(3)+'kg '+(t.unit||'')):'')+'｜ '+tl.pricing+'：'+tl.note};
     // 退件
     if(rt && rt.price!=null){ cats.RETURN={amt:rt.price*sc.qty, rating:rt.rating, note:(rt.basis||'')+(rt.note?' ｜ '+rt.note:'')}; }
     else if(rt){ cats.RETURN={amt:0, rating:rt.rating, note:rt.note||'无'}; }
