@@ -28904,7 +28904,20 @@ function rAll(){
       bw=Math.max(actualW,volW);
       const zi=countryToZone(ch,country); if(zi===null) return null;
       const m=matOf(ch);
-      if(!m || !Object.keys(m).length) return null;   // 矩阵为空（如 zy_ups_bulk 仅有 bulk_tiers）→ 该渠道此路向不可比，标 na
+      if(!m || !Object.keys(m).length){
+        // ★ 纯大货渠道（无 matrix，仅 bulk_tiers，如 zy_ups_bulk）：按分区查区间单价(元/kg) × 计费重
+        if(ch.bulk_tiers){
+          const bt=(ch.bulk_tiers||[]).find(t=>bw>=t.min-1e-9 && bw<=t.max+1e-9);
+          if(bt && bt.rates && bt.rates[zi]!=null){
+            const rate=bt.rates[zi]; let price=rate*bw;
+            if(!ch.fuel_included) price*=(1+ch.fuel);
+            const zlabel=ch.zones[zi].label;
+            const detail=`分区 ${zlabel} · 大货 ${bw}kg · ${rate.toFixed(2)}/kg × ${bw}kg = ${price.toFixed(2)}`+(ch.fuel_included?'（含油）':'（×燃油'+(ch.fuel*100).toFixed(0)+'%）');
+            return {cost:price,bw,detail};
+          }
+        }
+        return null;   // 矩阵为空且无适用大货区间 → 标 na
+      }
       const rows=Object.keys(m).map(Number).sort((a,b)=>a-b);
       let wr=rows.filter(r=>r<=bw); wr=wr.length?Math.max.apply(null,wr):rows[0];
       if(wr==null || !m[wr] || m[wr][zi]==null) return null;   // 重量档/分区缺价 → 标 na，不抛错
