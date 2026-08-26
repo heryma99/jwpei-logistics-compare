@@ -28957,6 +28957,34 @@ function rAll(){
       else if(cr==='vol_if_2x_actual') bwBox=(volPerBox>=actualPerBox*2)?volPerBox:actualPerBox;
       else if(cr==='vol') bwBox=volPerBox;
       else bwBox=Math.max(actualPerBox,volPerBox);
+      // ★ B2B 头程：目的国=美国时展开 美西/美中/美东 三区各一行（复用已有分区 tiers，0 数据变更、不影响其他模块）
+      if(ch.cat==='b2b-air'){
+        const US_REGIONS=['美西','美中','美东'];
+        const served=(ch.dest||[]).filter(rg => rg===country || (country==='美国' && US_REGIONS.includes(rg)));
+        if(!served.length){ results.push({ch,status:'na'}); return; }
+        let anyOk=false, anyBelow=false, belowMin=null;
+        served.forEach(region=>{
+          const cobj=ch.countries[region];
+          if(!cobj||!cobj.tiers||!cobj.tiers.length) return;
+          const s=ch.sur||null;
+          let bwR=bwBox; if(s&&s.minpc) bwR=Math.max(bwBox,s.minpc);
+          const totalBw=bwR*boxes; const t=findTier(cobj.tiers,totalBw);
+          if(!t){ anyBelow=true; belowMin=cobj.tiers[0].min; return; }
+          let base=t.rate*totalBw; let surTxt='';
+          if(s){
+            const catRate=(s.cat&&s.cat[cargoCat])||0;
+            if(catRate){ base+=catRate*totalBw; surTxt+=` + 品类附加 ${catRate}/kg×${totalBw.toFixed(1)}=${(catRate*totalBw).toFixed(2)}`; }
+            if(nonFba&&s.nonfba){ const nf=Math.max((s.nonfba.kg||0)*totalBw,s.nonfba.min||0); if(nf){ base+=nf; surTxt+=` + 非FBA ${nf.toFixed(2)}`; } }
+            if(wantDecl&&s.declare){ base+=s.declare; surTxt+=` + 单独报关 ${s.declare}/票`; }
+          }
+          const detail='分区 '+region+' · 计费重 '+bwR.toFixed(2)+'kg/箱';
+          const perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`+surTxt;
+          results.push({ch,status:'ok',cost:base,bw:bwR,region,detail,perUnitNote});
+          anyOk=true;
+        });
+        if(!anyOk){ if(anyBelow) results.push({ch,status:'below',min:belowMin}); else results.push({ch,status:'na'}); }
+        return;
+      }
       const r=compute(ch,country,actualPerBox,volPerBox,decl,opt);
       if(!r){ results.push({ch,status:'na'}); return; }
       if(r.below){ results.push({ch,status:'below',min:r.min}); return; }
