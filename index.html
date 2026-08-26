@@ -28903,8 +28903,11 @@ function rAll(){
     if(ch.cat==='express'){
       bw=Math.max(actualW,volW);
       const zi=countryToZone(ch,country); if(zi===null) return null;
-      const m=matOf(ch); const rows=Object.keys(m).map(Number).sort((a,b)=>a-b);
+      const m=matOf(ch);
+      if(!m || !Object.keys(m).length) return null;   // 矩阵为空（如 zy_ups_bulk 仅有 bulk_tiers）→ 该渠道此路向不可比，标 na
+      const rows=Object.keys(m).map(Number).sort((a,b)=>a-b);
       let wr=rows.filter(r=>r<=bw); wr=wr.length?Math.max.apply(null,wr):rows[0];
+      if(wr==null || !m[wr] || m[wr][zi]==null) return null;   // 重量档/分区缺价 → 标 na，不抛错
       let price=m[wr][zi];
       if(!ch.fuel_included) price*=(1+ch.fuel);
       const zlabel=ch.zones[zi].label;
