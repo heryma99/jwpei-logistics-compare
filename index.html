@@ -1141,9 +1141,10 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
       const cl = typeof sur.clearance==='object' ? (sur.clearance.per_shipment||0) : sur.clearance;
       if(cl){ items.push({name:`清关费/报关费(${cl}/票)`, amt:cl}); total+=cl; }
     }
-    // 产品附加费（按货物类型 /kg）
-    if(sur.product){
-      const pr = (sur.product[cargoType]!=null?sur.product[cargoType]:(sur.product['普货']||0));
+    // 产品附加费（按货物类型 /kg）—— 真实字段 product_fees；兼容旧 product/cat
+    const pfMap = sur.product_fees || sur.product || sur.cat || null;
+    if(pfMap){
+      const pr = (pfMap[cargoType]!=null)?pfMap[cargoType]:(pfMap['普货']||0);
       if(pr){ const a=pr*cw; items.push({name:`产品附加费(${cargoType} ${pr}/kg × ${cwStr}kg)`, amt:a}); total+=a; }
     }
     // 住宅派送费（报价源 sur.residential /票；★ 仅地址类型=住宅时收，商业/FBA 地址不收）
@@ -1152,7 +1153,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
       if(rv){ items.push({name:`住宅派送(${rv}/票)`, amt:rv}); total+=rv; }
     }
     // 磁检费（带电/带磁货物）
-    if(sur.magnet && (sku.battery || /磁|电池/.test(cargoType||''))){
+    if(sur.magnet && (opts.magnet || sku.battery || /磁|电池/.test(cargoType||''))){
       const mg = typeof sur.magnet==='object' ? (sur.magnet.per_shipment||sur.magnet.per_ticket||0) : sur.magnet;
       if(mg){ items.push({name:`磁检费(${mg}/票)`, amt:mg}); total+=mg; }
     }
@@ -2920,16 +2921,19 @@ function rAll(){
       <div><label>申报值/件 USD</label><input id="acDecl" type="number" step="1" value="50" title="申报价均为USD，计算时自动×USD/CNY转人民币"></div>
     </div>
     <div class="row" style="margin-top:8px">
-      <div><label>货物类型（B2B产品附加费）</label><select id="acCargo">
-        <option value="箱包皮革" selected>箱包/皮革（JW PEI 默认）</option>
-        <option value="普货">普货</option>
-        <option value="鞋类">鞋类</option>
-        <option value="服装">服装/纺织</option>
-      </select></div>
+      <div><label>货物类型（B2B产品附加费，可多选）</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:3px">
+          <label class="mut"><input type="checkbox" name="acCargo" value="纺织品"> 纺织品</label>
+          <label class="mut"><input type="checkbox" name="acCargo" value="箱包" checked> 箱包/皮革（JW PEI 默认）</label>
+          <label class="mut"><input type="checkbox" name="acCargo" value="鞋子"> 鞋子</label>
+          <label class="mut"><input type="checkbox" name="acCargo" value="手机壳"> 手机壳</label>
+        </div>
+      </div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acConservative"> 完整预算（含偏远/磁检等）</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acMagnet"> 磁检（带磁体，空运常收）</label></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acConservative"> 完整预算（含偏远等）</label></div>
     </div>
     ${buildFilterHTML()}
     <div class="row" style="margin-top:10px;align-items:center">
@@ -3081,8 +3085,10 @@ function rAll(){
     const boxes=Math.max(1,parseInt($("#acBoxes").value)||1);
     const decl=parseFloat($("#acDecl").value)||0;
     const eurFx=parseFloat($("#acEurFx").value)||7.8;
-    const opt={insurance:$("#acIns").checked, qty, eurFx};
+    const opt={insurance:$("#acIns").checked, qty, eurFx, magnet:document.getElementById('acMagnet')?.checked};
     const cargoCat=$("#acCargo")?$("#acCargo").value:'箱包皮革';
+    const cargoCats=[...document.querySelectorAll('input[name="acCargo"]:checked')].map(cb=>cb.value);
+    const acMagnet=document.getElementById('acMagnet')?.checked;
     const nonFba=$("#acNonfba")?$("#acNonfba").checked:false;
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
     const bl=parseFloat($("#acBl").value)||l, bw_=parseFloat($("#acBw").value)||wd, bh=parseFloat($("#acBh").value)||h;
@@ -3121,9 +3127,17 @@ function rAll(){
           const totalBw=bwR*boxes; const t=findTier(cobj.tiers,totalBw);
           if(!t){ anyBelow=true; belowMin=cobj.tiers[0].min; return; }
           let base=t.rate*totalBw; let surTxt='';
+          // ★ 产品附加费：默认必收、永远计入基础运费并显示（即使为0）
+          let catTotal=0;
+          cargoCats.forEach(c=>{
+            const r=(s&&s.product_fees&&s.product_fees[c]!=null)?s.product_fees[c]
+                   :(s&&s.cat&&s.cat[c]!=null)?s.cat[c]
+                   :(s&&s.product&&s.product[c]!=null)?s.product[c]:0;
+            catTotal+=r;
+          });
+          base+=catTotal*totalBw;
+          surTxt+=` + 产品附加费 ${catTotal}/kg×${totalBw.toFixed(1)}=${(catTotal*totalBw).toFixed(2)}`;
           if(s){
-            const catRate=(s.cat&&s.cat[cargoCat])||0;
-            if(catRate){ base+=catRate*totalBw; surTxt+=` + 品类附加 ${catRate}/kg×${totalBw.toFixed(1)}=${(catRate*totalBw).toFixed(2)}`; }
             // 非FBA：兼容 {kg} 与 {per_kg} 两种形状
             if(nonFba && s.nonfba){
               const nfKg = (s.nonfba.per_kg!=null ? s.nonfba.per_kg : (s.nonfba.kg||0));
@@ -3147,8 +3161,9 @@ function rAll(){
           if(acCons && s){
             if(s.remote_per_shipment){ base+=s.remote_per_shipment; surTxt+=` + 偏远 ${s.remote_per_shipment}/票`; }
             else if(s.remote_per_kg){ const rm=Math.max(s.remote_per_kg*totalBw, s.remote_min||0); if(rm){ base+=rm; surTxt+=` + 偏远 ${rm.toFixed(2)}`; } }
-            if(s.magnetic_per_kg && typeof skuBattery!=='undefined' && skuBattery){ const mg=Math.max(s.magnetic_per_kg*totalBw, s.magnetic_min||0); if(mg){ base+=mg; surTxt+=` + 磁检 ${mg.toFixed(2)}`; } }
           }
+          // 磁检（独立勾选项：带磁体货物空运基本都收）
+          if(acMagnet && s && s.magnetic_per_kg){ const mg=Math.max(s.magnetic_per_kg*totalBw, s.magnetic_min||0); if(mg){ base+=mg; surTxt+=` + 磁检 ${mg.toFixed(2)}`; } }
           const detail='分区 '+region+' · 计费重 '+bwR.toFixed(2)+'kg/箱';
           const perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`+surTxt;
           results.push({ch,status:'ok',cost:base,bw:bwR,region,detail,perUnitNote});
@@ -3168,12 +3183,20 @@ function rAll(){
         const totalBw=bwBox*boxes; const t=findTier(ch.countries[country].tiers,totalBw);
         if(!t){ results.push({ch,status:'below',min:ch.countries[country].tiers[0].min}); return; }
         let base=t.rate*totalBw; let surTxt='';
+        let catTotal=0;
+        cargoCats.forEach(c=>{
+          const r=(s&&s.product_fees&&s.product_fees[c]!=null)?s.product_fees[c]
+                 :(s&&s.cat&&s.cat[c]!=null)?s.cat[c]
+                 :(s&&s.product&&s.product[c]!=null)?s.product[c]:0;
+          catTotal+=r;
+        });
+        base+=catTotal*totalBw; surTxt+=` + 产品附加费 ${catTotal}/kg×${totalBw.toFixed(1)}=${(catTotal*totalBw).toFixed(2)}`;
         if(s){
-          const catRate=(s.cat&&s.cat[cargoCat])||0;
-          if(catRate){ base+=catRate*totalBw; surTxt+=` + 品类附加 ${catRate}/kg×${totalBw.toFixed(1)}=${(catRate*totalBw).toFixed(2)}`; }
           if(nonFba&&s.nonfba){ const nf=Math.max((s.nonfba.kg||0)*totalBw,s.nonfba.min||0); if(nf){ base+=nf; surTxt+=` + 非FBA ${nf.toFixed(2)}`; } }
           if(wantDecl&&s.declare){ base+=s.declare; surTxt+=` + 单独报关 ${s.declare}/票`; }
         }
+        // 磁检（独立勾选项）
+        if(acMagnet && s && s.magnetic_per_kg){ const mg=Math.max(s.magnetic_per_kg*totalBw, s.magnetic_min||0); if(mg){ base+=mg; surTxt+=` + 磁检 ${mg.toFixed(2)}`; } }
         total=base; perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`+surTxt;
       }
       results.push({ch,status:'ok',cost:total,bw:bwBox,detail:r.detail||('计费重 '+bwBox.toFixed(2)+'kg'),perUnitNote});
