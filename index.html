@@ -3122,7 +3122,8 @@ function rAll(){
         served.forEach(region=>{
           const cobj=ch.countries[region];
           if(!cobj||!cobj.tiers||!cobj.tiers.length) return;
-          const s=surAll;
+          // ★ 合并 渠道级(ch.sur / ch.surcharges) 与 国家级(cobj.sur) 两级附加费：中运通达数据分散在两级，只读一级会漏掉非FBA/报关/偏远
+          const s=Object.assign({}, ch.sur||ch.surcharges||{}, cobj.sur||{});
           let bwR=bwBox; if(s&&s.minpc) bwR=Math.max(bwBox,s.minpc);
           const totalBw=bwR*boxes; const t=findTier(cobj.tiers,totalBw);
           if(!t){ anyBelow=true; belowMin=cobj.tiers[0].min; return; }
@@ -3157,13 +3158,27 @@ function rAll(){
             const ins=Math.max(declCny*pieces*0.007, 5);
             if(ins){ base+=ins; surTxt+=` + 保价 ${ins.toFixed(2)}`; }
           }
-          // 完整预算：偏远/磁检等可能费用（保守模式）
+          // 完整预算：偏远/磁检等可能费用（保守模式）—— 兼容 remote_per_shipment / remote_per_kg(+remote_min) / remote.per_kg / remote.per_piece(×箱) / remote.per_shipment
           if(acCons && s){
-            if(s.remote_per_shipment){ base+=s.remote_per_shipment; surTxt+=` + 偏远 ${s.remote_per_shipment}/票`; }
-            else if(s.remote_per_kg){ const rm=Math.max(s.remote_per_kg*totalBw, s.remote_min||0); if(rm){ base+=rm; surTxt+=` + 偏远 ${rm.toFixed(2)}`; } }
+            let rm=0;
+            if(s.remote_per_shipment!=null) rm=s.remote_per_shipment;
+            else if(s.remote_per_kg!=null) rm=Math.max(s.remote_per_kg*totalBw, s.remote_min||0);
+            else if(s.remote){
+              if(s.remote.per_shipment!=null) rm=s.remote.per_shipment;
+              else if(s.remote.per_kg!=null) rm=Math.max(s.remote.per_kg*totalBw, s.remote.min||0);
+              else if(s.remote.per_piece!=null) rm=s.remote.per_piece*boxes;
+            }
+            if(rm){ base+=rm; surTxt+=` + 偏远 ${rm.toFixed(2)}`; }
           }
-          // 磁检（独立勾选项：带磁体货物空运基本都收）
-          if(acMagnet && s && s.magnetic_per_kg){ const mg=Math.max(s.magnetic_per_kg*totalBw, s.magnetic_min||0); if(mg){ base+=mg; surTxt+=` + 磁检 ${mg.toFixed(2)}`; } }
+          // 磁检（独立勾选项：带磁体货物空运基本都收）—— 兼容 magnetic_per_kg / magnetic_per_shipment / magnetic.per_shipment / 数字 magnetic
+          if(acMagnet && s){
+            let mg=0;
+            if(s.magnetic_per_kg!=null) mg=Math.max(s.magnetic_per_kg*totalBw, s.magnetic_min||0);
+            else if(s.magnetic_per_shipment!=null) mg=s.magnetic_per_shipment;
+            else if(s.magnetic && typeof s.magnetic==='object' && s.magnetic.per_shipment!=null) mg=s.magnetic.per_shipment;
+            else if(typeof s.magnetic==='number') mg=s.magnetic;
+            if(mg){ base+=mg; surTxt+=` + 磁检 ${mg.toFixed(2)}`; }
+          }
           const detail='分区 '+region+' · 计费重 '+bwR.toFixed(2)+'kg/箱';
           const perUnitNote=`总重 ${totalBw.toFixed(2)}kg × ${t.rate}/kg`+surTxt;
           results.push({ch,status:'ok',cost:base,bw:bwR,region,detail,perUnitNote});
