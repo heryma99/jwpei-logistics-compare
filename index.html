@@ -1521,7 +1521,7 @@ function rFreight(){
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
     let out=`<div class="p2bar">
       <span class="count ok">✓ 入围 <b>${eligible.length}</b> 个渠道</span>
-      ${rejected.length?`<details class="rejected-details" open><summary><span>查看全部渠道（共 <b>${eligible.length+rejected.length}</b>：入围 ${eligible.length} + 淘汰 ${rejected.length}，按当前规格过滤）</span></summary><div>${rejectedHtml}</div></details>`:''}
+      ${rejected.length?`<details class="rejected-details"><summary><span>查看全部渠道（共 <b>${eligible.length+rejected.length}</b>：入围 ${eligible.length} + 淘汰 ${rejected.length}，按当前规格过滤）</span></summary><div>${rejectedHtml}</div></details>`:''}
     </div>`;
     if(!eligible.length){
       const eurFx=parseFloat($("#euFx")?.value)||7.8;
