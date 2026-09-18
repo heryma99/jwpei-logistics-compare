@@ -915,7 +915,7 @@ function chargeWeight(sw, vw, rule, rounding, minW){
   return Math.max(cw, 0);
 }
 // channel-compare 重量段取档铁律：向上取「最小 up ≥ cw 的档」
-function tierRate(tiers, cw){
+function pickBracket(tiers, cw){
   // 数据用 {up, rate, reg}（小包）或 {kg, rate}（B2B）—— 都按上界取
   const sorted = tiers.slice().sort((a,b)=>(a.up||a.kg||0)-(b.up||b.kg||0));
   let t = sorted.find(x=> (x.up!=null?x.up:x.kg) >= cw - 1e-9);
@@ -1069,7 +1069,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
         freight = pp + pk*cw; rate = pk;
         items = [{name:`基本运费(¥${pp}/件 + ¥${pk}/kg × ${fmtKg(cw,ch.cat)})`, amt:freight}];
       } else {
-        rate = coBrackets ? (tierRate(coBrackets, cw).rate||0) : tierRate(p.weight_tiers, cw).rate;
+        rate = coBrackets ? (pickBracket(coBrackets, cw).rate||0) : pickBracket(p.weight_tiers, cw).rate;
         freight = rate * cw;
       }
     }
@@ -1093,7 +1093,7 @@ function computeFreight(ch, sku, units, destCn, eurFx, opts){
   let total = freight;
   if(coBrackets){
     // 挂号/操作费：按「当前计费重所在重量段」取对应 reg（与手动 compute 的 findBracket 行为一致，修复此前只取首段 reg 的 bug）
-    const tb = tierRate(coBrackets, cw);
+    const tb = pickBracket(coBrackets, cw);
     const regFee = (tb && tb.reg) ? tb.reg : 0;
     if(regFee){ items.push({name:"操作/挂号费", amt:regFee}); total+=regFee; }
   } else {
