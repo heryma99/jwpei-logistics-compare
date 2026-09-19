@@ -4431,5 +4431,148 @@ function rTailV5(){
 
 
 </script>
+<script>
+/* ===== 捷邮中东仓 接入（2026-09-19，纯追加，不改动任何现有代码） =====
+   做法：加载后 ① 注册 3 个仓库到 window.OV_DATA.warehouses
+              ② “包裹”(wrap) window.OV_ENGINE.calcOne 处理捷邮中东口径
+              ③ “包裹” window.whCountry 给中东仓默认收货国
+              ④ 向 ALL_COUNTRIES / COUNTRY_LABEL 增补 QA/KW/BH
+   费率来源：捷邮《中东海外仓操作费明细》+《中东海外仓末端派送价格》(2026-09)。
+   币种：报价为 ¥ 的操作费按页面 FX 折成 $，与现有 USD 口径同屏可比（每个科目注明原始 ¥）。
+   未做：头程（迪拜仓无报价；沙特海运待接入 ④ 后再并）。
+*/
+(function () {
+  var W = window;
+  if (!W.OV_DATA || !W.OV_DATA.warehouses || !W.OV_ENGINE || !W.OV_ENGINE.calcOne) return;
+  var WH = W.OV_DATA.warehouses;
+
+  /* 末端派送：原生 USD，首重5kg + 续重1kg（沙特两仓同一张表） */
+  var DCOUNTRY = { AE: { n: '阿联酋', first: 4.8 }, SA: { n: '沙特阿拉伯', first: 6.1 },
+                   QA: { n: '卡塔尔', first: 6.9 }, KW: { n: '科威特', first: 5.6 },
+                   BH: { n: '巴林', first: 5.8 } };
+  var DSTEP = 1.83, DFIRSTKG = 5, DCOD = 0.03, VOLB = 6000;
+  /* 操作费：原生 RMB */
+  var OPS = { handling: 50, minCbm: 1, storage: 7, freeDays: 30, maxDays: 180,
+              order: 6.0, overFrom: 5, overKg: 0.1, ret: 5.0 };
+
+  function mk(id, name, region, note) {
+    return {
+      id: id, name: name, region: region, scope: '中东海外仓 · 一件代发',
+      bill_month: '2026-09（操作费表更新 1-15 号）',
+      tail: { carrier: '捷邮 中东当地派送网络', pricing: '结算', norm: null, volDiv: VOLB,
+              note: '按目的国：首重5kg+续重1kg；体积重=长×宽×高/6000（≈167kg/m³）；上限70kg、三边和<250cm、单边<150cm；已含VAT、无偏远附加费；COD=代收额×3%' },
+      inbound: {
+        IB_TS: { price: null, unit: 'CBM', basis: '实测体积CBM（最低1CBM）', rating: 'green',
+                 note: '收货入仓理货 ¥50/CBM（含核查件数/清点PCS/按SKU分货上架）' },
+        LC:    { price: null, unit: 'CBM', basis: '—', rating: 'na', note: '报价未单列卸货费（已含在收货入仓理货内）' },
+        IB_TF: { price: null, unit: '—', basis: '—', rating: 'na', note: '分拣含在订单履行费内' },
+        IB_F:  { price: null, unit: '—', basis: '—', rating: 'na', note: '报价未单列入库操作费' },
+        NPIF:  { price: null, unit: '套', basis: '按需', rating: 'yellow', note: '质量检查 ¥3.0/套（按需增值，未计入默认测算）' }
+      },
+      storage: { type: 'per_cbm_day', freeDays: OPS.freeDays, tiers: [{ max: OPS.maxDays, rate: OPS.storage }],
+                 rating: 'green',
+                 note: '原箱仓储 ¥7/CBM/天，免仓租30天、库龄上限180天；拆箱上架另计：单SKU≤2KG ¥0.06/个/天、>2KG ¥7/CBM/天' },
+      outbound: {
+        BFF: { price: null, unit: '票', basis: '订单履行', rating: 'green',
+               note: '≤5KG ¥6.0/票；超5KG部分 +¥0.1/KG；超件（>1且≤10件/单）+¥2/件' },
+        MULTIPACK: { price: null, unit: '箱', basis: '送本地FBA', rating: 'yellow',
+                     note: '送本地FBA ¥150/CBM ＋ 装卸 ¥5/箱（最低 ¥230/票）；跨仓（利雅得↔吉达）+¥30/箱' }
+      },
+      return: { price: null, unit: '票', basis: '退件拆包上架', rating: 'yellow',
+                note: '退件拆包上架 ¥5.0/票；原包裹上架免费（¥0.3/个/天，库龄90天）；逾期未给方案 ¥1/包裹/天；退件保留20天超时默认销毁' },
+      _jy: true, _note: note || ''
+    };
+  }
+
+  var JY = {
+    jieyou_dxb: mk('jieyou_dxb', '捷邮 中东仓 · 迪拜仓（阿联酋）', '阿联酋 迪拜',
+      '头程：迪拜仓暂无头程报价（中国→沙特海运仅对应利雅得/吉达仓）'),
+    jieyou_ruh: mk('jieyou_ruh', '捷邮 中东仓 · 利雅得仓（沙特）', '沙特阿拉伯 利雅得',
+      '头程：中国→沙特海运 ¥1950/CBM 起（普货不带电，时效60–70天；最低1CBM、体积重÷6000、1CBM=300KG）'),
+    jieyou_jed: mk('jieyou_jed', '捷邮 中东仓 · 吉达仓（沙特）', '沙特阿拉伯 吉达',
+      '头程：中国→沙特海运 ¥1950/CBM 起（时效60–70天）；与利雅得仓互转 +¥30/箱')
+  };
+  var JYDEF = { jieyou_dxb: 'AE', jieyou_ruh: 'SA', jieyou_jed: 'SA' };
+
+  Object.keys(JY).forEach(function (k) { if (!WH[k]) WH[k] = JY[k]; });
+
+  try {
+    if (W.COUNTRY_LABEL) { W.COUNTRY_LABEL.QA = '卡塔尔'; W.COUNTRY_LABEL.KW = '科威特'; W.COUNTRY_LABEL.BH = '巴林'; W.COUNTRY_LABEL.OM = '阿曼'; }
+    if (W.ALL_COUNTRIES) ['QA', 'KW', 'BH'].forEach(function (iso) { if (W.ALL_COUNTRIES.indexOf(iso) < 0) W.ALL_COUNTRIES.push(iso); });
+  } catch (e) {}
+
+  function fx() { var e = document.getElementById('ovFx'); return (e && +e.value) || 7.2; }
+
+  function jyCalc(id, sc) {
+    var F = fx(), D = 1 / F;
+    var qty = +sc.qty || 0, kg = +sc.kg || 0, vol = +sc.vol || 0, days = +sc.days || 0;
+    var L = +sc.L || 0, Wd = +sc.W || 0, H = +sc.H || 0;
+    var dest = sc.dest, dc = DCOUNTRY[dest];
+    var cats = {};
+
+    var billCbm = Math.max(vol, OPS.minCbm);
+    cats.IB_TS = { amt: OPS.handling * D * billCbm, rating: 'green',
+      note: '收货入仓理货 ¥50/CBM（最低 1CBM，含核查件数/清点PCS/按SKU分货上架）｜计费体积 max(实际 ' + vol.toFixed(4) + ', 1) = ' + billCbm.toFixed(3) + ' CBM → ¥' + (OPS.handling * billCbm).toFixed(2) + ' ÷ FX ' + F };
+
+    var chDays = Math.min(Math.max(0, days - OPS.freeDays), OPS.maxDays - OPS.freeDays);
+    cats.STO = { amt: OPS.storage * D * vol * chDays, rating: 'green',
+      note: '原箱仓储 ¥7/CBM/天 × ' + vol.toFixed(4) + ' CBM × ' + chDays + ' 天（免仓租30天、上限180天）｜拆箱上架另计 ¥0.06/个/天（≤2KG）' };
+
+    var over = Math.max(0, kg - OPS.overFrom);
+    cats.BFF = { amt: (OPS.order + OPS.overKg * over) * D * qty, rating: 'green',
+      note: '订单履行 ¥6.0/票' + (over > 0 ? (' + 超5KG ¥0.1/KG × ' + over.toFixed(2) + 'kg') : '') + ' × ' + qty + ' 件 ｜ 未含：送本地FBA ¥150/CBM＋¥5/箱（最低¥230/票）、超件加收 ¥2/件（>1且≤10件/单）' };
+
+    if (dc) {
+      var volw = (L * Wd * H) / VOLB, bk = Math.max(kg, volw);
+      var f = bk <= DFIRSTKG ? dc.first : dc.first + DSTEP * Math.ceil(bk - DFIRSTKG);
+      cats.TAIL = { amt: f * qty, rating: 'green',
+        note: dc.n + ' 本地派送：首重5kg $' + dc.first + ' + 续重1kg $' + DSTEP + '｜计费重 max(实重 ' + kg + ', 体积重 ' + volw.toFixed(3) + ') = ' + bk.toFixed(3) + 'kg → 单件 $' + f.toFixed(2) + ' × ' + qty + ' 件｜已含VAT、无偏远附加费；COD 另按代收额 ' + (DCOD * 100) + '%' };
+    } else {
+      cats.TAIL = { amt: 0, rating: 'na',
+        note: '捷邮中东仓仅派送 阿联酋/沙特/卡塔尔/科威特/巴林 —— 当前「收货人国家」不在其派送范围，尾程不计（请把收货人国家改为上述五国之一）' };
+    }
+
+    cats.RETURN = { amt: OPS.ret * D * qty, rating: 'yellow',
+      note: '退件拆包上架 ¥5.0/票 × ' + qty + '；原包裹上架免费（方案A ¥0.3/个/天，库龄90天）' };
+
+    cats.NPIF = { amt: 0, rating: 'yellow',
+      note: '捷邮中东仓为「一件代发」报价，规则类科目未单列：含按需增值项 质量检查 ¥3.0/套、拍照 ¥4.0/¥10.0 套、添加附件 ¥2.0/套、清点库存 ¥2.0/UNIT —— 均未计入默认测算' };
+
+    var total = 0; for (var k in cats) { if (cats[k].amt) total += cats[k].amt; }
+    return { cats: cats, total: total };
+  }
+
+  var _calcOne = W.OV_ENGINE.calcOne;
+  W.OV_ENGINE.calcOne = function (id, sc) {
+    if (JY[id]) { try { return jyCalc(id, sc); } catch (e) { console.error('[jyOv] calc err', e); } }
+    return _calcOne.apply(this, arguments);
+  };
+
+  var _whCountry = W.whCountry;
+  W.whCountry = function (id) {
+    if (JYDEF[id]) return JYDEF[id];
+    return _whCountry ? _whCountry(id) : 'US';
+  };
+
+  /* 选到捷邮中东仓时，把「收货人国家」默认切到该仓所在国并重算 */
+  function syncDest() {
+    var s = document.getElementById('ovWh'); if (!s) return;
+    var iso = JYDEF[s.value]; if (!iso) return;
+    var c = document.getElementById('ovTailCountry'); if (!c) return;
+    if (c.value === iso) return;
+    if (DCOUNTRY[c.value]) return;              /* 已选中东某国则尊重用户选择 */
+    c.value = iso;
+    try { c.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    var run = document.getElementById('ovRun'); if (run) setTimeout(function () { try { run.click(); } catch (e) {} }, 10);
+  }
+  document.addEventListener('change', function (ev) {
+    if (ev.target && ev.target.id === 'ovWh') setTimeout(syncDest, 40);
+  }, true);
+  setTimeout(syncDest, 500);
+
+  W.__JY_OV = { warehouses: Object.keys(JY), defaultDest: JYDEF, delivery: DCOUNTRY, ops: OPS };
+})();
+
+</script>
 </body>
 </html>
