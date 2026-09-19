@@ -4605,6 +4605,75 @@ function rTailV5(){
 (function () {
   var W = window;
   var last = '';
+  /* ── 数据守卫（2026-09-19，修「¥0.00 误判最优」）────────────────────────────
+     现象：jieyou_epost 列了「美国」但 per_kg / per_piece 都是 null（报价未覆盖该目的地），
+           ② 小包专线仍把它当可达 → 运费 = 0 + 0×计费重 = ¥0.00，还因此显示「★最优」。
+     做法：运行时把这类「无价国家」从渠道国家表里摘掉 —— 不改 rates.json，纯前端守卫。
+     范围：只处理 pricing.model==='piece_per_kg'（价格就存在国家条目里）；
+           且要求 per_kg/per_piece 均为空 且 无任何非零 brackets，避免误删真实 0 价。 */
+  function dropUnpricedInto(container) {
+    var n = 0;
+    try {
+      if (!container) return 0;
+      for (var ct in container) {
+        var cv = container[ct];
+        if (!cv || typeof cv !== 'object') continue;
+        var pk = cv.per_kg, pp = cv.per_piece;
+        var hasBk = false, bs = cv.brackets || [];
+        for (var j = 0; j < bs.length; j++) { if (bs[j] && bs[j].rate) { hasBk = true; break; } }
+        if (cv.__price_model !== 'piece_per_kg') continue;
+        if ((pk == null || pk === 0) && (pp == null || pp === 0) && !hasBk) { delete container[ct]; n++; }
+      }
+    } catch (e) {}
+    return n;
+  }
+  function dropUnpriced() {
+    var n = 0;
+    try {
+      var chs = (W.RATES && W.RATES.channels) || [];
+      for (var i = 0; i < chs.length; i++) {
+        var c = chs[i];
+        if (!c || !c.countries) continue;
+        var m = (c.pricing || {}).model;
+        if (m !== 'piece_per_kg') continue;
+        for (var ct in c.countries) {                  /* 先给条目打上模型标记，再统一剔除 */
+          var cv = c.countries[ct];
+          if (cv && typeof cv === 'object') cv.__price_model = 'piece_per_kg';
+        }
+        n += dropUnpricedInto(c.countries);
+        if (Array.isArray(c.dest)) {
+          c.dest = c.dest.filter(function (x) { return Object.prototype.hasOwnProperty.call(c.countries, x); });
+        }
+      }
+      /* 兜底：若页面已把 RATES 同步成内部结构，那里的 countryMap / countries 也一并清理 */
+      if (typeof S !== 'undefined' && S.modules) {
+        for (var k in S.modules) {
+          var arr = (S.modules[k] || {}).carriers || [];
+          for (var t = 0; t < arr.length; t++) {
+            var ch = arr[t];
+            if (!ch || (ch.pricing || {}).model !== 'piece_per_kg') continue;
+            if (ch.countryMap) {
+              for (var cc in ch.countryMap) {
+                var v2 = ch.countryMap[cc];
+                if (v2 && typeof v2 === 'object') v2.__price_model = 'piece_per_kg';
+              }
+              dropUnpricedInto(ch.countryMap);
+            }
+            if (ch.countries) {
+              for (var c3 in ch.countries) {
+                var v3 = ch.countries[c3];
+                if (v3 && typeof v3 === 'object') v3.__price_model = 'piece_per_kg';
+              }
+              dropUnpricedInto(ch.countries);
+            }
+          }
+        }
+      }
+    } catch (e) {}
+    if (n) { try { console.log('[jyGuard] 已摘除无价国家条目: ' + n + ' 个'); } catch (e) {} }
+    return n;
+  }
+  dropUnpriced();                      /* 尽早执行：必须在页面 sync 之前 */
   var JY_ID = 'jieyou_sa_sea';
   /* ④ 的 carriers 是 S.modules.tob 里的「手工映射副本」，字段只保留
      id/cat/carrier/channel/audience/countries/isoCountries/max_weight/accepted/
@@ -4635,6 +4704,7 @@ function rTailV5(){
   }
   function fmt(n) { return '¥' + (Math.round(n * 100) / 100).toFixed(2); }
   function inject() {
+    dropUnpriced();
     var refill = fillMapped();
     if (refill) {                       /* 映射副本刚补齐 → 重算一次，让引擎按 mode:"min" 出价 */
       setTimeout(function () {
