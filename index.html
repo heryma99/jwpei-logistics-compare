@@ -1592,7 +1592,7 @@ function rFreight(){
       let base = rate*totalBw;
       const sur = co.sur || ch.sur || {};
       /* ★ mode:"min" 双口径择低（2026-09-19 新增）：KG 口径(tiers) 与 CBM 口径(per_cbm) 各算一次取低 */
-      let minInfo = null;
+      let minInfo = null, cbmInfo = null;   /* cbmInfo: mode==='cbm' 纯CBM口径结果(2026-09-19) */
       if(ch.mode==='min'){
         const _perCbm0=(ch.cbm&&ch.cbm.per_cbm)||ch.per_cbm||0;
         const _addCbm=(sur.cat && sur.cat[cargoType])||0;      /* 货类差额（元/CBM） */
@@ -1608,6 +1608,22 @@ function rFreight(){
         base=Math.min(_costKg,_costCbm);
         try{ window.__jyMinInfo=window.__jyMinInfo||{}; window.__jyMinInfo[ch.id]=minInfo; }catch(e){}
       }
+      else if(ch.mode==='cbm'){
+        /* ★ 纯 CBM（立方米）计价（2026-09-19 新增）：头程按体积 m³ 计费，如易连韩国海外仓头程。
+           口径：计费体积 = max(实际体积, 最低 CBM)；单价按体积段 cbm_tiers 命中，无则为 per_cbm。
+           （修 bug：此前 ④ 无 CBM 分支，这类渠道被按 rate×计费重 算成 ¥1.00 之类的错值） */
+        const _cbRaw=(sku.l*sku.w*sku.h/1e6)*(units||1);
+        let _cbRate=(co && co.per_cbm!=null)?co.per_cbm:(ch.per_cbm||0);
+        if(ch.cbm_tiers && ch.cbm_tiers.length){
+          const _ct=ch.cbm_tiers.find(t=> _cbRaw>t.min-1e-9 && _cbRaw<=t.max+1e-9);
+          if(_ct && _ct.rate!=null) _cbRate=_ct.rate;
+        }
+        const _cbMin=(ch.min_cbm!=null)?ch.min_cbm:1;
+        const _cbBill=Math.max(_cbRaw,_cbMin);
+        base=_cbBill*_cbRate;
+        cbmInfo={raw:_cbRaw, minV:_cbMin, bill:_cbBill, rate:_cbRate, amt:base};
+        try{ window.__jyCbmInfo=window.__jyCbmInfo||{}; window.__jyCbmInfo[ch.id]=cbmInfo; }catch(e){}
+      }
       // 命中的重量段区间（让用户核对用了哪个 kg 段的费率）
       const tIdx = tiers.indexOf(tier);
       const bandLo = tier.min||tier.kg||0;
@@ -1615,7 +1631,9 @@ function rFreight(){
       const bandLabel = bandHi ? `${bandLo}~${bandHi}kg段` : `${bandLo}kg+段`;
       // ── 必收费用 ──
       const mustItems=[]; let mustTotal=0;
-      const _baseLabel = minInfo
+      const _baseLabel = cbmInfo
+        ? `基本运费(按CBM ${cbmInfo.rate}/CBM × ${cbmInfo.bill.toFixed(3)}m³ = ${cbmInfo.amt.toFixed(2)})${cbmInfo.raw<cbmInfo.minV?`（实际体积 ${cbmInfo.raw.toFixed(4)}m³ 不足最低 ${cbmInfo.minV}CBM，按最低计）`:''}`
+        : minInfo
         ? (minInfo.useCbm
             ? `基本运费(采用 按CBM：${minInfo.billCbm.toFixed(3)}CBM × ${minInfo.perCbm}/CBM = ${minInfo.costCbm.toFixed(2)})｜另一口径 按KG ${minInfo.perKg}/kg × ${minInfo.kgW.toFixed(2)}kg = ${minInfo.costKg.toFixed(2)}（贵 ${(minInfo.costKg-minInfo.costCbm).toFixed(2)}，未采用）`
             : `基本运费(采用 按KG：${minInfo.perKg}/kg × ${minInfo.kgW.toFixed(2)}kg = ${minInfo.costKg.toFixed(2)})｜另一口径 按CBM ${minInfo.billCbm.toFixed(3)}CBM × ${minInfo.perCbm}/CBM = ${minInfo.costCbm.toFixed(2)}（贵 ${(minInfo.costCbm-minInfo.costKg).toFixed(2)}，未采用）`)
@@ -4601,7 +4619,15 @@ function rTailV5(){
 /* ===== ④toB头程：捷邮沙特海运头程「双口径择低」的列表展示（纯追加） =====
    引擎侧已把 mode:"min" 的两口径结果发布到 window.__jyMinInfo[渠道id]；
    本段只做展示：在结果表该行下方追加一行 <details>，两种算法都列出来并标出「最优·采用」。
-   一行现有代码都不改（只读 DOM + 插入新节点）。 */
+   一行现有代码都不改（只读 DOM + 插入新节点）。
+
+   2026-09-19 增补：
+     ① fillMapped 改为「通用计费参数回填」—— ④ 的 carriers 是手工映射副本会丢字段，
+        凡 RATES 里带 mode 的渠道，一律把 mode/cbm/per_cbm/cbm_tiers/min_cbm/w_m_ratio/
+        volumetric_divisor 同步回副本（修好易连韩国头程 CBM 计价连带的字段丢失）。
+     ② ensureCats：给 #cargoType 追加「捷邮·」四个货类选项（纯追加，不影响其它渠道：
+        未知货类键在别的渠道 sur.cat 里取不到 → 计 0，与「普货」等价）。
+     ③ 明细说明改为**动态显示当前货类**及其实时 CBM/KG 单价（货类切换可见）。 */
 (function () {
   var W = window;
   var last = '';
@@ -4673,40 +4699,77 @@ function rTailV5(){
     if (n) { try { console.log('[jyGuard] 已摘除无价国家条目: ' + n + ' 个'); } catch (e) {} }
     return n;
   }
-  dropUnpriced();                      /* 尽早执行：必须在页面 sync 之前 */
+
   var JY_ID = 'jieyou_sa_sea';
-  /* ④ 的 carriers 是 S.modules.tob 里的「手工映射副本」，字段只保留
+  /* ④ 的 carriers 是 S.modules.* 里的「手工映射副本」，字段只保留
      id/cat/carrier/channel/audience/countries/isoCountries/max_weight/accepted/
-     pricing/fees/decision/history/sur/surcharges/regions —— mode/cbm/w_m_ratio 会丢。
-     这里把这三个字段从 window.RATES 回填进去，引擎的 mode:"min" 分支才认得它。 */
+     pricing/fees/decision/history/sur/surcharges/regions —— 计费参数（mode/cbm/…）会丢。
+     凡 RATES 里带 mode 的渠道（捷邮 min / 易连 cbm），一律把下列字段同步回副本，
+     引擎的 mode 分支才认得它。用 JSON 深比，避免数组/对象引用不等导致每轮误判「有变化」。 */
+  var CALC_KEYS = ['mode', 'cbm', 'per_cbm', 'cbm_tiers', 'min_cbm', 'w_m_ratio', 'volumetric_divisor'];
+  function same(a, b) { try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return a === b; } }
   function fillMapped() {
     var changed = false;
     try {
       if (typeof S === 'undefined' || !S.modules) return false;
-      var raw = null, chs = (W.RATES && W.RATES.channels) || [];
-      for (var j = 0; j < chs.length; j++) { if (chs[j].id === JY_ID) { raw = chs[j]; break; } }
-      if (!raw) return false;
+      var chs = (W.RATES && W.RATES.channels) || [];
+      var need = {};                                   /* id -> RATES 原始渠道（带 mode 的） */
+      for (var j = 0; j < chs.length; j++) {
+        var rc = chs[j];
+        if (rc && rc.mode && rc.id) need[rc.id] = rc;
+      }
+      if (!W.__jyModeIds || !same(W.__jyModeIds, Object.keys(need))) {
+        W.__jyModeIds = Object.keys(need);
+      }
       var mods = S.modules;
       for (var k in mods) {
         var arr = (mods[k] || {}).carriers || [];
         for (var i = 0; i < arr.length; i++) {
-          var c = arr[i];
-          if (c && c.id === JY_ID) {
-            if (c.mode !== raw.mode) { c.mode = raw.mode; changed = true; }
-            if (!c.cbm) { c.cbm = raw.cbm; changed = true; }
-            if (!c.w_m_ratio) { c.w_m_ratio = raw.w_m_ratio; changed = true; }
-            if (!c.volumetric_divisor) { c.volumetric_divisor = raw.volumetric_divisor; changed = true; }
+          var c = arr[i]; if (!c) continue;
+          var raw = need[c.id]; if (!raw) continue;
+          for (var q = 0; q < CALC_KEYS.length; q++) {
+            var f = CALC_KEYS[q], rv = raw[f];
+            if (rv === undefined) continue;
+            if (!same(c[f], rv)) { c[f] = rv; changed = true; }
           }
         }
       }
     } catch (e) {}
     return changed;
   }
+
+  /* ── 货类选项（纯追加）：捷邮头程 4 个货类档口 ───────────────────────────── */
+  var JY_CATS = [
+    { v: '普货不带电', t: '捷邮·普货不带电' },
+    { v: '普货带插头/带电池', t: '捷邮·带电（插头/内置电池）' },
+    { v: '敏感类', t: '捷邮·敏感类' },
+    { v: '灰清类', t: '捷邮·灰清类（含手机 +¥5/PCS）' }
+  ];
+  function ensureCats() {
+    try {
+      var sel = document.getElementById('cargoType');
+      if (!sel) return;
+      var have = {};
+      for (var i = 0; i < sel.options.length; i++) have[sel.options[i].value] = true;
+      var added = 0;
+      for (var j = 0; j < JY_CATS.length; j++) {
+        var c = JY_CATS[j];
+        if (have[c.v]) continue;
+        var o = document.createElement('option');
+        o.value = c.v; o.text = c.t;
+        o.title = '仅对「捷邮-沙特海运头程」生效；其它渠道无此货类键，按 0 计';
+        sel.appendChild(o); added++;
+      }
+      if (added) { try { console.log('[jyCats] 已追加货类选项 ' + added + ' 个'); } catch (e) {} }
+    } catch (e) {}
+  }
+
   function fmt(n) { return '¥' + (Math.round(n * 100) / 100).toFixed(2); }
   function inject() {
     dropUnpriced();
+    ensureCats();
     var refill = fillMapped();
-    if (refill) {                       /* 映射副本刚补齐 → 重算一次，让引擎按 mode:"min" 出价 */
+    if (refill) {                       /* 映射副本刚补齐 → 重算一次，让引擎按 mode 出价 */
       setTimeout(function () {
         var b = null, bs = document.querySelectorAll('button');
         for (var i = 0; i < bs.length; i++) { if (/比对|预估/.test(bs[i].innerText || '')) { b = bs[i]; break; } }
@@ -4748,19 +4811,33 @@ function rTailV5(){
   function body(v) {
     var okK = !v.useCbm, okC = v.useCbm;
     var mark = function (on) { return on ? '<b style="color:var(--green)">（最优 · 采用）</b>' : '<span style="color:var(--mut)">（较贵，未采用）</span>'; };
+    /* 当前货类（动态）：引擎已把货类差额并入 perCbm/perKg，这里只做说明 */
+    var ct = '';
+    try { ct = ((document.getElementById('cargoType') || {}).value) || ''; } catch (e) {}
+    var base = 0;
+    try {
+      var rc = ((W.RATES || {}).channels || []).filter(function (x) { return x.id === JY_ID; })[0];
+      base = (rc && rc.cbm && rc.cbm.per_cbm) || 0;
+    } catch (e) {}
+    var delta = Math.round((v.perCbm - base) * 100) / 100;
+    var catLine = ct
+      ? ('本行货类「' + ct + '」：CBM ' + v.perCbm + ' 元/CBM（基准 ' + base + (delta ? (' + 货类差额 ' + delta) : '') + '），KG 口径 ' + v.perKg + ' 元/kg。')
+      : '';
     return '<details><summary style="cursor:pointer;font-weight:600">两种计费口径（系统已取更低者：'
       + (okC ? '按 CBM' : '按 KG') + '）—— 点开看两种算法</summary>'
       + '<div style="margin-top:6px">'
       + '<div>按 KG：' + v.perKg + ' 元/kg × ' + v.kgW.toFixed(2) + ' kg（= max(实重, 体积重÷6000)，最低 11kg） = ' + fmt(v.costKg) + ' ' + mark(okK) + '</div>'
       + '<div>按 CBM：max(' + v.cbmRaw.toFixed(4) + ' CBM, 最低 1) = ' + v.billCbm.toFixed(3) + ' CBM × ' + v.perCbm + ' 元/CBM = ' + fmt(v.costCbm) + ' ' + mark(okC) + '</div>'
       + '<div style="color:var(--mut)">分界点：密度 300 kg/m³ —— 重货（&gt;300）走 CBM、泡货（&lt;300）走 KG（1CBM = 300KG）</div>'
-      + '<div style="color:var(--mut)">本渠道按「普货不带电 1950 元/CBM」建模；其他货类（普货带插头/带电池 2350、敏感类 2800、灰清类 4350）未自动切换，请按渠道说明换算。不含：送 FBA +¥2.5/KG（最低 ¥200/票）、转第三方海外仓/私人地址 +¥30/箱、单独报关 ¥450/票。</div>'
+      + (catLine ? '<div>' + catLine + '货类可选：普货不带电 1950 ｜ 带电（插头/内置电池）2350 ｜ 敏感类 2800 ｜ 灰清类 4350（元/CBM）。</div>' : '')
+      + '<div style="color:var(--mut)">不含：送 FBA +¥2.5/KG（最低 ¥200/票）、转第三方海外仓/私人地址 +¥30/箱、单独报关 ¥450/票、托盘/木箱或单件≥80KG 叉车 ¥150/件。</div>'
       + '</div></details>';
   }
   try {
     new MutationObserver(function () { try { inject(); } catch (e) {} })
       .observe(document.body, { childList: true, subtree: true });
   } catch (e) {}
+  ensureCats();
   setTimeout(inject, 1200);
   setTimeout(inject, 3000);
 })();
