@@ -4899,5 +4899,80 @@ function rTailV5(){
 })();
 
 </script>
+
+<!-- 收寄限制提示标签（追加式，2026-09-23）：只新增 DOM/样式，不改既有代码与数据 -->
+<script>
+/* =========================================================================
+   渠道「收寄限制」提示标签（②③④⑩ 通用）— 追加式补丁，2026-09-23
+   目的：把报价表里写明的「品类/重量」硬限制标在比价结果行上，避免照最低价下单被承运商拒收。
+   做法：纯 DOM 后处理（MutationObserver + 幂等标记），不改任何既有代码、不改任何价格数据。
+   扩展：在 LIMITS 里加 { codes:[产品代码], tag:'短标签', tip:'完整说明' } 即可。
+   ========================================================================= */
+(function () {
+  var LIMITS = [
+    {
+      codes: ['FZZXR'],
+      tag: '仅收服装类',
+      tip: '云途全球服装专线(FZZXR) 收寄限制：只接收普通服装类产品（普通衣服/帽子/围巾/袜子/床上四件套，日本可加鞋类）；' +
+           '不接收枕头、棉被、玩具娃娃等较大较泡产品；不接收带电/LED/需要加热类服装；' +
+           '包装只接受袋子，不接受纸盒（含内件与外箱）；一票一件。选「箱包/皮革」等非服装货时请勿按本渠道下单。'
+    },
+    {
+      codes: ['YTLSPN'],
+      tag: '限重 日1kg/澳2kg/德英200g',
+      tip: '云途轻小件专线(YTLSPN) 重量上限：日本 ≤1kg、澳大利亚 ≤2kg、德国/英国 ≤200g；' +
+           '超出上限云途不予接收（本工具不会自动拦截，请人工确认后再下单）。'
+    }
+  ];
+
+  function decorate() {
+    try {
+      var tds = document.querySelectorAll('td.c-name');
+      for (var i = 0; i < tds.length; i++) {
+        var td = tds[i];
+        if (td.getAttribute('data-limtag')) continue;
+        var txt = td.textContent || '';
+        for (var j = 0; j < LIMITS.length; j++) {
+          var L = LIMITS[j], hit = false;
+          for (var k = 0; k < L.codes.length; k++) {
+            if (txt.indexOf(L.codes[k]) >= 0) { hit = true; break; }
+          }
+          if (!hit) continue;
+          var sp = document.createElement('span');
+          sp.className = 'tag limtag';
+          sp.textContent = L.tag;
+          sp.title = L.tip;
+          td.appendChild(sp);
+          td.setAttribute('data-limtag', L.codes[0]);
+          break;
+        }
+      }
+    } catch (e) { /* 静默：绝不影响主流程 */ }
+  }
+
+  // 追加样式（只新增类，不覆盖既有 .tag 规则）
+  try {
+    var st = document.createElement('style');
+    st.textContent = '.tag.limtag{background:#3a2a06;color:#ffc861;border:1px solid #8a6a12;margin-left:6px;white-space:nowrap;cursor:help}' +
+                     'td.c-name .tag.limtag{display:inline-block;margin-top:4px;font-size:11px}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (e) {}
+
+  // 结果表是整块 innerHTML 重绘 → 监听 DOM 变化，防抖后补标签
+  var timer = null;
+  function schedule() {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(decorate, 60);
+  }
+  try {
+    new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule);
+  else schedule();
+  setTimeout(decorate, 1200);
+  setTimeout(decorate, 3000);
+})();
+
+</script>
 </body>
 </html>
