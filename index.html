@@ -5087,16 +5087,36 @@ function rTailV5(){
       s.title=j.reasons.join('；');
     });
   }
+  function sortEst(){
+    const box=document.getElementById('estout'); if(!box) return;
+    const cards=[].slice.call(box.children).filter(c=>c.classList&&c.classList.contains('card'));
+    if(cards.length<2) return;
+    function parseTotal(card){
+      const b=card.querySelector('b.hl'); if(!b) return null;
+      let m=(b.textContent||'').replace(/[^0-9.,]/g,''); if(!m) return null;
+      if(m.indexOf(',')>=0 && m.indexOf('.')>=0) m=m.replace(/,/g,'');
+      else if(m.indexOf(',')>=0) m=m.replace(',','.');
+      const v=parseFloat(m); return isNaN(v)?null:v;
+    }
+    const wv=[], nv=[];
+    cards.forEach(c=>{ const v=parseTotal(c); if(v===null) nv.push(c); else wv.push({c:c,v:v}); });
+    wv.sort((a,b)=>a.v-b.v);
+    wv.map(x=>x.c).concat(nv).forEach(c=>box.appendChild(c));
+    let note=document.getElementById('tv5_estsort_note');
+    if(!note){ note=document.createElement('div'); note.id='tv5_estsort_note'; note.className='mut'; note.style.cssText='margin-top:6px'; box.parentNode.insertBefore(note, box); }
+    note.textContent='估算卡片已按「合计」从低到高排列（最便宜在上）；不可估渠道(待烘焙/需邮编)置底。';
+  }
   function setup(){
     if(!document.getElementById('chlist')) return;
     if(!nameMapBuilt) buildNameMap();
     if(!wrapped){
       wrapped=true;
-      const _od=window.TV5_onDest; if(_od) window.TV5_onDest=function(){ _od(); enhance(); enhanceCmp(); };
-      const _cs=window.TV5_chSel; if(_cs) window.TV5_chSel=function(m){ _cs(m); enhance(); };
+      const _od=window.TV5_onDest; if(_od) window.TV5_onDest=function(){ _od(); enhance(); enhanceCmp(); sortEst(); };
+      const _cs=window.TV5_chSel; if(_cs) window.TV5_chSel=function(m){ _cs(m); enhance(); sortEst(); };
       const _rc=window.TV5_renderCmp; if(_rc) window.TV5_renderCmp=function(){ _rc(); enhanceCmp(); };
+      const _cc=window.TV5_calc; if(_cc) window.TV5_calc=function(){ _cc(); sortEst(); };
     }
-    injectControls(); enhance(); enhanceCmp();
+    injectControls(); enhance(); enhanceCmp(); sortEst();
   }
   if(window.rTailV5){
     const _rt=window.rTailV5;
