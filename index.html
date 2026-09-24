@@ -4974,5 +4974,142 @@ function rTailV5(){
 })();
 
 </script>
+<script>
+/* ===== ⑤尾程 品类/尺寸 资格判断 + 徽章 + 只显示可用（2026-09-24 追加，零改动原 blob） ===== */
+
+(function(){
+  const RESTRICT = {
+  "CZ::DHL Kleinpaket国际": {"sizeClass": "small", "maxWeightKg": 1.0, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::DHL Kleinpaket德国": {"sizeClass": "small", "maxWeightKg": 1.0, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::DHL国际": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["带电"]},
+  "CZ::DHL国际客退": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::DHL德国-FBA": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货", "FBA"]},
+  "CZ::DHL德国包裹": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["带电"]},
+  "CZ::DPD德国国际包裹": {"sizeClass": "standard", "maxWeightKg": 31.5, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::DPD德国本地包裹": {"sizeClass": "standard", "maxWeightKg": 31.5, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::G2G国际标准派送": {"sizeClass": "standard", "maxWeightKg": 10.0, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::G2G国际标准派送POD": {"sizeClass": "standard", "maxWeightKg": 10.0, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::GC Parcel 国际包裹": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::GC Parcel 德国包裹": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::GLS国际": {"sizeClass": "oversize", "maxWeightKg": null, "maxLenCm": 120, "catTags": ["普货"]},
+  "CZ::GLS德国": {"sizeClass": "oversize", "maxWeightKg": null, "maxLenCm": 120, "catTags": ["普货"]},
+  "CZ::PPL国际": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::PPL捷克": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["带电"]},
+  "CZ::Packeta 国际包裹": {"sizeClass": "small", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::Packeta 捷克包裹": {"sizeClass": "small", "maxWeightKg": 5.0, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::UPS国际包裹 ": {"sizeClass": "oversize", "maxWeightKg": 70.0, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::捷克国际DHL FREIGHT": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货"]},
+  "CZ::捷克本地DHL FREIGHT": {"sizeClass": "standard", "maxWeightKg": null, "maxLenCm": null, "catTags": ["普货"]}
+};
+  const EMB='⛔', WARN='⚠', OK='✅';
+  function judge(key, p){
+    const r = RESTRICT[key];
+    if(!r) return {status:'ok', reasons:[], tag:''};
+    const w=+p.weight||0, L=+p.maxLen||0;
+    let status='ok'; const reasons=[];
+    const tag=(r.sizeClass==='small'?'小件':r.sizeClass==='oversize'?'超尺寸':((r.catTags||[])[0]==='带电'?'带电':'标准'));
+    if(r.sizeClass==='small'){
+      const mw=r.maxWeightKg;
+      if(mw && w>mw){ status='no'; reasons.push('小件渠道单件上限'+mw+'kg，当前'+w+'kg 超限，可能拒收/退件'); }
+      else if(mw && w>mw*0.8){ status='warn'; reasons.push('接近小件上限('+mw+'kg)，可能加收超尺寸/超重费'); }
+      if(r.maxLenCm && L && L>r.maxLenCm){ status='no'; reasons.push('最长边'+L+'cm 超小件处理范围('+r.maxLenCm+'cm)'); }
+    } else if(r.sizeClass==='oversize'){
+      if(w<2 && (!L || L<60)){ status='warn'; reasons.push('大件/超尺寸渠道发小件偏贵，建议选标准/小件渠道'); }
+    }
+    if(status==='ok' && (r.catTags||[])[0]==='带电'){ reasons.push('可发带电产品'); }
+    return {status, reasons, tag};
+  }
+  function prod(){
+    const t=document.getElementById('tv5_prod');
+    const w=document.getElementById('tv5_w'), L=document.getElementById('tv5_L');
+    return {cat:t?t.value:'包包', weight:w?(+w.value||0):1.5, maxLen:L?(+L.value||0):45};
+  }
+  let filterOn=false, nameMapBuilt=false, wrapped=false;
+  function buildNameMap(){
+    const el=document.getElementById('tailv5-data'); if(!el) return;
+    try{ const D=JSON.parse(el.textContent); const CH=D.channels||{}; window.__tv5nm={}; for(const k in CH){ if(CH[k]&&CH[k].name) window.__tv5nm[CH[k].name.trim()]=k; } nameMapBuilt=true; }catch(e){}
+  }
+  function injectControls(){
+    const dest=document.getElementById('dest'); if(!dest) return;
+    if(document.getElementById('tv5_restrict_box')) return;
+    const box=document.createElement('div'); box.id='tv5_restrict_box';
+    box.style.cssText='display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0;padding:7px 10px;border:1px dashed #3a4a5a;border-radius:8px;font-size:12px;background:rgba(255,255,255,.02)';
+    const LB='white-space:nowrap;display:inline-flex;gap:4px;align-items:center';
+    box.innerHTML='<span style="white-space:nowrap;font-weight:600;color:#8ab">品类/尺寸适用性</span>'+
+      '<label style="'+LB+'">产品类型<select id="tv5_prod" class="tv5-in">'+
+      '<option>包包</option><option>鞋子</option><option>服装</option><option>其它</option></select></label>'+
+      '<label style="'+LB+'">单件重kg<input id="tv5_w" class="tv5-in" type="number" step="0.1" value="1.5" style="width:56px"></label>'+
+      '<label style="'+LB+'">最长边cm<input id="tv5_L" class="tv5-in" type="number" step="1" value="45" style="width:56px"></label>'+
+      '<label style="'+LB+';cursor:pointer"><input type="checkbox" id="tv5_filter"> 只显示可用</label>'+
+      '<span id="tv5_sum" style="white-space:nowrap;color:#7ab"></span>';
+    dest.parentNode.insertBefore(box, dest.nextSibling);
+    const reEnh=()=>{ enhance(); };
+    box.querySelectorAll('select,input[type=number]').forEach(el=>{ el.addEventListener('change',reEnh); el.addEventListener('input',reEnh); });
+    document.getElementById('tv5_filter').addEventListener('change', function(){
+      filterOn=this.checked;
+      const sel=document.getElementById('chlist');
+      if(sel){
+        if(filterOn){ [...sel.options].forEach(o=>{ if(o._tv5status==='no') o.selected=false; }); }
+        else { [...sel.options].forEach(o=>{ o.selected=true; }); }
+      }
+      if(window.TV5_calc) TV5_calc();
+      if(window.TV5_renderCmp) TV5_renderCmp();
+    });
+  }
+  function enhance(){
+    const p=prod(); const sel=document.getElementById('chlist'); if(!sel) return;
+    let nOk=0,nWarn=0,nNo=0;
+    [...sel.options].forEach(o=>{
+      const key=o.value; const j=judge(key,p); o._tv5status=j.status;
+      const icon=j.status==='no'?EMB:(j.status==='warn'?WARN:OK);
+      const base=o.textContent.replace(/^[⛔⚠✅]\s*/,'').replace(/\s*[·•]\s*(小件|超尺寸|带电|标准)\s*$/,'').replace(/\s+/g,' ').trim();
+      const tagShow=(j.tag && j.tag!=='标准')?(' · '+j.tag):'';
+      o.textContent=icon+' '+base+tagShow;
+      o.title=(j.status==='ok'?'适用':j.status==='warn'?'注意':'不适用')+(j.reasons.length?('：'+j.reasons.join('；')):'');
+      if(j.status==='ok')nOk++; else if(j.status==='warn')nWarn++; else nNo++;
+    });
+    const sum=document.getElementById('tv5_sum');
+    if(sum) sum.textContent=`本产品(${p.cat} ${p.weight}kg/${p.maxLen}cm)：${nOk}可用 / ${nWarn}提示 / ${nNo}不适用（共 ${sel.options.length}）`;
+  }
+  function enhanceCmp(){
+    const p=prod(); const cmp=document.getElementById('cmp'); if(!cmp) return;
+    if(!nameMapBuilt) buildNameMap();
+    const NM=window.__tv5nm||{};
+    cmp.querySelectorAll('tr').forEach(tr=>{
+      const tds=tr.querySelectorAll('td'); if(tds.length<2) return;
+      const nameTd=tds[1]; const name=(nameTd.textContent||'').replace(/★.*$/,'').trim();
+      const key=NM[name]; if(!key) return;
+      const j=judge(key,p); if(j.status==='ok') return;
+      let s=nameTd.querySelector('.tv5badge');
+      if(!s){ s=document.createElement('span'); s.className='tv5badge'; s.style.cssText='margin-left:5px'; nameTd.appendChild(s); }
+      s.textContent=(j.status==='no'?EMB:WARN)+' '+(j.reasons[0]||'');
+      s.style.color=j.status==='no'?'#ef4444':'#f59e0b';
+      s.title=j.reasons.join('；');
+    });
+  }
+  function setup(){
+    if(!document.getElementById('chlist')) return;
+    if(!nameMapBuilt) buildNameMap();
+    if(!wrapped){
+      wrapped=true;
+      const _od=window.TV5_onDest; if(_od) window.TV5_onDest=function(){ _od(); enhance(); enhanceCmp(); };
+      const _cs=window.TV5_chSel; if(_cs) window.TV5_chSel=function(m){ _cs(m); enhance(); };
+      const _rc=window.TV5_renderCmp; if(_rc) window.TV5_renderCmp=function(){ _rc(); enhanceCmp(); };
+    }
+    injectControls(); enhance(); enhanceCmp();
+  }
+  if(window.rTailV5){
+    const _rt=window.rTailV5;
+    window.rTailV5=function(){ _rt(); setup(); };
+  }
+  if(window.MutationObserver){
+    let to; const mo=new MutationObserver(()=>{
+      if(document.getElementById('chlist') && document.getElementById('tailv5-data')){ clearTimeout(to); to=setTimeout(setup,60); }
+    });
+    mo.observe(document.body,{childList:true,subtree:true});
+  }
+})();
+
+</script>
 </body>
 </html>
