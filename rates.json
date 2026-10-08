@@ -6919,7 +6919,7 @@
       }
      ],
      "add": {
-      "war_per_kg": 6,
+      "war_per_kg": 0.0,
       "custom_per_shipment": 0
      },
      "tax": 0.05
@@ -6933,7 +6933,7 @@
       }
      ],
      "add": {
-      "war_per_kg": 6.5,
+      "war_per_kg": 0.0,
       "custom_per_shipment": 0
      },
      "tax": 0.1
@@ -6947,7 +6947,7 @@
       }
      ],
      "add": {
-      "war_per_kg": 6,
+      "war_per_kg": 0.0,
       "custom_per_shipment": 39.6
      },
      "tax": 0.05
@@ -6961,7 +6961,7 @@
       }
      ],
      "add": {
-      "war_per_kg": 6.5,
+      "war_per_kg": 0.0,
       "custom_per_shipment": 35.5
      },
      "tax": 0.05
@@ -6975,7 +6975,7 @@
       }
      ],
      "add": {
-      "war_per_kg": 8,
+      "war_per_kg": 3.0,
       "custom_per_shipment": 0
      },
      "tax": 0.05
