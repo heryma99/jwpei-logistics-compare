@@ -18585,1028 +18585,6 @@
    "min_ticket": 21
   },
   {
-   "id": "yf_eu_rail",
-   "cat": "b2b-air",
-   "carrier": "亚丰(璞景/德翼)",
-   "name": "欧盟快铁包税",
-   "dest": [
-    "德国",
-    "卢森堡",
-    "荷兰",
-    "奥地利",
-    "波兰",
-    "捷克",
-    "斯洛文尼亚",
-    "斯洛伐克",
-    "法国",
-    "西班牙",
-    "意大利",
-    "丹麦",
-    "芬兰",
-    "瑞典",
-    "葡萄牙",
-    "匈牙利",
-    "立陶宛",
-    "拉脱维亚",
-    "保加利亚",
-    "爱沙尼亚",
-    "希腊",
-    "爱尔兰"
-   ],
-   "countries": {
-    "德国": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 17.3
-      },
-      {
-       "min": 45.0,
-       "rate": 15.3
-      },
-      {
-       "min": 100.0,
-       "rate": 14.3
-      },
-      {
-       "min": 500.0,
-       "rate": 14.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 13.8
-      }
-     ]
-    },
-    "卢森堡": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 18.8
-      },
-      {
-       "min": 45.0,
-       "rate": 16.8
-      },
-      {
-       "min": 100.0,
-       "rate": 15.8
-      },
-      {
-       "min": 500.0,
-       "rate": 15.8
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.3
-      }
-     ]
-    },
-    "荷兰": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 18.8
-      },
-      {
-       "min": 45.0,
-       "rate": 16.8
-      },
-      {
-       "min": 100.0,
-       "rate": 15.8
-      },
-      {
-       "min": 500.0,
-       "rate": 15.8
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.3
-      }
-     ]
-    },
-    "奥地利": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 18.8
-      },
-      {
-       "min": 45.0,
-       "rate": 16.8
-      },
-      {
-       "min": 100.0,
-       "rate": 15.8
-      },
-      {
-       "min": 500.0,
-       "rate": 15.8
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.3
-      }
-     ]
-    },
-    "波兰": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 18.8
-      },
-      {
-       "min": 45.0,
-       "rate": 16.8
-      },
-      {
-       "min": 100.0,
-       "rate": 15.8
-      },
-      {
-       "min": 500.0,
-       "rate": 15.8
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.3
-      }
-     ]
-    },
-    "捷克": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 18.8
-      },
-      {
-       "min": 45.0,
-       "rate": 16.8
-      },
-      {
-       "min": 100.0,
-       "rate": 15.8
-      },
-      {
-       "min": 500.0,
-       "rate": 15.8
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.3
-      }
-     ]
-    },
-    "斯洛文尼亚": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 18.8
-      },
-      {
-       "min": 45.0,
-       "rate": 16.8
-      },
-      {
-       "min": 100.0,
-       "rate": 15.8
-      },
-      {
-       "min": 500.0,
-       "rate": 15.8
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.3
-      }
-     ]
-    },
-    "斯洛伐克": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 18.8
-      },
-      {
-       "min": 45.0,
-       "rate": 16.8
-      },
-      {
-       "min": 100.0,
-       "rate": 15.8
-      },
-      {
-       "min": 500.0,
-       "rate": 15.8
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.3
-      }
-     ]
-    },
-    "法国": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "西班牙": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "意大利": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "丹麦": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "芬兰": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "瑞典": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "葡萄牙": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "匈牙利": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 19.3
-      },
-      {
-       "min": 45.0,
-       "rate": 17.3
-      },
-      {
-       "min": 100.0,
-       "rate": 16.3
-      },
-      {
-       "min": 500.0,
-       "rate": 16.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 15.8
-      }
-     ]
-    },
-    "立陶宛": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 20.3
-      },
-      {
-       "min": 45.0,
-       "rate": 18.3
-      },
-      {
-       "min": 100.0,
-       "rate": 17.3
-      },
-      {
-       "min": 500.0,
-       "rate": 17.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 16.8
-      }
-     ]
-    },
-    "拉脱维亚": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 20.3
-      },
-      {
-       "min": 45.0,
-       "rate": 18.3
-      },
-      {
-       "min": 100.0,
-       "rate": 17.3
-      },
-      {
-       "min": 500.0,
-       "rate": 17.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 16.8
-      }
-     ]
-    },
-    "保加利亚": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 20.3
-      },
-      {
-       "min": 45.0,
-       "rate": 18.3
-      },
-      {
-       "min": 100.0,
-       "rate": 17.3
-      },
-      {
-       "min": 500.0,
-       "rate": 17.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 16.8
-      }
-     ]
-    },
-    "爱沙尼亚": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 20.3
-      },
-      {
-       "min": 45.0,
-       "rate": 18.3
-      },
-      {
-       "min": 100.0,
-       "rate": 17.3
-      },
-      {
-       "min": 500.0,
-       "rate": 17.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 16.8
-      }
-     ]
-    },
-    "希腊": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 20.3
-      },
-      {
-       "min": 45.0,
-       "rate": 18.3
-      },
-      {
-       "min": 100.0,
-       "rate": 17.3
-      },
-      {
-       "min": 500.0,
-       "rate": 17.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 16.8
-      }
-     ]
-    },
-    "爱尔兰": {
-     "min_charge_weight": 12,
-     "sur": {
-      "cat": {
-       "普货": 0,
-       "服装": 8,
-       "箱包皮革": 7,
-       "鞋类": 7,
-       "纺织品": 7
-      },
-      "nonfba": {
-       "per_kg": 1
-      },
-      "declare": 400,
-      "over_items": {
-       "free": 10,
-       "per_item": 20
-      },
-      "oversize": 350,
-      "minpc": 12
-     },
-     "tiers": [
-      {
-       "min": 21.0,
-       "rate": 20.3
-      },
-      {
-       "min": 45.0,
-       "rate": 18.3
-      },
-      {
-       "min": 100.0,
-       "rate": 17.3
-      },
-      {
-       "min": 500.0,
-       "rate": 17.3
-      },
-      {
-       "min": 1000.0,
-       "rate": 16.8
-      }
-     ]
-    }
-   },
-   "incoterm": "DDP",
-   "currency": "CNY",
-   "volumetric_divisor": 6000,
-   "surcharges": {
-    "remote_per_shipment": 30,
-    "product_fees": {
-     "服装": 8,
-     "鞋包": 7,
-     "纺织品": 7,
-     "箱包": 7,
-     "鞋子": 7,
-     "手机壳": 0
-    },
-    "declare": {
-     "per_shipment": 400
-    },
-    "nonfba": {
-     "per_kg": 1
-    }
-   },
-   "min_box": 12,
-   "min_ticket": 21
-  },
-  {
    "id": "yf_eu_kahang",
    "cat": "b2b-air",
    "carrier": "亚丰(璞景/德翼)",
@@ -31853,6 +30831,302 @@
    ],
    "charge_rule": "max",
    "rounding": 0.001
+  },
+  {
+   "id": "yf_uk_kahang_kapai_self",
+   "cat": "b2b-air",
+   "carrier": "亚丰(璞景/德翼)",
+   "name": "英国卡航卡派(自税)",
+   "dest": [
+    "英国"
+   ],
+   "countries": {
+    "英国": {
+     "min_charge_weight": 45,
+     "sur": {
+      "cat": {
+       "普货": 0
+      },
+      "nonfba": {
+       "per_kg": 1
+      },
+      "declare": 350,
+      "magnetic": {
+       "per_shipment": 350
+      },
+      "over_items": {
+       "free": 10,
+       "per_item": 20
+      },
+      "minpc": 21
+     },
+     "tiers": [
+      {
+       "min": 45.0,
+       "rate": 17.6
+      },
+      {
+       "min": 100.0,
+       "rate": 16.6
+      },
+      {
+       "min": 500.0,
+       "rate": 16.6
+      },
+      {
+       "min": 1000.0,
+       "rate": 16.5
+      },
+      {
+       "min": 2000.0,
+       "rate": 16.4
+      }
+     ]
+    }
+   },
+   "incoterm": "DDU",
+   "currency": "CNY",
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30,
+    "magnetic_per_shipment": 350,
+    "declare": {
+     "per_shipment": 350
+    },
+    "nonfba": {
+     "per_kg": 1
+    }
+   },
+   "min_box": 10,
+   "min_ticket": 45
+  },
+  {
+   "id": "yf_uk_kahang_kapai_bao",
+   "cat": "b2b-air",
+   "carrier": "亚丰(璞景/德翼)",
+   "name": "英国卡航卡派(包税)",
+   "dest": [
+    "英国"
+   ],
+   "countries": {
+    "英国": {
+     "min_charge_weight": 45,
+     "sur": {
+      "cat": {
+       "普货": 0,
+       "服装": 5,
+       "箱包皮革": 5,
+       "鞋类": 5,
+       "纺织品": 5
+      },
+      "nonfba": {
+       "per_kg": 1
+      },
+      "declare": 0,
+      "magnetic": {
+       "per_shipment": 350
+      },
+      "over_items": {
+       "free": 10,
+       "per_item": 20
+      },
+      "minpc": 21
+     },
+     "tiers": [
+      {
+       "min": 45.0,
+       "rate": 20.6
+      },
+      {
+       "min": 100.0,
+       "rate": 19.6
+      },
+      {
+       "min": 500.0,
+       "rate": 19.6
+      },
+      {
+       "min": 1000.0,
+       "rate": 19.5
+      },
+      {
+       "min": 2000.0,
+       "rate": 19.4
+      }
+     ]
+    }
+   },
+   "incoterm": "DDP",
+   "currency": "CNY",
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30,
+    "magnetic_per_shipment": 350,
+    "product_fees": {
+     "服装": 5,
+     "鞋包": 5,
+     "纺织品": 7,
+     "箱包": 7,
+     "鞋子": 7,
+     "手机壳": 0
+    },
+    "declare": {
+     "per_shipment": 350
+    },
+    "nonfba": {
+     "per_kg": 1
+    }
+   },
+   "min_box": 10,
+   "min_ticket": 45
+  },
+  {
+   "id": "yf_uk_sea_kapai_self",
+   "cat": "b2b-air",
+   "carrier": "亚丰(璞景/德翼)",
+   "name": "英国海运卡派(自税)",
+   "dest": [
+    "英国"
+   ],
+   "countries": {
+    "英国": {
+     "min_charge_weight": 45,
+     "sur": {
+      "cat": {
+       "普货": 0
+      },
+      "nonfba": {
+       "per_kg": 1
+      },
+      "declare": 350,
+      "magnetic": {
+       "per_shipment": 350
+      },
+      "over_items": {
+       "free": 10,
+       "per_item": 20
+      },
+      "minpc": 21
+     },
+     "tiers": [
+      {
+       "min": 45.0,
+       "rate": 5.0
+      },
+      {
+       "min": 100.0,
+       "rate": 4.0
+      },
+      {
+       "min": 500.0,
+       "rate": 4.0
+      },
+      {
+       "min": 1000.0,
+       "rate": 3.9
+      },
+      {
+       "min": 2000.0,
+       "rate": 3.8
+      }
+     ]
+    }
+   },
+   "incoterm": "DDU",
+   "currency": "CNY",
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30,
+    "magnetic_per_shipment": 350,
+    "declare": {
+     "per_shipment": 350
+    },
+    "nonfba": {
+     "per_kg": 1
+    }
+   },
+   "min_box": 10,
+   "min_ticket": 45
+  },
+  {
+   "id": "yf_uk_sea_kapai_bao",
+   "cat": "b2b-air",
+   "carrier": "亚丰(璞景/德翼)",
+   "name": "英国海运卡派(包税)",
+   "dest": [
+    "英国"
+   ],
+   "countries": {
+    "英国": {
+     "min_charge_weight": 45,
+     "sur": {
+      "cat": {
+       "普货": 0,
+       "服装": 5,
+       "箱包皮革": 5,
+       "鞋类": 5,
+       "纺织品": 5
+      },
+      "nonfba": {
+       "per_kg": 1
+      },
+      "declare": 0,
+      "magnetic": {
+       "per_shipment": 350
+      },
+      "over_items": {
+       "free": 10,
+       "per_item": 20
+      },
+      "minpc": 21
+     },
+     "tiers": [
+      {
+       "min": 45.0,
+       "rate": 7.0
+      },
+      {
+       "min": 100.0,
+       "rate": 6.0
+      },
+      {
+       "min": 500.0,
+       "rate": 6.0
+      },
+      {
+       "min": 1000.0,
+       "rate": 5.9
+      },
+      {
+       "min": 2000.0,
+       "rate": 5.8
+      }
+     ]
+    }
+   },
+   "incoterm": "DDP",
+   "currency": "CNY",
+   "volumetric_divisor": 6000,
+   "surcharges": {
+    "remote_per_shipment": 30,
+    "magnetic_per_shipment": 350,
+    "product_fees": {
+     "服装": 5,
+     "鞋包": 5,
+     "纺织品": 7,
+     "箱包": 7,
+     "鞋子": 7,
+     "手机壳": 0
+    },
+    "declare": {
+     "per_shipment": 350
+    },
+    "nonfba": {
+     "per_kg": 1
+    }
+   },
+   "min_box": 10,
+   "min_ticket": 45
   }
  ],
  "meta": {
