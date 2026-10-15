@@ -23222,8 +23222,8 @@
       "pricing": {
         "model": "first_continue",
         "first_weight": 1,
-        "first_fee": 34,
-        "continue_rate": 16
+        "first_fee": 34.0,
+        "continue_rate": 16.0
       },
       "size_rules": {
         "TW": {
@@ -23255,8 +23255,8 @@
       "pricing": {
         "model": "first_continue",
         "first_weight": 1,
-        "first_fee": 35,
-        "continue_rate": 17
+        "first_fee": 35.0,
+        "continue_rate": 17.0
       },
       "size_rules": {
         "TW": {
@@ -23288,8 +23288,8 @@
       "pricing": {
         "model": "first_continue",
         "first_weight": 1,
-        "first_fee": 32,
-        "continue_rate": 16
+        "first_fee": 32.0,
+        "continue_rate": 16.0
       },
       "size_rules": {
         "TW": {
@@ -23322,8 +23322,8 @@
       "pricing": {
         "model": "first_continue",
         "first_weight": 1,
-        "first_fee": 33,
-        "continue_rate": 17
+        "first_fee": 33.0,
+        "continue_rate": 17.0
       },
       "size_rules": {
         "TW": {
