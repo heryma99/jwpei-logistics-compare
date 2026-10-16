@@ -2979,7 +2979,8 @@ function rAll(){
       +' <a href="#" class="flink" data-act="none">全不选</a>'
       +' <a href="#" class="flink" data-act="small">仅小包</a>'
       +' <a href="#" class="flink" data-act="b2b-air">仅B2B</a>'
-      +' <a href="#" class="flink" data-act="express">仅快递</a></div>';
+      +' <a href="#" class="flink" data-act="express">仅快递</a></div>'
+      + (window.__fltChipsHtml?window.__fltChipsHtml(true):'');
     cats.forEach(([cat,label])=>{
       const chs=RATES.channels.filter(c=>c.cat===cat);
       html+='<div class="fgroup"><div class="glabel">'+label+'（'+chs.length+'）</div><div class="gitems">';
@@ -3022,7 +3023,6 @@ function rAll(){
           <label class="mut"><input type="checkbox" name="acCargo" value="手机壳"> 手机壳</label>           <label class="mut"><input type="checkbox" name="acCargo" value="竹/木制品"> 竹/木制品(商检)</label>
         </div>
       </div>
-      ${window.__fltChipsHtml?window.__fltChipsHtml(true):""}
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
