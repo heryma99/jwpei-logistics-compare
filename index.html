@@ -3018,7 +3018,7 @@ function rAll(){
           <label class="mut"><input type="checkbox" name="acCargo" value="纺织品"> 纺织品</label>
           <label class="mut"><input type="checkbox" name="acCargo" value="箱包" checked> 箱包/皮革（JW PEI 默认）</label>
           <label class="mut"><input type="checkbox" name="acCargo" value="鞋子"> 鞋子</label>
-          <label class="mut"><input type="checkbox" name="acCargo" value="手机壳"> 手机壳</label>
+          <label class="mut"><input type="checkbox" name="acCargo" value="手机壳"> 手机壳</label>           <label class="mut"><input type="checkbox" name="acCargo" value="竹/木制品"> 竹/木制品(商检)</label>
         </div>
       </div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
@@ -3180,6 +3180,7 @@ function rAll(){
     const opt={insurance:$("#acIns").checked, qty, eurFx, magnet:document.getElementById('acMagnet')?.checked};
     const cargoCat=$("#acCargo")?$("#acCargo").value:'箱包皮革';
     const cargoCats=[...document.querySelectorAll('input[name="acCargo"]:checked')].map(cb=>cb.value);
+    const CAT_ALIAS={'箱包':'箱包皮革','鞋子':'鞋类'};
     const acMagnet=document.getElementById('acMagnet')?.checked;
     const nonFba=$("#acNonfba")?$("#acNonfba").checked:false;
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
@@ -3224,7 +3225,7 @@ function rAll(){
           let catTotal=0;
           cargoCats.forEach(c=>{
             const r=(s&&s.product_fees&&s.product_fees[c]!=null)?s.product_fees[c]
-                   :(s&&s.cat&&s.cat[c]!=null)?s.cat[c]
+                   :(s&&s.cat&&(s.cat[c]!=null||(CAT_ALIAS&&s.cat[CAT_ALIAS[c]]!=null)))?(s.cat[c]!=null?s.cat[c]:s.cat[CAT_ALIAS[c]])
                    :(s&&s.product&&s.product[c]!=null)?s.product[c]:0;
             catTotal+=r;
           });
@@ -3241,7 +3242,7 @@ function rAll(){
             if(wantDecl && s.declare){
               let dl=0;
               if(typeof s.declare==='number') dl=s.declare;
-              else { const ps=s.declare.per_shipment||0; const pk=s.declare.per_kg||0; const mk=s.declare.min_kg||0; dl=ps+(totalBw>=mk?pk*totalBw:0); }
+              else { const bs=s.declare.base||s.declare.per_shipment||0; const pk=s.declare.per_kg||s.declare.per_kg_op||0; const mk=s.declare.min_kg||0; dl=bs+((!mk||totalBw>=mk)?pk*totalBw:0); }
               if(dl){ base+=dl; surTxt+=` + 单独报关 ${dl.toFixed(2)}`; }
             }
           }
@@ -3263,6 +3264,7 @@ function rAll(){
             if(rm){ base+=rm; surTxt+=` + 偏远 ${rm.toFixed(2)}`; }
           }
           // 磁检（独立勾选项：带磁体货物空运基本都收）—— 兼容 magnetic_per_kg / magnetic_per_shipment / magnetic.per_shipment / 数字 magnetic
+          if(s.inspection && cargoCats.includes('竹/木制品')){ const a3=Math.max((s.inspection.per_kg||0)*totalBw, s.inspection.min||0); if(a3){ base+=a3; surTxt+=` + 商检费 ${a3.toFixed(2)}`; } }
           if(acMagnet && s){
             let mg=0;
             if(s.magnetic_per_kg!=null) mg=Math.max(s.magnetic_per_kg*totalBw, s.magnetic_min||0);
@@ -3293,14 +3295,14 @@ function rAll(){
         let catTotal=0;
         cargoCats.forEach(c=>{
           const r=(s&&s.product_fees&&s.product_fees[c]!=null)?s.product_fees[c]
-                 :(s&&s.cat&&s.cat[c]!=null)?s.cat[c]
+                 :(s&&s.cat&&(s.cat[c]!=null||(CAT_ALIAS&&s.cat[CAT_ALIAS[c]]!=null)))?(s.cat[c]!=null?s.cat[c]:s.cat[CAT_ALIAS[c]])
                  :(s&&s.product&&s.product[c]!=null)?s.product[c]:0;
           catTotal+=r;
         });
         base+=catTotal*totalBw; surTxt+=` + 产品附加费 ${catTotal}/kg×${totalBw.toFixed(1)}=${(catTotal*totalBw).toFixed(2)}`;
         if(s){
           if(nonFba&&s.nonfba){ const nf=Math.max((s.nonfba.kg||0)*totalBw,s.nonfba.min||0); if(nf){ base+=nf; surTxt+=` + 非FBA ${nf.toFixed(2)}`; } }
-          if(wantDecl&&s.declare){ base+=s.declare; surTxt+=` + 单独报关 ${s.declare}/票`; }
+          if(wantDecl&&s.declare){ const dl2=(typeof s.declare==='number')?s.declare:((s.declare.base||s.declare.per_shipment||0)+((s.declare.per_kg||s.declare.per_kg_op||0)*totalBw)); if(dl2){ base+=dl2; surTxt+=` + 单独报关 ${dl2.toFixed(2)}`; } }
         }
         // 磁检（独立勾选项）
         if(acMagnet && s && s.magnetic_per_kg){ const mg=Math.max(s.magnetic_per_kg*totalBw, s.magnetic_min||0); if(mg){ base+=mg; surTxt+=` + 磁检 ${mg.toFixed(2)}`; } }
