@@ -2973,26 +2973,11 @@ function rAll(){
   // const destOpts = ...  // 已弃用，改用 combo
 
   function buildFilterHTML(){
-    const cats=[['small','小包渠道（B2C 直发）'],['b2b-air','B2B / 海外仓（批量）'],['express','商业快递（DHL / FedEx / UPS）']];
-    let html='<div id="acFilter" class="filterbox"><div class="fbhead">渠道筛选 <span class="mut">勾选要参与比价的渠道（默认全选，取消勾选即不计入）</span>'
-      +' <a href="#" class="flink" data-act="all">全选</a>'
-      +' <a href="#" class="flink" data-act="none">全不选</a>'
-      +' <a href="#" class="flink" data-act="small">仅小包</a>'
-      +' <a href="#" class="flink" data-act="b2b-air">仅B2B</a>'
-      +' <a href="#" class="flink" data-act="express">仅快递</a></div>'
-      + (window.__fltChipsHtml?window.__fltChipsHtml(true):'');
-    cats.forEach(([cat,label])=>{
-      const chs=RATES.channels.filter(c=>c.cat===cat);
-      html+='<div class="fgroup"><div class="glabel">'+label+'（'+chs.length+'）</div><div class="gitems">';
-      chs.forEach(c=>{
-        const destList=c.cat==='small'?Object.keys(c.countries||{}):(c.dest||[]);
-        const destTitle=destList.join('、');
-        html+='<label class="fitem" title="'+destTitle+'"><input type="checkbox" class="acChk" data-id="'+c.id+'" data-cat="'+cat+'" checked> '+c.name+' <span class="mut">('+destList.length+'国)</span></label>';
-      });
-      html+='</div></div>';
-    });
-    html+='</div>';
-    return html;
+    return '<div id="acFilter" class="filterbox"><div class="fbhead">渠道筛选 <span class="mut">业务模式 → 级联筛选 → 勾选参赛渠道（默认全部参赛）</span>'
+      +' <a href="#" class="flink2" data-fltact="all">全选</a>'
+      +' <a href="#" class="flink2" data-fltact="none">全不选</a></div>'
+      + (window.__fltBoxHTML?window.__fltBoxHTML():'')
+      + '</div>';
   }
 
   let h = `<div class="card"><h2>⑩ 全渠道比价　<span class="pill">W102 真实费率 · ${RATES.channels.length} 渠道</span></h2>
@@ -3023,7 +3008,7 @@ function rAll(){
           <label class="mut"><input type="checkbox" name="acCargo" value="手机壳"> 手机壳</label>           <label class="mut"><input type="checkbox" name="acCargo" value="竹/木制品"> 竹/木制品(商检)</label>
         </div>
       </div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
+      <div id="acDeclRow" style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acMagnet"> 磁检（带磁体，空运常收）</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acConservative"> 完整预算（含偏远等）</label></div>
@@ -3183,7 +3168,7 @@ function rAll(){
     const cargoCats=[...document.querySelectorAll('input[name="acCargo"]:checked')].map(cb=>cb.value);
     const CAT_ALIAS={'箱包':'箱包皮革','鞋子':'鞋类'};
     const acMagnet=document.getElementById('acMagnet')?.checked;
-    const nonFba=window.__FLT?(window.__FLT.wh==="非FBA"):($("#acNonfba")?$("#acNonfba").checked:false);
+    const nonFba=window.__FLT2?(window.__FLT2.wh==="非FBA"):false;
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
     const bl=parseFloat($("#acBl").value)||l, bw_=parseFloat($("#acBw").value)||wd, bh=parseFloat($("#acBh").value)||h;
     const results=[];
@@ -3192,7 +3177,7 @@ function rAll(){
     RATES.channels.forEach(ch=>{
       const fbox=document.querySelector('.acChk[data-id="'+ch.id+'"]');
       if(fbox && !fbox.checked) return;
-      if(window.__fltReason){ var _fr=window.__fltReason({name:ch.name||"", id:ch.id}, window.__FLT?window.__FLT.wh:"FBA"); if(_fr){ results.push({ch:ch, status:"flt", why:_fr}); return; } }
+      if(window.__fltPool && !window.__fltPool(ch)) return; if(window.__fltReason2){ var _fr=window.__fltReason2({name:ch.name||'', id:ch.id}); if(_fr){ results.push({ch:ch, status:'flt', why:_fr}); return; } }
       const co=findCountryWithAlias(ch.countries||{}, country);
       const div=co.volumetric_divisor||ch.volumetric_divisor||10000;   // ★ per-country 除数优先，回退渠道级
       const actualPerBox=w*qty;
@@ -5205,7 +5190,8 @@ window.__gcZoneOf=function(zip){
 </script>
 
 <script>
-/* TOB 筛选字段: 运输方式/产品线/税务模式(多选) + 仓库类型(单选) 2026-10-16 */
+/* TOB 筛选 v2: ④简单chips + ⑩级联筛选(业务模式四选一/默认全不选/计数/置灰) 2026-10-16 */
+/* ---- ④ 头程: 简单chips(状态字典, 与⑩级联相互独立) ---- */
 window.__FLT={t:{},l:{},x:{},wh:'FBA'};
 '空运,海运,海卡,卡航,卡派,快递,铁路'.split(',').forEach(function(k){__FLT.t[k]=true;});
 '美森系,谷仓专线,盐田普船,快线·限时达,经济·慢线,UPS派送,标准'.split(',').forEach(function(k){__FLT.l[k]=true;});
@@ -5247,32 +5233,120 @@ window.__fltChipsHtml=function(withWh){
   h+=row('运输方式',keys(F.t).map(function(k){return chip('t',k,F.t[k]!==false);}).join(''));
   h+=row('产品线',keys(F.l).map(function(k){return chip('l',k,F.l[k]!==false);}).join(''));
   h+=row('税务模式',keys(F.x).map(function(k){return chip('x',k,F.x[k]!==false);}).join(''));
-  if(withWh) h+=row('仓库类型',chip(null,'FBA',F.wh==='FBA')+chip(null,'非FBA',F.wh==='非FBA'))
-    +'<div style="font-size:11px;color:var(--mut);margin-top:4px;line-height:1.6">说明：本区只决定<b>哪些渠道参与比价</b>；费用在上方输入区计算。其中「仓库类型」特殊——既过滤渠道（谷仓专线选FBA不显示），也决定非FBA附加费(+1/kg)是否计入报价。</div>';
+  if(withWh) h+=row('仓库类型',chip(null,'FBA',F.wh==='FBA')+chip(null,'非FBA',F.wh==='非FBA'));
   return h+'</div>';
 };
+/* ---- ⑩ 全渠道比价: 级联筛选(业务模式→运输→产品线→税务→仓库, 默认chips全不选) ---- */
+window.__FLT2={m:'B2B', t:[], l:[], x:[], w:'FBA', q:{}};
+window.__fltPool=function(ch){
+  if(!window.__FLT2||!ch) return false;
+  var m=__FLT2.m; if(m==='全部') return true;
+  var cat=ch.cat||'', n=ch.name||'', isExp=(cat==='express');
+  if(m==='B2B') return cat==='b2b-air' || (isExp && !/小货|小包/.test(n));
+  if(m==='B2C') return cat==='small' || (isExp && /小货|小包/.test(n));
+  if(m==='EXP') return isExp;
+  return true;
+};
+window.__fltHit=function(ch){
+  if(!window.__FLT2||!ch) return false;
+  var tg=window.__chTags(ch.name, ch.id);
+  if(__FLT2.t.length && __FLT2.t.indexOf(tg.t)<0) return false;
+  if(__FLT2.l.length){ var h=false; for(var i=0;i<tg.l.length;i++) if(__FLT2.l.indexOf(tg.l[i])>=0){h=true;break;} if(!h) return false; }
+  if(__FLT2.x.length && __FLT2.x.indexOf(tg.x)<0) return false;
+  if(__FLT2.m==='B2B' && __FLT2.w==='FBA' && tg.whOnly) return false;
+  return true;
+};
+window.__fltReason2=function(ch){
+  if(!window.__FLT2||!ch) return null;
+  var tg=window.__chTags(ch.name, ch.id);
+  if(__FLT2.t.length && __FLT2.t.indexOf(tg.t)<0) return '运输方式不符（'+tg.t+'）';
+  if(__FLT2.l.length){ var h=false; for(var i=0;i<tg.l.length;i++) if(__FLT2.l.indexOf(tg.l[i])>=0){h=true;break;} if(!h) return '产品线不符（'+tg.l.join('/')+'）'; }
+  if(__FLT2.x.length && __FLT2.x.indexOf(tg.x)<0) return '税务模式不符（'+tg.x+'）';
+  if(__FLT2.m==='B2B' && __FLT2.w==='FBA' && tg.whOnly) return '谷仓专属渠道，仅海外仓，FBA 不适用';
+  if(__FLT2.q[ch.id]===false) return '已手动取消勾选';
+  return null;
+};
+window.__fltBoxHTML=function(){
+  var pool=(window.RATES&&window.RATES.channels||[]).filter(function(c){ return window.__fltPool(c); });
+  function ccount(o){
+    var n=0;
+    pool.forEach(function(c){
+      var tg=window.__chTags(c.name, c.id);
+      if(o.t && o.t.indexOf(tg.t)<0) return;
+      if(o.l && !tg.l.some(function(v){return o.l.indexOf(v)>=0;})) return;
+      if(o.x && o.x.indexOf(tg.x)<0) return;
+      n++;
+    });
+    return n;
+  }
+  function chipH(on, enabled, label, attr){
+    return '<button type="button" class="fltChip"'+attr+' style="font-size:12px;padding:3px 11px;border-radius:999px;cursor:'+(enabled?'pointer':'not-allowed')+';margin:2px 3px;border:1px solid '+(on?'var(--acc)':(enabled?'var(--line)':'rgba(127,127,127,.18)'))+';background:'+(on?'var(--acc)':(enabled?'transparent':'rgba(127,127,127,.08)'))+';color:'+(on?'#fff':(enabled?'var(--mut)':'rgba(154,167,180,.4)'))+'">'+label+'</button>';
+  }
+  function rowH(title, inner){ return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0"><span style="font-size:12px;color:var(--mut);flex:0 0 56px">'+title+'</span>'+inner+'</div>'; }
+  var F=__FLT2;
+  var h='';
+  h+=rowH('业务模式', [['B2B','B2B 大货'],['B2C','B2C 小包'],['EXP','商业快递'],['全部','全部对比']].map(function(p){ return chipH(F.m===p[0], true, p[1], ' data-m="'+p[0]+'"'); }).join(''));
+  h+=rowH('运输方式', ['空运','海运','海卡','卡航','卡派','快递'].map(function(k){ var c=ccount({t:[k]}); return chipH(F.t.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="t" data-k="'+k+'"'); }).join(''));
+  h+=rowH('产品线', ['美森系','谷仓专线','盐田普船','快线·限时达','经济·慢线','UPS派送','标准'].map(function(k){ var c=ccount({l:[k]}); return chipH(F.l.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="l" data-k="'+k+'"'); }).join(''));
+  h+=rowH('税务模式', ['包税','自税/递延','其他'].map(function(k){ var c=ccount({x:[k]}); return chipH(F.x.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="x" data-k="'+k+'"'); }).join(''));
+  if(F.m==='B2B') h+=rowH('仓库类型', ['FBA','非FBA'].map(function(k){ return chipH(F.w===k, true, k, ' data-cw="'+k+'"'); }).join(''));
+  h+='<div style="font-size:11px;color:var(--mut);margin:4px 0;line-height:1.6">说明：chips 未选=不限制；计数=选中后命中的渠道数；置灰=当前条件下无渠道。仓库类型选 FBA 时谷仓专线渠道不显示。费用由上方「计费参数」区计算，与筛选无关。</div>';
+  var hit=pool.filter(function(c){ return window.__fltHit(c); });
+  h+='<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px"><div class="mut" style="font-size:12px;margin-bottom:4px">命中渠道 '+hit.length+' 条（勾选=参赛）</div><div style="max-height:240px;overflow:auto;display:flex;flex-wrap:wrap;gap:2px 14px">';
+  hit.forEach(function(c){
+    var on=F.q[c.id]!==false;
+    h+='<label class="mut" style="min-width:auto;font-size:12px"><input type="checkbox" class="acChk" data-id="'+c.id+'" data-cat="'+(c.cat||'')+'"'+(on?' checked':'')+'> '+c.name+'</label>';
+  });
+  if(!hit.length) h+='<span class="mut">无匹配渠道</span>';
+  h+='</div></div>';
+  return h;
+};
+/* ---- 事件委托(④+⑩共用) ---- */
+document.addEventListener('click', function(e){
+  var el=e.target;
+  while(el && el!==document && !(el.classList && (el.classList.contains('fltChip')||el.classList.contains('flink2')))) el=el.parentNode;
+  if(!el || el===document) return;
+  if(el.classList.contains('flink2')){
+    var act=el.getAttribute('data-fltact');
+    (window.RATES&&window.RATES.channels||[]).forEach(function(c){
+      if(window.__fltPool(c) && window.__fltHit(c)) __FLT2.q[c.id]=(act==='all');
+    });
+  } else {
+    var m=el.getAttribute('data-m'), cg=el.getAttribute('data-cg'), cw=el.getAttribute('data-cw'), g=el.getAttribute('data-grp'), k=el.getAttribute('data-k'), w4=el.getAttribute('data-wh');
+    if(m){ __FLT2.m=m; __FLT2.t=[]; __FLT2.l=[]; __FLT2.x=[]; }
+    else if(cg){ var i2=(__FLT2[cg]||[]).indexOf(k); if(i2>=0) __FLT2[cg].splice(i2,1); else if(__FLT2[cg]) __FLT2[cg].push(k); }
+    else if(cw){ __FLT2.w=cw; }
+    else if(g && k){ __FLT[g][k]=(__FLT[g][k]===false)?true:false; }
+    else if(w4){ __FLT.wh=w4; }
+    else return;
+  }
+  __fltSync();
+  var box=document.getElementById('acFilter'); if(box && window.__fltBoxHTML) box.innerHTML=window.__fltBoxHTML();
+  var ac=document.getElementById('acCalc'), run=document.getElementById('run');
+  if(ac && document.getElementById('acW')) ac.click(); else if(run) run.click();
+});
+document.addEventListener('change', function(e){
+  var t=e.target;
+  if(t && t.classList && t.classList.contains('acChk') && t.getAttribute('data-id')){
+    __FLT2.q[t.getAttribute('data-id')]=t.checked;
+    var ac=document.getElementById('acCalc'); if(ac) ac.click();
+  }
+});
 window.__fltSync=function(){
   var cs=document.querySelectorAll('.fltChip');
   for(var i=0;i<cs.length;i++){
     var b=cs[i], g=b.getAttribute('data-grp'), k=b.getAttribute('data-k'), w=b.getAttribute('data-wh');
+    if(!g && !w) continue;
     var on = g ? (__FLT[g][k]!==false) : (__FLT.wh===w);
     b.style.border='1px solid '+(on?'var(--acc)':'var(--line)');
     b.style.background=on?'var(--acc)':'var(--panel2)';
     b.style.color=on?'#fff':'var(--mut)';
   }
+  var dr=document.getElementById('acDeclRow');
+  if(dr) dr.style.display=(window.__FLT2 && __FLT2.m==='B2C')?'none':'';
 };
-document.addEventListener('click', function(e){
-  var el=e.target;
-  while(el && el!==document && !(el.classList && el.classList.contains('fltChip'))) el=el.parentNode;
-  if(!el || el===document) return;
-  var g=el.getAttribute('data-grp'), k=el.getAttribute('data-k'), w=el.getAttribute('data-wh');
-  if(g && k) __FLT[g][k]=(__FLT[g][k]===false)?true:false;
-  else if(w) __FLT.wh=w;
-  else return;
-  __fltSync();
-  var ac=document.getElementById('acCalc'), run=document.getElementById('run');
-  if(ac && document.getElementById('acW')) ac.click(); else if(run) run.click();
-});
+if(window.MutationObserver){ new MutationObserver(function(){ try{ __fltSync(); }catch(e){} }).observe(document.getElementById('app')||document.body, {childList:true}); }
 </script>
+
 </body>
 </html>
