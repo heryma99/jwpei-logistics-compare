@@ -1534,7 +1534,7 @@ function combSkus(){
     收货类型 <select id="b2bType"><option value="">不限（2C 个人）</option><option value="FBA">2B · FBA 仓</option><option value="非FBA">2B · 非FBA（商业/住宅）</option></select>
     <span class="mut" style="font-size:11px">·发 2C 个人选「不限」；发 2B 商业选 FBA/非FBA，渠道在 FBA 仓地址有特殊附加、非FBA 按 非FBA附加/kg 算</span>
     邮编 <input id="acZip" type="text" placeholder="选填→自动识别美西/美中/美东" maxlength="5" style="width:130px" title="美国邮编首位：8/9=美西  4-7=美中  0-3=美东">
-    货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option><option value="竹/木制品">竹/木制品(商检)</option></select><label style="margin-left:12px"><input type="checkbox" id="aloneDeclare"> 单独报关</label>
+    货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option><option value="竹/木制品">竹/木制品(商检)</option></select><label style="margin-left:12px"><input type="checkbox" id="aloneDeclare"> 单独报关</label>${window.__fltChipsHtml?window.__fltChipsHtml(false):""}
     EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
     USD/CNY <input type="number" id="usdFx" step="0.01" value="7.20" style="width:70px" title="申报价均为USD，凡用申报值算VAT/DUTY/手续费都先×此汇率转CNY" onchange="try{localStorage.setItem('jwpei_usdCny',this.value)}catch(e){}">
     <label style="margin-left:12px"><input type="checkbox" id="conservativeMode"> 完整预算（含偏远/磁检/商业清关等可能费用）</label>
@@ -1566,6 +1566,7 @@ function combSkus(){
       const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
       const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
       if(window.__gcZoneOf && ch.id && String(ch.id).indexOf('yf_us_gc_')===0){ var _gz=window.__gcZoneOf(($("#acZip")&&$("#acZip").value)||""); if($("#acZip") && String($("#acZip").value||"").trim()){  if(_gz===null){ reasons.push("邮编分区无报价,请单询"); }  else if(_gz && _gz.id!==ch.id){ reasons.push("邮编分区不符(适用: "+_gz.name+")"); } } }
+      if(window.__fltReason){ var _fr2=window.__fltReason({name:(ch.channel||ch.name||""), id:ch.id}, (($("#b2bType")&&$("#b2bType").value)==="非FBA")?"非FBA":"FBA"); if(_fr2) reasons.push(_fr2); }
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
@@ -3021,6 +3022,7 @@ function rAll(){
           <label class="mut"><input type="checkbox" name="acCargo" value="手机壳"> 手机壳</label>           <label class="mut"><input type="checkbox" name="acCargo" value="竹/木制品"> 竹/木制品(商检)</label>
         </div>
       </div>
+      ${window.__fltChipsHtml?window.__fltChipsHtml(true):""}
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
@@ -3182,7 +3184,7 @@ function rAll(){
     const cargoCats=[...document.querySelectorAll('input[name="acCargo"]:checked')].map(cb=>cb.value);
     const CAT_ALIAS={'箱包':'箱包皮革','鞋子':'鞋类'};
     const acMagnet=document.getElementById('acMagnet')?.checked;
-    const nonFba=$("#acNonfba")?$("#acNonfba").checked:false;
+    const nonFba=window.__FLT?(window.__FLT.wh==="非FBA"):($("#acNonfba")?$("#acNonfba").checked:false);
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
     const bl=parseFloat($("#acBl").value)||l, bw_=parseFloat($("#acBw").value)||wd, bh=parseFloat($("#acBh").value)||h;
     const results=[];
@@ -3191,6 +3193,7 @@ function rAll(){
     RATES.channels.forEach(ch=>{
       const fbox=document.querySelector('.acChk[data-id="'+ch.id+'"]');
       if(fbox && !fbox.checked) return;
+      if(window.__fltReason){ var _fr=window.__fltReason({name:ch.name||"", id:ch.id}, window.__FLT?window.__FLT.wh:"FBA"); if(_fr){ results.push({ch:ch, status:"flt", why:_fr}); return; } }
       const co=findCountryWithAlias(ch.countries||{}, country);
       const div=co.volumetric_divisor||ch.volumetric_divisor||10000;   // ★ per-country 除数优先，回退渠道级
       const actualPerBox=w*qty;
@@ -3343,6 +3346,7 @@ function rAll(){
     const below=results.filter(r=>r.status==='below');
     if(below.length) html+=`<div class="mut" style="margin-top:8px">⚠️ 低于起收重量（未计入）：${below.map(b=>`${b.ch.name}（${b.min}kg起）`).join('、')}</div>`;
     if(na.length) html+=`<div class="mut" style="margin-top:4px">该目的国无报价（不在渠道服务范围）：${na.map(n=>n.ch.name).join('、')}</div>`;
+    const fltR=results.filter(r=>r.status==='flt'); if(fltR.length) html+=`<div class="mut" style="margin-top:4px">已按筛选条件过滤（不参与比价）：${fltR.map(n=>n.ch.name+'（'+n.why+'）').join('、')}</div>`;
     $("#acResults").innerHTML=html;
     $("#acFn").innerHTML='计算口径说明：① 计费重=MAX(实重,长×宽×高÷渠道除数)，结果表已显示各渠道除数；② 小包/快递按“每箱一票”×箱数；③ B2B 按总重×费率 + 产品附加费；④ <b>捷邮中东</b>已计入战争附加费(kg)、海关资料处理费(票)、VAT/DUTY(申报值×比例)；⑤ <b>云途欧盟</b>已计入 VAT(申报值×国别税率)+代缴服务费(2%)+3欧元/Item临时固定关税(汇率按上方输入框)；⑥ 仍未计入：磁检费、偏远费、超品名费、旺季附加费。最终以承运商账单为准。';
   }
@@ -5199,6 +5203,76 @@ window.__gcZoneOf=function(zip){
   }
   return null;
 };
+</script>
+
+<script>
+/* TOB 筛选字段: 运输方式/产品线/税务模式(多选) + 仓库类型(单选) 2026-10-16 */
+window.__FLT={t:{},l:{},x:{},wh:'FBA'};
+'空运,海运,海卡,卡航,卡派,快递,铁路'.split(',').forEach(function(k){__FLT.t[k]=true;});
+'美森系,谷仓专线,盐田普船,快线·限时达,经济·慢线,UPS派送,标准'.split(',').forEach(function(k){__FLT.l[k]=true;});
+'包税,自税/递延,其他'.split(',').forEach(function(k){__FLT.x[k]=true;});
+window.__chTags=function(name,id){
+  var n=String(name||''), t='其他';
+  if(n.indexOf('海卡')>=0)t='海卡'; else if(n.indexOf('卡派')>=0)t='卡派'; else if(n.indexOf('卡航')>=0)t='卡航';
+  else if(/空运|空派|AIR/i.test(n))t='空运'; else if(/海运|海派|美森|CLX|快船/i.test(n))t='海运';
+  else if(n.indexOf('铁路')>=0||n.charAt(n.length-1)==='铁')t='铁路'; else if(/UPS|FedEx|DHL/i.test(n))t='快递';
+  var ov={yilian_kr_head_cbm:'海运'}; if(id&&ov[id])t=ov[id];
+  var L=[];
+  if(/美森|CLX/i.test(n))L.push('美森系');
+  if(n.indexOf('谷仓')>=0)L.push('谷仓专线');
+  if(/盐田|普船/.test(n))L.push('盐田普船');
+  if(/限时达|快线|特快/.test(n))L.push('快线·限时达');
+  if(/经济|慢线/.test(n))L.push('经济·慢线');
+  if(/UPS/i.test(n))L.push('UPS派送');
+  if(!L.length)L.push('标准');
+  var x=(n.indexOf('自税')>=0||n.indexOf('递延')>=0)?'自税/递延':(n.indexOf('包税')>=0?'包税':'其他');
+  return {t:t,l:L,x:x,whOnly:n.indexOf('谷仓')>=0};
+};
+window.__fltReason=function(ch, wh){
+  if(!window.__FLT||!ch) return null;
+  var tg=window.__chTags(ch.name, ch.id);
+  function onKeys(o){ var a=[]; for(var k in o) if(o[k]!==false) a.push(k); return a; }
+  var oT=onKeys(__FLT.t), oL=onKeys(__FLT.l), oX=onKeys(__FLT.x);
+  if(oT.length && oT.indexOf(tg.t)<0) return '运输方式不符（'+tg.t+'）';
+  if(oL.length){ var hit=false; for(var i=0;i<tg.l.length;i++) if(oL.indexOf(tg.l[i])>=0){hit=true;break;} if(!hit) return '产品线不符（'+tg.l.join('/')+'）'; }
+  if(oX.length && oX.indexOf(tg.x)<0) return '税务模式不符（'+tg.x+'）';
+  if((wh||__FLT.wh||'FBA')==='FBA' && tg.whOnly) return '谷仓专属渠道，仅海外仓，FBA 不适用';
+  return null;
+};
+window.__fltChipsHtml=function(withWh){
+  function chip(grp,k,on){ return '<button type="button" class="fltChip"'+(grp?' data-grp="'+grp+'" data-k="'+k+'"':' data-wh="'+k+'"')+' style="font-size:11px;padding:2px 9px;border-radius:999px;cursor:pointer;border:0.5px solid '+(on?'#185FA5':'rgba(127,127,127,.35)')+';background:'+(on?'#E6F1FB':'transparent')+';color:'+(on?'#185FA5':'inherit')+'">'+k+'</button>'; }
+  function row(title,inner){ return '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:2px 0"><span style="font-size:11px;color:#888;flex:0 0 62px">'+title+'</span>'+inner+'</div>'; }
+  var F=window.__FLT;
+  function keys(o){ var a=[]; for(var k in o) a.push(k); return a; }
+  var h='<div style="margin:8px 0 4px;line-height:2">';
+  h+=row('运输方式',keys(F.t).map(function(k){return chip('t',k,F.t[k]!==false);}).join(''));
+  h+=row('产品线',keys(F.l).map(function(k){return chip('l',k,F.l[k]!==false);}).join(''));
+  h+=row('税务模式',keys(F.x).map(function(k){return chip('x',k,F.x[k]!==false);}).join(''));
+  if(withWh) h+=row('仓库类型',chip(null,'FBA',F.wh==='FBA')+chip(null,'非FBA',F.wh==='非FBA'));
+  return h+'</div>';
+};
+window.__fltSync=function(){
+  var cs=document.querySelectorAll('.fltChip');
+  for(var i=0;i<cs.length;i++){
+    var b=cs[i], g=b.getAttribute('data-grp'), k=b.getAttribute('data-k'), w=b.getAttribute('data-wh');
+    var on = g ? (__FLT[g][k]!==false) : (__FLT.wh===w);
+    b.style.border='0.5px solid '+(on?'#185FA5':'rgba(127,127,127,.35)');
+    b.style.background=on?'#E6F1FB':'transparent';
+    b.style.color=on?'#185FA5':'inherit';
+  }
+};
+document.addEventListener('click', function(e){
+  var el=e.target;
+  while(el && el!==document && !(el.classList && el.classList.contains('fltChip'))) el=el.parentNode;
+  if(!el || el===document) return;
+  var g=el.getAttribute('data-grp'), k=el.getAttribute('data-k'), w=el.getAttribute('data-wh');
+  if(g && k) __FLT[g][k]=(__FLT[g][k]===false)?true:false;
+  else if(w) __FLT.wh=w;
+  else return;
+  __fltSync();
+  var ac=document.getElementById('acCalc'), run=document.getElementById('run');
+  if(ac && document.getElementById('acW')) ac.click(); else if(run) run.click();
+});
 </script>
 </body>
 </html>
