@@ -3015,7 +3015,7 @@ function rAll(){
       <div><label>申报值/件 USD</label><input id="acDecl" type="number" step="1" value="50" title="申报价均为USD，计算时自动×USD/CNY转人民币"></div>
     </div>
     <div class="row" style="margin-top:8px">
-      <div><label>货物类型（B2B产品附加费，可多选）</label>
+      <div><label>货物类型·计费用（产品附加费+竹/木制品商检费；不影响渠道筛选，可多选）</label>
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:3px">
           <label class="mut"><input type="checkbox" name="acCargo" value="纺织品"> 纺织品</label>
           <label class="mut"><input type="checkbox" name="acCargo" value="箱包" checked> 箱包/皮革（JW PEI 默认）</label>
@@ -3023,7 +3023,6 @@ function rAll(){
           <label class="mut"><input type="checkbox" name="acCargo" value="手机壳"> 手机壳</label>           <label class="mut"><input type="checkbox" name="acCargo" value="竹/木制品"> 竹/木制品(商检)</label>
         </div>
       </div>
-      <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acNonfba"> 非FBA地址(+1/kg)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acDecl2"> 需单独报关</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acIns"> 含保价(申报×0.7%,最低5)</label></div>
       <div style="flex:0 0 auto;align-self:flex-end"><label style="min-width:auto" class="mut"><input type="checkbox" id="acMagnet"> 磁检（带磁体，空运常收）</label></div>
@@ -5248,7 +5247,8 @@ window.__fltChipsHtml=function(withWh){
   h+=row('运输方式',keys(F.t).map(function(k){return chip('t',k,F.t[k]!==false);}).join(''));
   h+=row('产品线',keys(F.l).map(function(k){return chip('l',k,F.l[k]!==false);}).join(''));
   h+=row('税务模式',keys(F.x).map(function(k){return chip('x',k,F.x[k]!==false);}).join(''));
-  if(withWh) h+=row('仓库类型',chip(null,'FBA',F.wh==='FBA')+chip(null,'非FBA',F.wh==='非FBA'));
+  if(withWh) h+=row('仓库类型',chip(null,'FBA',F.wh==='FBA')+chip(null,'非FBA',F.wh==='非FBA'))
+    +'<div style="font-size:11px;color:var(--mut);margin-top:4px;line-height:1.6">说明：本区只决定<b>哪些渠道参与比价</b>；费用在上方输入区计算。其中「仓库类型」特殊——既过滤渠道（谷仓专线选FBA不显示），也决定非FBA附加费(+1/kg)是否计入报价。</div>';
   return h+'</div>';
 };
 window.__fltSync=function(){
