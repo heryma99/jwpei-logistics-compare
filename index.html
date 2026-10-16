@@ -5240,11 +5240,11 @@ window.__fltReason=function(ch, wh){
   return null;
 };
 window.__fltChipsHtml=function(withWh){
-  function chip(grp,k,on){ return '<button type="button" class="fltChip"'+(grp?' data-grp="'+grp+'" data-k="'+k+'"':' data-wh="'+k+'"')+' style="font-size:11px;padding:2px 9px;border-radius:999px;cursor:pointer;border:0.5px solid '+(on?'#185FA5':'rgba(127,127,127,.35)')+';background:'+(on?'#E6F1FB':'transparent')+';color:'+(on?'#185FA5':'inherit')+'">'+k+'</button>'; }
-  function row(title,inner){ return '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:2px 0"><span style="font-size:11px;color:#888;flex:0 0 62px">'+title+'</span>'+inner+'</div>'; }
+  function chip(grp,k,on){ return '<button type="button" class="fltChip"'+(grp?' data-grp="'+grp+'" data-k="'+k+'"':' data-wh="'+k+'"')+' style="font-size:12px;padding:3px 12px;border-radius:999px;cursor:pointer;border:1px solid '+(on?'var(--acc)':'var(--line)')+';background:'+(on?'var(--acc)':'var(--panel2)')+';color:'+(on?'#fff':'var(--mut)')+'">'+k+'</button>'; }
+  function row(title,inner){ return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0"><span style="font-size:12px;color:var(--mut);flex:0 0 56px">'+title+'</span>'+inner+'</div>'; }
   var F=window.__FLT;
   function keys(o){ var a=[]; for(var k in o) a.push(k); return a; }
-  var h='<div style="margin:8px 0 4px;line-height:2">';
+  var h='<div style="margin:8px 0 4px;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px">';
   h+=row('运输方式',keys(F.t).map(function(k){return chip('t',k,F.t[k]!==false);}).join(''));
   h+=row('产品线',keys(F.l).map(function(k){return chip('l',k,F.l[k]!==false);}).join(''));
   h+=row('税务模式',keys(F.x).map(function(k){return chip('x',k,F.x[k]!==false);}).join(''));
@@ -5256,9 +5256,9 @@ window.__fltSync=function(){
   for(var i=0;i<cs.length;i++){
     var b=cs[i], g=b.getAttribute('data-grp'), k=b.getAttribute('data-k'), w=b.getAttribute('data-wh');
     var on = g ? (__FLT[g][k]!==false) : (__FLT.wh===w);
-    b.style.border='0.5px solid '+(on?'#185FA5':'rgba(127,127,127,.35)');
-    b.style.background=on?'#E6F1FB':'transparent';
-    b.style.color=on?'#185FA5':'inherit';
+    b.style.border='1px solid '+(on?'var(--acc)':'var(--line)');
+    b.style.background=on?'var(--acc)':'var(--panel2)';
+    b.style.color=on?'#fff':'var(--mut)';
   }
 };
 document.addEventListener('click', function(e){
