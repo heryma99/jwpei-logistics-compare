@@ -1534,7 +1534,7 @@ function combSkus(){
     收货类型 <select id="b2bType"><option value="">不限（2C 个人）</option><option value="FBA">2B · FBA 仓</option><option value="非FBA">2B · 非FBA（商业/住宅）</option></select>
     <span class="mut" style="font-size:11px">·发 2C 个人选「不限」；发 2B 商业选 FBA/非FBA，渠道在 FBA 仓地址有特殊附加、非FBA 按 非FBA附加/kg 算</span>
     邮编 <input id="acZip" type="text" placeholder="选填→自动识别美西/美中/美东" maxlength="5" style="width:130px" title="美国邮编首位：8/9=美西  4-7=美中  0-3=美东">
-    货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option></select>
+    货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option><option value="竹/木制品">竹/木制品(商检)</option></select>
     EUR/CNY <input type="number" id="euFx" step="0.01" value="7.80" style="width:70px" title="用于欧盟3欧元关税、VAT等欧元费用折算">
     USD/CNY <input type="number" id="usdFx" step="0.01" value="7.20" style="width:70px" title="申报价均为USD，凡用申报值算VAT/DUTY/手续费都先×此汇率转CNY" onchange="try{localStorage.setItem('jwpei_usdCny',this.value)}catch(e){}">
     <label style="margin-left:12px"><input type="checkbox" id="conservativeMode"> 完整预算（含偏远/磁检/商业清关等可能费用）</label>
@@ -1705,11 +1705,12 @@ function combSkus(){
         if(typeof sur.declare==='object'){ const bf=sur.declare.base||0, op=(sur.declare.per_kg_op||0)*totalBw; mustItems.push({name:`报关/清关费(基础 ${bf}/票 + 操作 ${sur.declare.per_kg_op||0}/kg × ${totalBw.toFixed(2)}kg)`, amt:bf+op}); mustTotal+=bf+op; }
         else { mustItems.push({name:`报关/清关费(${sur.declare}/票)`, amt:sur.declare}); mustTotal+=sur.declare; }
       }
-      if(sur.inspection){ const insp=sur.inspection; const ik=sur.inspection_kg?Math.max(totalBw,1):totalBw; const a=Math.max((insp.per_kg||0)*ik, insp.min||0); if(a>0){ mustItems.push({name:`商检费(${(insp.per_kg||0)}/kg, 最低${insp.min||0})`, amt:a}); mustTotal+=a; } }
+      if(sur.inspection && cargoType==='竹/木制品'){ const insp=sur.inspection; const ik=sur.inspection_kg?Math.max(totalBw,1):totalBw; const a=Math.max((insp.per_kg||0)*ik, insp.min||0); if(a>0){ mustItems.push({name:`商检费(${(insp.per_kg||0)}/kg, 最低${insp.min||0})`, amt:a}); mustTotal+=a; } }
       if(sur.magnetic){ const a=surAmt(sur.magnetic, totalBw, units); mustItems.push({name:`磁检费(${a.toFixed(2)})`, amt:a}); mustTotal+=a; }
       // ── 可能费用（实报实销/按发生）：始终计算并展示，但不计入基准到手成本 ──
       const maybeItems=[]; let maybeTotal=0;
       const addMaybe=(label, a)=>{ if(a>0){ maybeItems.push({name:label, amt:a}); maybeTotal+=a; } };
+      if(sur.inspection && cargoType!=='竹/木制品'){ const insp2=sur.inspection; const ik2=sur.inspection_kg?Math.max(totalBw,1):totalBw; const a2=Math.max((insp2.per_kg||0)*ik2, insp2.min||0); if(a2>0) addMaybe(`商检费(仅竹/木制品收取；当前品类${cargoType}不计)`, a2); }
       if(sur.remote) addMaybe(`偏远附加费`, surAmt(sur.remote, totalBw, units));
       if(sur.over_items) addMaybe(`超品名附加费(超 ${Math.max(0,(units||1)-(sur.over_items.free||0))} 个品名 ×${sur.over_items.per_item})`, surAmt(sur.over_items, totalBw, units));
       if(sur.oversize && totalBw>=22.5) addMaybe(`超尺寸附加费(单件≥22.5kg)`, surAmt(sur.oversize, totalBw, units));
@@ -1745,8 +1746,8 @@ function combSkus(){
       out+=`<h3>预估明细 · ${ch.carrier}·${ch.channel}</h3>${pickHtml}${body}
         <div class="mut">缴费重 ${fmtKg(cw, ch.cat)}kg（实重${(sku.weight*units).toFixed(2)} / 体积重${(volumeWeight(sku.l,sku.w,sku.h,effCalc(ch,destCn).div)*units).toFixed(2)} ÷${effCalc(ch,destCn).div}${effCalc(ch,destCn).isExc?`（${effCalc(ch,destCn).src}，渠道默认 ÷${effCalc(ch,destCn).base}）`:""}）· 时效约 ${ch.decision?.transit||10} 天</div>
         <div class="mut" style="margin-top:8px;line-height:1.6">
-          <b>✓ 必收：</b>基本运费 + 燃油 + 品类附加（按货物类型）+ 非FBA/住宅附加 + 报关费（非FBA）+ 商检 + 磁检<br>
-          <b>⚠️ 可能附加（实报实销，按发生计，<u>不计入</u>基准）：</b>偏远 / 超品名 / 超尺寸 / 超重 / 更改地址；另有旺季附加、退件、仓租查验等未列
+          <b>✓ 必收：</b>基本运费 + 燃油 + 品类附加（按货物类型）+ 非FBA/住宅附加 + 报关费（非FBA）+ 磁检<br>
+          <b>⚠️ 可能附加（实报实销，按发生计，<u>不计入</u>基准）：</b>偏远 / 商检（仅竹/木制品品类） / 超品名 / 超尺寸 / 超重 / 更改地址；另有旺季附加、退件、仓租查验等未列
         </div>`;
       $("#fOut").innerHTML=out;
       const ec=document.getElementById('estCh'); if(ec) ec.onchange=()=>{ estChannelIdx=+ec.value; draw(); };
