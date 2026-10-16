@@ -1565,6 +1565,7 @@ function combSkus(){
     M.carriers.forEach(ch=>{
       const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
       const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
+      if(window.__gcZoneOf && ch.id && String(ch.id).indexOf('yf_us_gc_')===0){ var _gz=window.__gcZoneOf(($("#acZip")&&$("#acZip").value)||""); if($("#acZip") && String($("#acZip").value||"").trim()){  if(_gz===null){ reasons.push("邮编分区无报价,请单询"); }  else if(_gz && _gz.id!==ch.id){ reasons.push("邮编分区不符(适用: "+_gz.name+")"); } } }
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
@@ -5159,6 +5160,42 @@ function rTailV5(){
   }
 })();
 
+</script>
+
+<script>
+/* 美森谷仓包税 - 邮编分区精确匹配 (2026-10-15 接入) */
+window.__GC_ZONES=[
+ {id:'yf_us_gc_mx9092', name:'美西(邮编90-92)',          t:[[900,929]], x:[[911,913],[919,922]]},
+ {id:'yf_us_gc_mx911',  name:'美西(邮编911-913/919-922)', t:[[911,913],[919,922]]},
+ {id:'yf_us_gc_mx9395', name:'美西(邮编93-95)',          t:[[930,959]]},
+ {id:'yf_us_gc_mx850',  name:'美西(邮编850/890-891)',    t:[[850,850],[890,891]]},
+ {id:'yf_us_gc_mx8097', name:'美西(邮编80/97)',          t:[[800,809],[970,979]]},
+ {id:'yf_us_gc_mx98',   name:'美西(邮编98)',             t:[[980,989]]},
+ {id:'yf_us_gc_mx3046', name:'美西(邮编30/46)',          t:[[300,309],[460,469]]},
+ {id:'yf_us_gc_mc7576', name:'美中(邮编75/76)',          t:[[750,769]]},
+ {id:'yf_us_gc_mc7984', name:'美中(邮编79/84/87/88)',    t:[[790,799],[840,849],[870,879],[880,889]]},
+ {id:'yf_us_gc_mc77',   name:'美中(邮编77)',             t:[[770,779]]},
+ {id:'yf_us_gc_mc6067', name:'美中(邮编60-67)',          t:[[600,679]]},
+ {id:'yf_us_gc_mc73',   name:'美中(邮编73)',             t:[[730,739]]},
+ {id:'yf_us_gc_me2838', name:'美东(邮编28/38/40/29)',    t:[[280,289],[290,299],[380,389],[400,409]]},
+ {id:'yf_us_gc_me3536', name:'美东(邮编35/36)',          t:[[350,369]]},
+ {id:'yf_us_gc_me0717', name:'美东(邮编07/08/15/17)',    t:[[70,89],[150,179]]},
+ {id:'yf_us_gc_me3233', name:'美东(邮编32/33)',          t:[[320,339]]}
+];
+window.__gcZoneOf=function(zip){
+  var z=String(zip||'').replace(/\D/g,'');
+  if(!z) return undefined;
+  var p3=parseInt(z.slice(0,3),10);
+  if(isNaN(p3)) return undefined;
+  for(var i=0;i<window.__GC_ZONES.length;i++){
+    var zn=window.__GC_ZONES[i], hit=false;
+    for(var j=0;j<zn.t.length;j++){ if(p3>=zn.t[j][0]&&p3<=zn.t[j][1]){hit=true;break;} }
+    if(!hit) continue;
+    if(zn.x){ var ex=false; for(var k=0;k<zn.x.length;k++){ if(p3>=zn.x[k][0]&&p3<=zn.x[k][1]){ex=true;break;} } if(ex) continue; }
+    return zn;
+  }
+  return null;
+};
 </script>
 </body>
 </html>
