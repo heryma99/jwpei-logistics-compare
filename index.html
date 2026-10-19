@@ -1539,7 +1539,7 @@ function combSkus(){
     USD/CNY <input type="number" id="usdFx" step="0.01" value="7.20" style="width:70px" title="申报价均为USD，凡用申报值算VAT/DUTY/手续费都先×此汇率转CNY" onchange="try{localStorage.setItem('jwpei_usdCny',this.value)}catch(e){}">
     <label style="margin-left:12px"><input type="checkbox" id="conservativeMode"> 完整预算（含偏远/磁检/商业清关等可能费用）</label>
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
-    ${window.__flt4PanelHTML?window.__flt4PanelHTML():""}
+    ${(M&&M===S.modules.tob&&window.__flt4PanelHTML)?window.__flt4PanelHTML():""}
     <h3>比对模式</h3>
     <div class="seg">
       <label><input type="radio" name="mode" value="compare" checked> 比价（选最优）</label>
@@ -1567,7 +1567,7 @@ function combSkus(){
       const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
       const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
       if(window.__gcZoneOf && ch.id && String(ch.id).indexOf('yf_us_gc_')===0){ var _gz=window.__gcZoneOf(($("#acZip")&&$("#acZip").value)||""); if($("#acZip") && String($("#acZip").value||"").trim()){  if(_gz===null){ reasons.push("邮编分区无报价,请单询"); }  else if(_gz && _gz.id!==ch.id){ reasons.push("邮编分区不符(适用: "+_gz.name+")"); } } }
-      if(window.__fltReason4){ var _fr4=window.__fltReason4({name:(ch.channel||ch.name||""), id:ch.id}); if(_fr4) reasons.push(_fr4); }
+      if(M&&M===S.modules.tob&&window.__fltReason4){ var _fr4=window.__fltReason4({name:(ch.channel||ch.name||""), id:ch.id}); if(_fr4) reasons.push(_fr4); }
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
     });
     const rejectedHtml = rejected.map(r=>`<div class="rejected-item"><span class="x">✗</span><span><b>${r.ch.carrier}·${r.ch.channel}</b> <span class="mut">${r.reasons.join("、")}</span></span></div>`).join('');
