@@ -3178,7 +3178,7 @@ function rAll(){
     RATES.channels.forEach(ch=>{
       const fbox=document.querySelector('.acChk[data-id="'+ch.id+'"]');
       if(fbox && !fbox.checked) return;
-      if(window.__fltPool && !window.__fltPool(ch)) return; if(window.__fltReason2){ var _fr=window.__fltReason2({name:ch.name||'', id:ch.id}); if(_fr){ results.push({ch:ch, status:'flt', why:_fr}); return; } }
+      if(window.__fltPool && !window.__fltPool(ch)) return; if(window.__fltReason2){ var _fr=window.__fltReason2({name:ch.name||'', id:ch.id, cat:ch.cat, incoterm:ch.incoterm, note:ch.note}); if(_fr){ results.push({ch:ch, status:'flt', why:_fr}); return; } }
       const co=findCountryWithAlias(ch.countries||{}, country);
       const div=co.volumetric_divisor||ch.volumetric_divisor||10000;   // ★ per-country 除数优先，回退渠道级
       const actualPerBox=w*qty;
@@ -5253,7 +5253,7 @@ window.__fltHit=function(ch){
   var tg=window.__chTags(ch.name, ch.id);
   if(__FLT2.t.length && __FLT2.t.indexOf(tg.t)<0) return false;
   if(__FLT2.l.length){ var h=false; for(var i=0;i<tg.l.length;i++) if(__FLT2.l.indexOf(tg.l[i])>=0){h=true;break;} if(!h) return false; }
-  if(__FLT2.x.length && __FLT2.x.indexOf(tg.x)<0) return false;
+  if(__FLT2.x.length){ var _xt=(ch.cat==='small'&&__FLT2.m==='B2C')?window.__taxTag2(ch):tg.x; if(__FLT2.x.indexOf(_xt)<0) return false; }
   if(__FLT2.m==='B2B' && __FLT2.w==='FBA' && tg.whOnly) return false;
   return true;
 };
@@ -5262,10 +5262,20 @@ window.__fltReason2=function(ch){
   var tg=window.__chTags(ch.name, ch.id);
   if(__FLT2.t.length && __FLT2.t.indexOf(tg.t)<0) return '运输方式不符（'+tg.t+'）';
   if(__FLT2.l.length){ var h=false; for(var i=0;i<tg.l.length;i++) if(__FLT2.l.indexOf(tg.l[i])>=0){h=true;break;} if(!h) return '产品线不符（'+tg.l.join('/')+'）'; }
-  if(__FLT2.x.length && __FLT2.x.indexOf(tg.x)<0) return '税务模式不符（'+tg.x+'）';
+  if(__FLT2.x.length){ var _xt2=(ch.cat==='small'&&__FLT2.m==='B2C')?window.__taxTag2(ch):tg.x; if(__FLT2.x.indexOf(_xt2)<0) return '税务模式不符（'+_xt2+'）'; }
   if(__FLT2.m==='B2B' && __FLT2.w==='FBA' && tg.whOnly) return '谷仓专属渠道，仅海外仓，FBA 不适用';
   if(__FLT2.q[ch.id]===false) return '已手动取消勾选';
   return null;
+};
+window.__taxTag2=function(ch){
+  if(!ch) return '其他';
+  if(ch.cat==='small'){
+    var note=String(ch.note||'');
+    if(note.indexOf('不含税')>=0) return '不含税';
+    if(ch.incoterm==='DDP'||note.indexOf('已计入')>=0||note.indexOf('包税')>=0) return '含税';
+    return '其他';
+  }
+  return window.__chTags(ch.name||'', ch.id).x;
 };
 window.__fltBoxHTML=function(){
   var pool=(window.RATES&&window.RATES.channels||[]).filter(function(c){ return window.__fltPool(c); });
@@ -5275,7 +5285,7 @@ window.__fltBoxHTML=function(){
       var tg=window.__chTags(c.name, c.id);
       if(o.t && o.t.indexOf(tg.t)<0) return;
       if(o.l && !tg.l.some(function(v){return o.l.indexOf(v)>=0;})) return;
-      if(o.x && o.x.indexOf(tg.x)<0) return;
+      if(o.x){ var _xc=(c.cat==='small'&&F.m==='B2C')?window.__taxTag2(c):tg.x; if(o.x.indexOf(_xc)<0) return; }
       n++;
     });
     return n;
@@ -5287,11 +5297,12 @@ window.__fltBoxHTML=function(){
   var F=__FLT2;
   var h='';
   h+=rowH('业务模式', [['B2B','B2B 大货'],['B2C','B2C 小包'],['EXP','商业快递'],['全部','全部对比']].map(function(p){ return chipH(F.m===p[0], true, p[1], ' data-m="'+p[0]+'"'); }).join(''));
-  h+=rowH('运输方式', ['空运','海运','海卡','卡航','卡派','快递'].map(function(k){ var c=ccount({t:[k]}); return chipH(F.t.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="t" data-k="'+k+'"'); }).join(''));
+  if(F.m==='B2B'||F.m==='全部') h+=rowH('运输方式', ['空运','海运','海卡','卡航','卡派','快递'].map(function(k){ var c=ccount({t:[k]}); return chipH(F.t.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="t" data-k="'+k+'"'); }).join(''));
   h+=rowH('产品线', ['美森系','谷仓专线','盐田普船','快线·限时达','经济·慢线','UPS派送','标准'].map(function(k){ var c=ccount({l:[k]}); return chipH(F.l.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="l" data-k="'+k+'"'); }).join(''));
-  h+=rowH('税务模式', ['包税','自税/递延','其他'].map(function(k){ var c=ccount({x:[k]}); return chipH(F.x.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="x" data-k="'+k+'"'); }).join(''));
+  var _xopts=(F.m==='B2C')?['含税','不含税','其他']:['包税','自税/递延','其他'];
+  h+=rowH('税务模式', _xopts.map(function(k){ var c=ccount({x:[k]}); return chipH(F.x.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="x" data-k="'+k+'"'); }).join(''));
   if(F.m==='B2B') h+=rowH('仓库类型', ['FBA','非FBA'].map(function(k){ return chipH(F.w===k, true, k, ' data-cw="'+k+'"'); }).join(''));
-  h+='<div style="font-size:11px;color:var(--mut);margin:4px 0;line-height:1.6">说明：chips 未选=不限制；计数=选中后命中的渠道数；置灰=当前条件下无渠道。仓库类型选 FBA 时谷仓专线渠道不显示。费用由上方「计费参数」区计算，与筛选无关。</div>';
+  h+='<div style="font-size:11px;color:var(--mut);margin:4px 0;line-height:1.6">说明：chips 未选=不限制；计数=选中后命中的渠道数；置灰=当前条件下无渠道。仓库类型选 FBA 时谷仓专线渠道不显示。B2C 模式税务行为真实口径：含税=卖家承担(报价已含)/不含税=税费另计(顺丰港澳台等)。费用由上方「计费参数」区计算，与筛选无关。</div>';
   var hit=pool.filter(function(c){ return window.__fltHit(c); });
   h+='<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px"><div class="mut" style="font-size:12px;margin-bottom:4px">命中渠道 '+hit.length+' 条（勾选=参赛）</div><div style="max-height:240px;overflow:auto;display:flex;flex-wrap:wrap;gap:2px 14px">';
   hit.forEach(function(c){
