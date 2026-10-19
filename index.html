@@ -4918,54 +4918,84 @@ function rTailV5(){
     },
     {
       codes: ['THPHR', 'THZXR', 'YTYCPREG', 'BKPHR', 'FZZXR', 'DHZXRPH', 'ZBZXRPH', 'YTLSPN', 'THPDYPY', 'TDPHR', 'TDZXR', 'YTSPPH', 'YTCASPPH', 'A01PH', 'QYTHPH'],
+      countries: ['日本'],
       tag: '日本申报≤60USD',
       tip: '日本条款（云途小包通用）：不接受申报价值超过 60USD（1万日元）的包裹；' +
            '2026-10-17 新增：清关资料不足导致无法清关的，需 14 天内补齐，逾期清关行开箱查验，相关费用由寄件人承担。'
     },
     {
       codes: ['THPHR', 'THZXR', 'TDZXR'],
+      countries: ['以色列'],
       tag: '以色列申报≤75USD',
       tip: '以色列条款：不接受申报价值超过 75USD 的包裹，且单票申报数量不超过 5 个。'
     },
     {
       codes: ['THPHR', 'THZXR', 'YTYCPREG', 'BKPHR', 'FZZXR', 'DHZXRPH', 'ZBZXRPH', 'YTLSPN', 'THPDYPY', 'TDPHR', 'TDZXR'],
+      countries: ['瑞士', '南非'],
       tag: '瑞士/南非尺寸',
       tip: '尺寸限制：瑞士最长边≤60cm；南非长+宽+高≤120cm 且最长边≤60cm（超出不收）。'
     },
     {
       codes: ['YTSPPH', 'YTCASPPH', 'A01PH'],
+      countries: ['美国', '加拿大'],
       tag: '可达邮编已调整',
       tip: '商派系列可达邮编 2026-09-24 调整（最新可达以云途系统为准）；A01 已取消全美可达，偏远地址请改走云途岛屿专线；' +
            '加拿大商派专线自 2026-10-19 9:00 起暂停收货。'
     },
     {
       codes: ['THPHR', 'THZXR'],
+      countries: ['菲律宾'],
       tag: '菲律宾计抛÷8000',
       tip: '菲律宾 2026-10-10 起取消不计抛，计抛系数 8000（本工具已按新规计算体积重）。'
-    }
+    },
+    { codes: ['THPHR'], tag: '计抛÷10000', tip: '体积重=长×宽×高÷10000（非标准÷6000，泡货请留意）' },
+    { codes: ['A01'], tag: '计抛÷8000 · 需HSCODE', tip: '体积重=长×宽×高÷8000（非标准÷6000，泡货请留意）；下单需填写 HSCODE（海关编码）' },
+    { codes: ['云途区域专线挂号(特惠普货)'], tag: '计抛÷8000', tip: '体积重=长×宽×高÷8000（非标准÷6000，泡货请留意）' },
+    { codes: ['飞特标准挂号普货(EY)'], tag: '按实重计费', tip: '此渠道不计体积重，按实际重量计费' },
+    { codes: ['DHL'], tag: '计抛÷5000', tip: '体积重=长×宽×高÷5000（非标准÷6000，泡货请留意）' },
+    { codes: ['中运通达-广州联邦IP(不含'], tag: '计抛÷5000', tip: '体积重=长×宽×高÷5000（非标准÷6000，泡货请留意）' },
+    { codes: ['UPS'], tag: '计抛÷5000', tip: '体积重=长×宽×高÷5000（非标准÷6000，泡货请留意）' },
+    { codes: ['THZXR'], tag: '计抛÷10000', tip: '体积重=长×宽×高÷10000（非标准÷6000，泡货请留意）' },
+    { codes: ['YTSPPH'], tag: '计抛÷8000', tip: '体积重=长×宽×高÷8000（非标准÷6000，泡货请留意）' },
+    { codes: ['DPEX'], tag: '限重≤5kg · 时效6-9天', tip: '单票限重 5kg（超出渠道不收）；参考时效 6-9 天（以物流商实际为准）' },
+    { codes: ['TDZXR'], tag: '计抛÷10000', tip: '体积重=长×宽×高÷10000（非标准÷6000，泡货请留意）' },
+    { codes: ['飞特 E速宝标准挂号普货(J'], tag: '计抛÷7000 · EU需IOSS', tip: '体积重=长×宽×高÷7000（非标准÷6000，泡货请留意）；欧盟路向需提供 IOSS 号' },
+    { codes: ['OFFLINEEPACKET'], tag: '按实重计费 · EU需IOSS', tip: '此渠道不计体积重，按实际重量计费；欧盟路向需提供 IOSS 号' },
+    { codes: ['YTYCPREG'], tag: '计抛÷8000', tip: '体积重=长×宽×高÷8000（非标准÷6000，泡货请留意）' },
+    { codes: ['BKPHR'], tag: '计抛÷8000', tip: '体积重=长×宽×高÷8000（非标准÷6000，泡货请留意）' },
+    { codes: ['FZZXR'], tag: '按实重计费', tip: '此渠道不计体积重，按实际重量计费' },
+    { codes: ['DHZXRPH'], tag: '计抛÷18000', tip: '体积重=长×宽×高÷18000（非标准÷6000，泡货请留意）' },
+    { codes: ['ZBZXRPH'], tag: '计抛÷12000', tip: '体积重=长×宽×高÷12000（非标准÷6000，泡货请留意）' },
+    { codes: ['YTLSPN'], tag: '计抛÷8000', tip: '体积重=长×宽×高÷8000（非标准÷6000，泡货请留意）' },
+    { codes: ['THPDYPY'], tag: '计抛÷9000', tip: '体积重=长×宽×高÷9000（非标准÷6000，泡货请留意）' },
+    { codes: ['TDPHR'], tag: '计抛÷8000', tip: '体积重=长×宽×高÷8000（非标准÷6000，泡货请留意）' },
   ];
 
   function decorate() {
     try {
+      var dv = '';
+      try { dv = (document.getElementById('dest') || {}).value || ''; } catch (e) {}
+      var addedN = 0;
       var tds = document.querySelectorAll('td.c-name');
       for (var i = 0; i < tds.length; i++) {
         var td = tds[i];
         if (td.getAttribute('data-limtag')) continue;
         var txt = td.textContent || '';
-        for (var j = 0; j < LIMITS.length; j++) {
+        for (var j = 0; j < LIMITS.length && addedN < 2; j++) {
           var L = LIMITS[j], hit = false;
           for (var k = 0; k < L.codes.length; k++) {
             if (txt.indexOf(L.codes[k]) >= 0) { hit = true; break; }
           }
           if (!hit) continue;
+          if (L.countries) { var cm = false; for (var ci = 0; ci < L.countries.length; ci++) { if (L.countries[ci] === dv) { cm = true; break; } } if (!cm) continue; }
           var sp = document.createElement('span');
           sp.className = 'tag limtag';
           sp.textContent = L.tag;
           sp.title = L.tip;
           td.appendChild(sp);
-          td.setAttribute('data-limtag', L.codes[0]);
-          break;
+          addedN++;
         }
+      if (addedN > 0) td.setAttribute('data-limtag', 'y');
       }
     } catch (e) { /* 静默：绝不影响主流程 */ }
   }
