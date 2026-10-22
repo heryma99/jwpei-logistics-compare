@@ -1269,7 +1269,8 @@ const TABS = [
   {k:"config", t:"⑨ 配置中心"},
   {k:"all", t:"⑩ 全渠道比价"},
   {k:"packSpec", t:"⑪ 装箱规格表"},
-  {k:"packCalc", t:"⑫ 装箱清单"}
+  {k:"packCalc", t:"⑫ 装箱清单"},
+  {k:"quick", t:"⚡ 快速算价"}
 ];
 let CUR = "items";
 function renderNav(){
@@ -1289,6 +1290,103 @@ function render(){
   else if(CUR==="all") rAll();
   else if(CUR==="packSpec") rPackSpec();
   else if(CUR==="packCalc") rPackCalc();
+  else if(CUR==="quick") rQuick();
+}
+
+/* ===================== ⚡ 快速算价（极简入口：只输重量） ===================== */
+function rQuick(){
+  // 全部渠道（与 ⑩ 全渠道比价同源）：按模块来源打标分类（parcel→小包 / express→快递 / tob→B2B头程），与 ch.cat 字段解耦
+  const allFreight = [].concat(
+    (S.modules.parcel && S.modules.parcel.carriers||[]).map(ch=>({ch, cat:'小包'})),
+    (S.modules.small && S.modules.small.carriers||[]).map(ch=>({ch, cat:'小包'})),
+    (S.modules.express && S.modules.express.carriers||[]).map(ch=>({ch, cat:'快递'})),
+    (S.modules.tob && S.modules.tob.carriers||[]).map(ch=>({ch, cat:'B2B头程'}))
+  );
+  const carrierIsoList = (c)=>(Array.isArray(c.isoCountries)?c.isoCountries:(Array.isArray(c.countries)?c.countries:[]));
+  const isoCountries = uniq(allFreight.map(o=>o.ch).flatMap(carrierIsoList)).filter(Boolean);
+  const displayCountries = sortDestinations(isoCountries.map(isoToChinese));
+  const isoOfDisplay = {};
+  displayCountries.forEach(cn=>{ isoOfDisplay[cn] = (typeof CN2ISO==='object' && CN2ISO[cn]) || cn; });
+  const defaultDest = displayCountries.find(x=>["美国","英国","德国"].includes(x)) || displayCountries[0] || "";
+
+  let h = `<div class="card"><h2>⚡ 快速算价　<span class="pill">只输重量 · 实时比价</span></h2>
+    <div class="note">只填「重量」即可估算（默认按实重计、不计体积重、申报值0）。想算抛货/含税，点开「更多」填尺寸与申报值。结果与 ⑩ 全渠道比价<b>同源</b>（复用同一货运引擎）。</div>
+    <div class="row" style="align-items:flex-end">
+      <div><label>目的国</label><select id="dest">${displayCountries.map(c=>`<option ${c===defaultDest?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div><label>重量 kg（必填）</label><input id="qW" type="number" step="0.001" min="0" value="2" style="width:120px;font-size:16px"></div>
+      <div><label>范围</label><select id="qScope"><option value="all" selected>全部渠道</option><option value="小包">仅小包专线</option><option value="快递">仅商业快递</option><option value="B2B头程">仅B2B头程</option></select></div>
+      <div style="flex:0 0 auto"><button class="act" id="qCalc">算</button></div>
+    </div>
+    <details style="margin-top:8px"><summary class="mut">更多（体积重 / 申报值 / 货物类型 / 件数）</summary>
+      <div class="row" style="margin-top:8px;align-items:flex-end">
+        <div><label>长 cm</label><input id="qL" type="number" step="0.1" value="0" style="width:70px"></div>
+        <div><label>宽 cm</label><input id="qWd" type="number" step="0.1" value="0" style="width:70px"></div>
+        <div><label>高 cm</label><input id="qH" type="number" step="0.1" value="0" style="width:70px"></div>
+        <div><label>件数</label><input id="qQty" type="number" step="1" min="1" value="1" style="width:60px"></div>
+        <div><label>申报值/件 USD</label><input id="qDecl" type="number" step="1" value="0" style="width:80px"></div>
+        <div><label>货物类型</label><select id="qCargo"><option value="普货" selected>普货(默认)</option><option value="箱包皮革">箱包/皮革</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="竹/木制品">竹/木制品</option></select></div>
+      </div>
+    </details>
+    <div class="mut" style="margin-top:6px">计费重 = MAX(实重, 长×宽×高÷除数)；尺寸留0即按实重计。B2B头程大货双口径择低场景与 ⑩ 一致（快速模式不二次择低）。</div>
+  </div>
+  <div id="qOut"></div>`;
+  $("#app").innerHTML = h;
+
+  function calc(){
+    const destCn = $("#dest").value;
+    const destIso = isoOfDisplay[destCn] || CN2ISO[destCn] || destCn;
+    const W = Math.max(0, parseFloat($("#qW").value)||0);
+    const qty = Math.max(1, parseInt($("#qQty").value)||1);
+    const l = parseFloat($("#qL").value)||0, w=parseFloat($("#qWd").value)||0, hgt=parseFloat($("#qH").value)||0;
+    const decl = parseFloat($("#qDecl").value)||0;
+    const cargoType = $("#qCargo").value;
+    const scope = $("#qScope").value;
+    const eurFx = (typeof getEurFx==='function' ? getEurFx() : 7.80) || 7.80;
+    // 资格属性(attr)用中性普货（与 ⑩ 一致：渠道资格按商品属性门控，箱包皮革仅作附加费类别），避免小包渠道被误判"属性不符"全过滤
+    const attr = (cargoType==='箱包皮革') ? '普货' : cargoType;
+    const sku = {sku:'__Q__', weight:W, l:l, w:w, h:hgt, decl:decl, attr:attr};
+    const isoListOf = (ch)=>Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
+    const isoOK = (ch)=> isoListOf(ch).includes(destIso);
+    const rows=[];
+    allFreight.forEach(({ch, cat:cc})=>{
+      if(scope!=='all' && cc!==scope) return;
+      if(!isoOK(ch)) return;
+      const aud = (Array.isArray(ch.audience)&&ch.audience.length)?ch.audience[0]:(ch.audience||'2C');
+      const b2bType = (ch.cat==='b2b-air') ? (Array.isArray(ch.audience)&&ch.audience.includes('FBA')?'FBA':'2B') : 'FBA';
+      const reasons = qualify(ch, sku, qty, aud, b2bType, destIso);
+      if(reasons.length) return;
+      const r = computeFreight(ch, sku, qty, destCn, eurFx, {cargoType, conservative:false, destIso, addrType:(b2bType==='FBA'?'商业':'住宅')});
+      if(!r || r.overLimit || !isFinite(r.total)) return;
+      rows.push({ch, cost:r.total, cw:r.cw});
+    });
+    rows.sort((a,b)=>a.cost-b.cost);
+    let out='';
+    if(!rows.length){ out='<div class="err">该目的国 + 重量下没有可发渠道（可能超重/超尺寸，或该范围无渠道）。</div>'; }
+    else {
+      const best = rows[0].cost;
+      out = `<table class="result-table"><thead><tr><th>渠道</th><th>运费</th><th>计费重</th><th>计费规则</th></tr></thead><tbody>`+
+        rows.map((x)=>{
+          const cwStr = fmtKg(x.cw, x.ch.cat);
+          const co = (x.ch.countryMap&&x.ch.countryMap[destCn])||(x.ch.countries&&x.ch.countries[destCn])||{};
+          const div = co.volumetric_divisor || (x.ch.pricing&&x.ch.pricing.divisor) || 6000;
+          const rule = (x.ch.cat==='b2b-air')?'按重/CBM双口径':'计抛÷'+div;
+          const isBest = Math.abs(x.cost-best)<1e-6;
+          return `<tr style="${isBest?'background:rgba(34,139,34,0.12)':''}">
+            <td class="c-name"><b>${esc(x.ch.carrier||'')}</b><br><span class="mut">${esc(x.ch.channel||'')}</span></td>
+            <td style="color:${isBest?'var(--green)':'inherit'};font-weight:${isBest?'700':'400'}">¥${x.cost.toFixed(2)}${isBest?' ★':''}</td>
+            <td>${cwStr}</td>
+            <td class="mut">${rule}</td>
+          </tr>`;
+        }).join('') + `</tbody></table>
+        <div class="mut" style="margin-top:6px">共 ${rows.length} 个渠道可发 · 最便宜整行标绿 ★ · 悬停渠道名看条款提示</div>`;
+    }
+    $("#qOut").innerHTML = out;
+  }
+  $("#qCalc").onclick = calc;
+  $("#qW").addEventListener('keydown', e=>{ if(e.key==='Enter') calc(); });
+  $("#dest").addEventListener('change', calc);
+  $("#qScope").addEventListener('change', calc);
+  calc();
 }
 
 /* ===================== ① 物料主数据 ===================== */
