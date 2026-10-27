@@ -1325,6 +1325,7 @@ function rQuick(){
         <div><label>件数</label><input id="qQty" type="number" step="1" min="1" value="1" style="width:60px"></div>
         <div><label>申报值/件 USD</label><input id="qDecl" type="number" step="1" value="0" style="width:80px"></div>
         <div><label>货物类型</label><select id="qCargo"><option value="普货" selected>普货(默认)</option><option value="箱包皮革">箱包/皮革</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="竹/木制品">竹/木制品</option></select></div>
+        <div><label>仓库类型</label><select id="qWh"><option value="FBA" selected>FBA仓(默认)</option><option value="非FBA">非FBA(商业)</option><option value="住宅">私人住宅</option></select></div>
       </div>
     </details>
     <div class="mut" style="margin-top:6px">计费重 = MAX(实重, 长×宽×高÷除数)；尺寸留0即按实重计。B2B头程大货双口径择低场景与 ⑩ 一致（快速模式不二次择低）。</div>
@@ -1340,6 +1341,7 @@ function rQuick(){
     const l = parseFloat($("#qL").value)||0, w=parseFloat($("#qWd").value)||0, hgt=parseFloat($("#qH").value)||0;
     const decl = parseFloat($("#qDecl").value)||0;
     const cargoType = $("#qCargo").value;
+    const whType = $("#qWh") ? $("#qWh").value : 'FBA';
     const scope = $("#qScope").value;
     const eurFx = (typeof getEurFx==='function' ? getEurFx() : 7.80) || 7.80;
     // 资格属性(attr)用中性普货（与 ⑩ 一致：渠道资格按商品属性门控，箱包皮革仅作附加费类别），避免小包渠道被误判"属性不符"全过滤
@@ -1357,7 +1359,21 @@ function rQuick(){
       if(reasons.length) return;
       const r = computeFreight(ch, sku, qty, destCn, eurFx, {cargoType, conservative:false, destIso, addrType:(b2bType==='FBA'?'商业':'住宅')});
       if(!r || r.overLimit || !isFinite(r.total)) return;
-      rows.push({ch, cost:r.total, cw:r.cw});
+      let cost=r.total, nfNote='';
+      if((whType==='非FBA'||whType==='住宅') && ch.cat==='b2b-air'){
+        const co0=(ch.countries&&ch.countries[destCn])||(ch.regions&&ch.regions[destCn])||{};
+        let s0=co0.sur||null;
+        if(!s0){ const r3=(ch.regions&&(ch.regions['美西']||ch.regions['美中']||ch.regions['美东']))||(ch.countries&&(ch.countries['美西']||ch.countries['美中']||ch.countries['美东']))||null; if(r3&&r3.sur) s0=r3.sur; }
+        if(!s0) s0=ch.sur;
+        if(s0 && s0.nonfba){
+          const _nfr=s0.nonfba, _nfkg=(_nfr.per_kg!=null?_nfr.per_kg:(_nfr.kg||0));
+          let _amt=0;
+          if(whType==='住宅'){ _amt=(_nfr.residential&&_nfr.residential.per_piece)?_nfr.residential.per_piece*qty:0; }
+          else { _amt=Math.max(_nfkg*r.cw, _nfr.min||0); }
+          if(_amt){ cost+=_amt; nfNote='+ '+(whType==='住宅'?'住宅':'非FBA')+'附加 ¥'+_amt.toFixed(2); }
+        }
+      }
+      rows.push({ch, cost, cw:r.cw, nfNote});
     });
     rows.sort((a,b)=>a.cost-b.cost);
     let out='';
@@ -1373,7 +1389,7 @@ function rQuick(){
           const isBest = Math.abs(x.cost-best)<1e-6;
           return `<tr style="${isBest?'background:rgba(34,139,34,0.12)':''}">
             <td class="c-name"><b>${esc(x.ch.carrier||'')}</b><br><span class="mut">${esc(x.ch.channel||'')}</span></td>
-            <td style="color:${isBest?'var(--green)':'inherit'};font-weight:${isBest?'700':'400'}">¥${x.cost.toFixed(2)}${isBest?' ★':''}</td>
+            <td style="color:${isBest?'var(--green)':'inherit'};font-weight:${isBest?'700':'400'}">¥${x.cost.toFixed(2)}${isBest?' ★':''}${x.nfNote?`<div class="mut" style="font-size:11px">${x.nfNote}</div>`:''}</td>
             <td>${cwStr}</td>
             <td class="mut">${rule}</td>
           </tr>`;
@@ -1629,7 +1645,7 @@ function combSkus(){
     </div>
     <datalist id="gcList">${items.map(it=>`<option value="${it.sku}">${it.sku} · ${it.name}</option>`).join("")}</datalist>
     目的国 <div class="combo"><input id="dest" type="text" autocomplete="off" value="${defaultDest}" placeholder="输入或选择"><span class="combo-arrow">▼</span><div class="combo-list" id="destList">${displayCountries.map(c=>`<div class="combo-item" data-v="${c}">${c}</div>`).join('')}</div></div>
-    收货类型 <select id="b2bType"><option value="">不限（2C 个人）</option><option value="FBA">2B · FBA 仓</option><option value="非FBA">2B · 非FBA（商业/住宅）</option></select>
+    收货类型 <select id="b2bType"><option value="">不限（2C 个人）</option><option value="FBA">2B · FBA 仓</option><option value="非FBA">2B · 非FBA（商业）</option><option value="住宅">2B · 私人住宅</option></select>
     <span class="mut" style="font-size:11px">·发 2C 个人选「不限」；发 2B 商业选 FBA/非FBA，渠道在 FBA 仓地址有特殊附加、非FBA 按 非FBA附加/kg 算</span>
     邮编 <input id="acZip" type="text" placeholder="选填→自动识别美西/美中/美东" maxlength="5" style="width:130px" title="美国邮编首位：8/9=美西  4-7=美中  0-3=美东">
     货物类型 <select id="cargoType" style="width:120px"><option value="箱包皮革" selected>箱包/皮革(JW PEI)</option><option value="普货">普货</option><option value="鞋类">鞋类</option><option value="服装">服装/纺织</option><option value="纺织品">纺织品</option><option value="手提包">手提包</option><option value="竹/木制品">竹/木制品(商检)</option></select><label style="margin-left:12px"><input type="checkbox" id="aloneDeclare"> 单独报关</label>
@@ -1660,10 +1676,11 @@ function combSkus(){
     const sv=document.getElementById('skuVol'); if(sv){ sv.textContent=`复合包裹: ${comp.weight.toFixed(2)}kg · 容积${(comp.l*comp.w*comp.h).toFixed(0)}cm³${comp._estimated?'（外箱为估算,可在发货区手填真实尺寸）':''}`; }
     // P2 资格校验
     const b2bType = ($("#b2bType") && $("#b2bType").value) || "";
+    const b2bQual=(b2bType==='住宅')?'非FBA':b2bType;   /* 住宅=资格按非FBA、计费才加住宅件数(2026-10-27) */
     let eligible=[], rejected=[];
     M.carriers.forEach(ch=>{
       const isoList = Array.isArray(ch.isoCountries)?ch.isoCountries:(Array.isArray(ch.countries)?ch.countries:[]);
-      const reasons=qualify(ch, sku, units, aud, b2bType, destIso).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
+      const reasons=qualify(ch, sku, units, aud, b2bQual, destIso).concat( isoList.includes(destIso)?[]:[`目的国不符(${destCn})`] );
       if(window.__gcZoneOf && ch.id && String(ch.id).indexOf('yf_us_gc_')===0){ var _gz=window.__gcZoneOf(($("#acZip")&&$("#acZip").value)||""); if($("#acZip") && String($("#acZip").value||"").trim()){  if(_gz===null){ reasons.push("邮编分区无报价,请单询"); }  else if(_gz && _gz.id!==ch.id){ reasons.push("邮编分区不符(适用: "+_gz.name+")"); } } }
       if(M&&M===S.modules.tob&&window.__fltReason4){ var _fr4=window.__fltReason4({name:(ch.channel||ch.name||""), id:ch.id}); if(_fr4) reasons.push(_fr4); }
       if(reasons.length) rejected.push({ch,reasons}); else eligible.push(ch);
@@ -1678,7 +1695,7 @@ function combSkus(){
       const conservative=$("#conservativeMode")?.checked;
       const cargoType=(document.getElementById('cargoType')?.value)||'箱包皮革';
       const orderLines = ORDER_LINES.filter(l=>l.sku && (+l.qty>0));
-      const split = renderSplitSuggestion(orderLines, destCn, aud, b2bType, {destIso, eurFx, cargoType, conservative});
+      const split = renderSplitSuggestion(orderLines, destCn, aud, b2bQual, {destIso, eurFx, cargoType, conservative});
       $("#fOut").innerHTML = out + split;
       return;
     }
@@ -1797,7 +1814,7 @@ function combSkus(){
       if(sur.nonfba){
         let nfbAmt=0, nfbLabel='';
         if(b2bAddrType==='FBA'){ nfbLabel='FBA 免收'; }
-        else if(b2bAddrType==='非FBA'){ nfbAmt=sur.nonfba.per_kg?sur.nonfba.per_kg*totalBw:0; nfbLabel='非FBA商业地址'; if(nfbAmt===0)nfbLabel='非FBA免附加'; }
+        else if(b2bAddrType==='非FBA'){ nfbAmt=sur.nonfba.per_kg?Math.max(sur.nonfba.per_kg*totalBw, sur.nonfba.min||0):0; nfbLabel='非FBA商业地址'; if(nfbAmt===0)nfbLabel='非FBA免附加'; }   /* 补低消min(2026-10-27) */
         else if(b2bAddrType==='住宅'){ nfbAmt=surAmt(sur.nonfba.residential, totalBw, units); nfbLabel='住宅地址'; }
         if(nfbAmt>0){ mustItems.push({name:`非FBA/住宅附加(${nfbLabel} ${nfbAmt.toFixed(2)})`, amt:nfbAmt}); mustTotal+=nfbAmt; }
       }
@@ -3267,7 +3284,9 @@ function rAll(){
     const cargoCats=[...document.querySelectorAll('input[name="acCargo"]:checked')].map(cb=>cb.value);
     const CAT_ALIAS={'箱包':'箱包皮革','鞋子':'鞋类'};
     const acMagnet=document.getElementById('acMagnet')?.checked;
-    const nonFba=window.__FLT2?(window.__FLT2.wh==="非FBA"):false;
+    const WH2=(window.__FLT2?window.__FLT2.w:'FBA');
+    const nonFba=(WH2==='非FBA'||WH2==='住宅');
+    const isRes2=(WH2==='住宅');
     const wantDecl=$("#acDecl2")?$("#acDecl2").checked:false;
     const bl=parseFloat($("#acBl").value)||l, bw_=parseFloat($("#acBw").value)||wd, bh=parseFloat($("#acBh").value)||h;
     const results=[];
@@ -3321,8 +3340,10 @@ function rAll(){
             // 非FBA：兼容 {kg} 与 {per_kg} 两种形状
             if(nonFba && s.nonfba){
               const nfKg = (s.nonfba.per_kg!=null ? s.nonfba.per_kg : (s.nonfba.kg||0));
-              const nf=Math.max(nfKg*totalBw, s.nonfba.min||0);
-              if(nf){ base+=nf; surTxt+=` + 非FBA ${nf.toFixed(2)}`; }
+              let nf=0;
+              if(isRes2){ nf=(s.nonfba.residential&&s.nonfba.residential.per_piece)?s.nonfba.residential.per_piece*(qty||1):0; }
+              else { nf=Math.max(nfKg*totalBw, s.nonfba.min||0); }
+              if(nf){ base+=nf; surTxt+=(isRes2?` + 住宅附加 ${nf.toFixed(2)}`:` + 非FBA ${nf.toFixed(2)}`); }
             }
             // 单独报关：兼容 扁平数字 与 {per_shipment, per_kg, min_kg}
             if(wantDecl && s.declare){
@@ -3387,7 +3408,7 @@ function rAll(){
         });
         base+=catTotal*totalBw; surTxt+=` + 产品附加费 ${catTotal}/kg×${totalBw.toFixed(1)}=${(catTotal*totalBw).toFixed(2)}`;
         if(s){
-          if(nonFba&&s.nonfba){ const nf=Math.max((s.nonfba.kg||0)*totalBw,s.nonfba.min||0); if(nf){ base+=nf; surTxt+=` + 非FBA ${nf.toFixed(2)}`; } }
+          if(nonFba&&s.nonfba){ const _nfk=(s.nonfba.per_kg!=null?s.nonfba.per_kg:(s.nonfba.kg||0)); let nf=0; if(isRes2){ nf=(s.nonfba.residential&&s.nonfba.residential.per_piece)?s.nonfba.residential.per_piece*(qty||1):0; } else { nf=Math.max(_nfk*totalBw,s.nonfba.min||0); } if(nf){ base+=nf; surTxt+=(isRes2?` + 住宅附加 ${nf.toFixed(2)}`:` + 非FBA ${nf.toFixed(2)}`); } }
           if(wantDecl&&s.declare){ const dl2=(typeof s.declare==='number')?s.declare:((s.declare.base||s.declare.per_shipment||0)+((s.declare.per_kg||s.declare.per_kg_op||0)*totalBw)); if(dl2){ base+=dl2; surTxt+=` + 单独报关 ${dl2.toFixed(2)}`; } }
         }
         // 磁检（独立勾选项）
@@ -5456,7 +5477,7 @@ window.__fltBoxHTML=function(){
   h+=rowH('产品线', ['美森系','谷仓专线','盐田普船','快线·限时达','经济·慢线','UPS派送','标准'].map(function(k){ var c=ccount({l:[k]}); return chipH(F.l.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="l" data-k="'+k+'"'); }).join(''));
   var _xopts=(F.m==='B2C')?['含税','不含税','其他']:['包税','自税/递延','其他'];
   h+=rowH('税务模式', _xopts.map(function(k){ var c=ccount({x:[k]}); return chipH(F.x.indexOf(k)>=0, c>0, k+' '+c, ' data-cg="x" data-k="'+k+'"'); }).join(''));
-  if(F.m==='B2B') h+=rowH('仓库类型', ['FBA','非FBA'].map(function(k){ return chipH(F.w===k, true, k, ' data-cw="'+k+'"'); }).join(''));
+  if(F.m==='B2B') h+=rowH('仓库类型', ['FBA','非FBA','住宅'].map(function(k){ return chipH(F.w===k, true, k, ' data-cw="'+k+'"'); }).join(''));
   h+='<div style="font-size:11px;color:var(--mut);margin:4px 0;line-height:1.6">说明：chips 未选=不限制；计数=选中后命中的渠道数；置灰=当前条件下无渠道。仓库类型选 FBA 时谷仓专线渠道不显示。B2C 模式税务行为真实口径：含税=卖家承担(报价已含)/不含税=税费另计(顺丰港澳台等)。费用由上方「计费参数」区计算，与筛选无关。</div>';
   var hit=pool.filter(function(c){ return window.__fltHit(c); });
   h+='<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px"><div class="mut" style="font-size:12px;margin-bottom:4px">命中渠道 '+hit.length+' 条（勾选=参赛）</div><div style="max-height:240px;overflow:auto;display:flex;flex-wrap:wrap;gap:2px 14px">';
@@ -5528,8 +5549,8 @@ window.__flt4PanelHTML=function(){
   h+=rowH('运输方式', GROUPS[0][1].map(function(k){ var c=cntO('t',k); return chipH(F.t.indexOf(k)>=0, c>0, k+' '+c, ' data-g4="t" data-k4="'+k+'"'); }).join(''));
   h+=rowH('产品线', GROUPS[1][1].map(function(k){ var c=cntO('l',k); return chipH(F.l.indexOf(k)>=0, c>0, k+' '+c, ' data-g4="l" data-k4="'+k+'"'); }).join(''));
   h+=rowH('税务模式', GROUPS[2][1].map(function(k){ var c=cntO('x',k); return chipH(F.x.indexOf(k)>=0, c>0, k+' '+c, ' data-g4="x" data-k4="'+k+'"'); }).join(''));
-  h+=rowH('仓库类型', ['不限','FBA','非FBA'].map(function(k){ return chipH(F.w===k, true, k, ' data-w4b="'+k+'"'); }).join(''));
-  h+='<div style="font-size:11px;color:var(--mut);margin:4px 0;line-height:1.6">说明：chips 未选=不限制；计数=在已选上游条件下的命中渠道数；置灰=无渠道。仓库类型选 FBA 时谷仓专线不显示，选 非FBA 时附加费自动计入。费用由上方「计费参数」区计算，与筛选无关。</div>';
+  h+=rowH('仓库类型', ['不限','FBA','非FBA','住宅'].map(function(k){ return chipH(F.w===k, true, k, ' data-w4b="'+k+'"'); }).join(''));
+  h+='<div style="font-size:11px;color:var(--mut);margin:4px 0;line-height:1.6">说明：chips 未选=不限制；计数=在已选上游条件下的命中渠道数；置灰=无渠道。仓库类型选 FBA 时谷仓专线不显示，选 非FBA/住宅 时附加费自动计入（住宅=非FBA费用+每件住宅费）。费用由上方「计费参数」区计算，与筛选无关。</div>';
   var hitN=pool.filter(function(c){ return window.__fltHit4(c); }).length;
   h+='<div class="mut" style="font-size:12px;margin-top:2px">✓ 命中渠道 '+hitN+' 条（比价/预估只出命中渠道；被刷掉的进下方淘汰详情注明原因）</div>';
   return h+'</div>';
