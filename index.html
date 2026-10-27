@@ -1357,7 +1357,8 @@ function rQuick(){
       const b2bType = (ch.cat==='b2b-air') ? (Array.isArray(ch.audience)&&ch.audience.includes('FBA')?'FBA':'2B') : 'FBA';
       const reasons = qualify(ch, sku, qty, aud, b2bType, destIso);
       if(reasons.length) return;
-      const r = computeFreight(ch, sku, qty, destCn, eurFx, {cargoType, conservative:false, destIso, addrType:(b2bType==='FBA'?'商业':'住宅')});
+      const skuUse = (ch.cat==='b2b-air') ? Object.assign({}, sku, {weight: Math.ceil(sku.weight-1e-9)}) : sku;   /* B2B头程计费重1kg向上取整(中运账单375票实证) */
+      const r = computeFreight(ch, skuUse, qty, destCn, eurFx, {cargoType, conservative:false, destIso, addrType:(b2bType==='FBA'?'商业':'住宅')});
       if(!r || r.overLimit || !isFinite(r.total)) return;
       let cost=r.total, nfNote='';
       if((whType==='非FBA'||whType==='住宅') && ch.cat==='b2b-air'){
@@ -1753,7 +1754,7 @@ function combSkus(){
       const sw=sku.weight*units, vw=volumeWeight(sku.l,sku.w,sku.h,divisor)*units;
       const bw=Math.max(sw,vw);
       const minpc = co.min_charge_weight || co.minpc || ch.minpc || 0;
-      const totalBw=Math.max(bw, minpc);
+      const totalBw=Math.ceil(Math.max(bw, minpc)-1e-9);   /* 计费重1kg向上取整(中运账单专线渠道实证,2026-10-27) */
       const tiers = (co.tiers || []).slice().sort((a,b)=>(a.min||a.kg||0)-(b.min||b.kg||0));
       // ★ 重量段命中：min 是「下界」（报价单「12≤W≤51」的 12）。取 weight≥min 的最高档，避免轻段错算进下一档
       let tier = [...tiers].reverse().find(t=>totalBw >= (t.min||t.kg||0)) || tiers[0] || {min:0, rate:0};
@@ -3323,7 +3324,7 @@ function rAll(){
           // ★ 合并 渠道级(ch.sur / ch.surcharges) 与 国家级(cobj.sur) 两级附加费：中运通达数据分散在两级，只读一级会漏掉非FBA/报关/偏远
           const s=Object.assign({}, ch.sur||ch.surcharges||{}, cobj.sur||{});
           let bwR=bwBox; if(s&&s.minpc) bwR=Math.max(bwBox,s.minpc);
-          const totalBw=bwR*boxes; const t=findTier(cobj.tiers,totalBw);
+          const totalBw=Math.ceil(bwR*boxes-1e-9); const t=findTier(cobj.tiers,totalBw);   /* 计费重1kg向上取整(中运账单美国海卡16/16票实证,2026-10-27) */
           if(!t){ anyBelow=true; belowMin=cobj.tiers[0].min; return; }
           let base=t.rate*totalBw; let surTxt='';
           // ★ 产品附加费：默认必收、永远计入基础运费并显示（即使为0）
@@ -3341,7 +3342,7 @@ function rAll(){
             if(nonFba && s.nonfba){
               const nfKg = (s.nonfba.per_kg!=null ? s.nonfba.per_kg : (s.nonfba.kg||0));
               let nf=0;
-              if(isRes2){ nf=(s.nonfba.residential&&s.nonfba.residential.per_piece)?s.nonfba.residential.per_piece*(qty||1):0; }
+              if(isRes2){ nf=(s.nonfba.residential&&s.nonfba.residential.per_piece)?s.nonfba.residential.per_piece*(boxes||1)   /* 住宅费按箱数(包裹数)计, 3箱=90元(2026-10-27 用户拍板+账单口径) */:0; }
               else { nf=Math.max(nfKg*totalBw, s.nonfba.min||0); }
               if(nf){ base+=nf; surTxt+=(isRes2?` + 住宅附加 ${nf.toFixed(2)}`:` + 非FBA ${nf.toFixed(2)}`); }
             }
@@ -3408,7 +3409,7 @@ function rAll(){
         });
         base+=catTotal*totalBw; surTxt+=` + 产品附加费 ${catTotal}/kg×${totalBw.toFixed(1)}=${(catTotal*totalBw).toFixed(2)}`;
         if(s){
-          if(nonFba&&s.nonfba){ const _nfk=(s.nonfba.per_kg!=null?s.nonfba.per_kg:(s.nonfba.kg||0)); let nf=0; if(isRes2){ nf=(s.nonfba.residential&&s.nonfba.residential.per_piece)?s.nonfba.residential.per_piece*(qty||1):0; } else { nf=Math.max(_nfk*totalBw,s.nonfba.min||0); } if(nf){ base+=nf; surTxt+=(isRes2?` + 住宅附加 ${nf.toFixed(2)}`:` + 非FBA ${nf.toFixed(2)}`); } }
+          if(nonFba&&s.nonfba){ const _nfk=(s.nonfba.per_kg!=null?s.nonfba.per_kg:(s.nonfba.kg||0)); let nf=0; if(isRes2){ nf=(s.nonfba.residential&&s.nonfba.residential.per_piece)?s.nonfba.residential.per_piece*(boxes||1)   /* 住宅费按箱数(包裹数)计, 3箱=90元(2026-10-27 用户拍板+账单口径) */:0; } else { nf=Math.max(_nfk*totalBw,s.nonfba.min||0); } if(nf){ base+=nf; surTxt+=(isRes2?` + 住宅附加 ${nf.toFixed(2)}`:` + 非FBA ${nf.toFixed(2)}`); } }
           if(wantDecl&&s.declare){ const dl2=(typeof s.declare==='number')?s.declare:((s.declare.base||s.declare.per_shipment||0)+((s.declare.per_kg||s.declare.per_kg_op||0)*totalBw)); if(dl2){ base+=dl2; surTxt+=` + 单独报关 ${dl2.toFixed(2)}`; } }
         }
         // 磁检（独立勾选项）
