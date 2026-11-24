@@ -1541,6 +1541,7 @@ function combSkus(){
     USD/CNY <input type="number" id="usdFx" step="0.01" value="7.20" style="width:70px" title="申报价均为USD，凡用申报值算VAT/DUTY/手续费都先×此汇率转CNY" onchange="try{localStorage.setItem('jwpei_usdCny',this.value)}catch(e){}">
     <label style="margin-left:12px"><input type="checkbox" id="conservativeMode"> 完整预算（含偏远/磁检/商业清关等可能费用）</label>
     <button class="act" id="run" style="margin-left:10px">比对 / 预估</button>
+    ${(M&&M===S.modules.tob&&window.__flt4PanelHTML)?window.__flt4PanelHTML():""}
     <h3>比对模式</h3>
     <div class="seg">
       <label><input type="radio" name="mode" value="compare" checked> 比价（选最优）</label>
