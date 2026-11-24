@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260820103700";</script>
+<script>window.__BUILD__="1795501563";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -398,7 +398,7 @@ const CN2ISO = {
 <body>
 
 <header>
-  <h1>比价易</h1>
+  <h1>比价易 <span id="buildTag" style="font-size:11px;font-weight:400;color:var(--mut);margin-left:10px"></span></h1>
 </header>
 <nav id="nav"></nav>
 <div class="wrap" id="app"></div>
@@ -5121,6 +5121,24 @@ window.__fltSync=function(){
   if(sel4 && window.__FLT4) sel4.value=(__FLT4.w==='不限')?'':__FLT4.w;
 };
 if(window.MutationObserver){ new MutationObserver(function(){ try{ __fltSync(); }catch(e){} }).observe(document.getElementById('app')||document.body, {childList:true}); }
+</script>
+<script>
+/* 版本号常驻显示（2026-11-24）：页面标题右侧显示本地 build，并对照线上 version.json */
+(function(){
+  var el=document.getElementById('buildTag'); if(!el) return;
+  var local=window.__BUILD__||'';
+  function fmt(t){ var d=new Date((+t||0)*1000); return isNaN(d.getTime())?t:(d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); }
+  el.textContent='版本 '+fmt(local);
+  try{
+    fetch('version.json?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(j){
+      if(!j||!j.build) return;
+      var ok=String(j.build)===String(local);
+      el.textContent='版本 '+fmt(local)+(ok?' ✓最新':' ⚠缓存旧版');
+      el.style.color=ok?'var(--acc2)':'var(--warn)';
+      el.title='页面 build='+local+' / 线上 build='+j.build;
+    }).catch(function(){});
+  }catch(e){}
+})();
 </script>
 <script>
 /* ===== 尾程比价 v5 内联模块（自动生成，勿手改） ===== */
