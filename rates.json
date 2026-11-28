@@ -24649,7 +24649,8 @@
           "first_weight": 0.5,
           "first_fee": 55,
           "continue_rate": 20,
-          "min_charge_weight": 0.05
+          "min_charge_weight": 0.05,
+          "charge_rule": "vol"
         },
         "中国香港": {
           "first_weight": 0.5,
